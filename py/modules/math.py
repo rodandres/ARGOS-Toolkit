@@ -89,7 +89,11 @@ def quaternion_to_DCM(
     quaternion: np.ndarray,
 ) -> np.ndarray:
     """
-    Convert quaternion into Direction Cosine Matrix.
+    Convert quaternion into Direction Cosine Matrix associated with the quaternion.
+
+    If the quaternion represents the orientation of frame A
+    with respect to frame B, the returned DCM transforms vectors
+    from frame A to frame B.
 
     Parameters
     ----------

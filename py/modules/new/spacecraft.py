@@ -190,7 +190,7 @@ class Spacecraft():
                 self.spacecraft_data.true_ref_alpha
                 ))
 
-            sensor_output = sensor.get_output(true_state, true_ref_state)
+            #sensor_output = sensor.get_measurement(true_state, true_ref_state) NOTE DEBE CMABIARSE POR LOS ARGUMENTOS
 
             if sensor.get_type() == "IMU":
                 pass

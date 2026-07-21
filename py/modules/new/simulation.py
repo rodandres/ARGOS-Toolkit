@@ -23,6 +23,8 @@ class SimulationData:
     tick = 0
     verbose: bool = False
 
+    DCM_inertial_to_body: np.ndarray = field(default_factory=lambda: np.eye(3))
+
 class Simulation:
     def __init__(self, max_sim_time: float, dt_propagation: float, verbose: bool = False):        
 
