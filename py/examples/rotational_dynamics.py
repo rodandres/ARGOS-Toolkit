@@ -8,7 +8,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from py.general.data_classes_declaration import *
 from py.modules.math import quaternion_from_euler
-from py.modules.sensors import GaussianCovarianceSensor
+from py.modules.sensors.generic_sensor import GaussianCovarianceSensor
 from py.modules.controllers import PDAttitudeController
 from py.modules.actuators import RCSThruster
 from py.modules.perturbations import GravityGradientPerturbation, SolarPressurePerturbation
