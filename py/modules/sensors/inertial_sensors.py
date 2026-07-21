@@ -14,7 +14,7 @@ class Accelerometer(SensorBase):
                  random_walk_std: np.ndarray | float = 0.0,
                  sample_rate_freq: float = 100.0,
                  saturation_limit: np.ndarray | float = np.inf,
-                 quantization_levels: int | None = 2**16,
+                 quantization_bits: int | None = 16,
                  verbose: bool = False):
                 
         error_models = (
@@ -22,7 +22,7 @@ class Accelerometer(SensorBase):
             WhiteNoise(_as_3d_array(noise_std, "noise_std")),
             RandomWalk(_as_3d_array(random_walk_std, "random_walk_std")),
             Saturation(_as_3d_array(saturation_limit, "saturation_limit")),
-            Quantization(quantization_levels),
+            Quantization(_as_3d_array(saturation_limit, "saturation_limit"), quantization_bits),
             )
         
         super().__init__(
@@ -66,7 +66,7 @@ class Gyroscope(SensorBase):
                  random_walk_std: np.ndarray | float = 0.0,
                  sample_rate_freq: float = 100.0,
                  saturation_limit: np.ndarray | float = np.inf,
-                 quantization_levels: int | None = 2**16,
+                 quantization_bits: int | None = 16,
                  verbose: bool = False):                
 
         error_models = (
@@ -74,7 +74,7 @@ class Gyroscope(SensorBase):
             WhiteNoise(_as_3d_array(noise_std, "noise_std")),
             RandomWalk(_as_3d_array(random_walk_std, "random_walk_std")),
             Saturation(_as_3d_array(saturation_limit, "saturation_limit")),
-            Quantization(quantization_levels),
+            Quantization(_as_3d_array(saturation_limit, "saturation_limit"), quantization_bits),
             )
         
         super().__init__(

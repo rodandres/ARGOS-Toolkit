@@ -24,7 +24,11 @@ class SensorBase(ABC):
         self.error_models = error_models  # Tuple of error models to apply to the sensor measurement
         self.verbose = verbose
 
-        self.sensor_rotation_quat = quaternion_from_euler(sensor_rotation)
+        sensor_pos = _as_3d_array(sensor_pos, "sensor_pos")
+        sensor_rotation = _as_3d_array(sensor_rotation, "sensor_rotation")
+        sensor_rotation_rad = np.radians(sensor_rotation)
+
+        self.sensor_rotation_quat = quaternion_from_euler(sensor_rotation_rad[0], sensor_rotation_rad[1], sensor_rotation_rad[2])  # Quaternion representing the sensor rotation in the body frame
         self.DCM_sensor_to_body = quaternion_to_DCM(self.sensor_rotation_quat)  # Direction Cosine Matrix from sensor frame to body frame
 
         self.old_measurement = np.zeros(3)

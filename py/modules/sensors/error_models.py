@@ -76,9 +76,14 @@ class Quantization(SensorErrorModel):
         self.limit = limit
         self.bits = bits
 
+        print(f"Quantization Error Model: limit={self.limit}, bits={self.bits}")
+
     def apply(self, measurement, dt=None):
 
         if self.bits is None:
+            return measurement
+        
+        if np.any(np.isinf(self.limit)):            
             return measurement
 
         step = (
