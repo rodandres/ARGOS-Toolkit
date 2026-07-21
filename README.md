@@ -5,7 +5,7 @@
 
 ![Status](https://img.shields.io/badge/status-active-success)
 ![License](https://img.shields.io/badge/License-Apache--2.0-blue)
-![Python](https://img.shields.io/badge/Python-3.12-blue)
+![Python](https://img.shields.io/badge/Python-3.14-blue)
 ![Project](https://img.shields.io/badge/project-Research-green)
 ![Domain](https://img.shields.io/badge/domain-RPOD-informational)
 ![Domain](https://img.shields.io/badge/domain-Spacecraft%20GNC-informational)
