@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from old.control_modules.classic_controllers import attitude_control_PD
+from py.modules.controllers import PDAttitudeController
 from py.modules.math import euler_from_quaternion, quaternion_error, quaternion_to_DCM
 
 FIGURE_BG = "#0b1020"
@@ -182,7 +182,7 @@ def plot_results(sol: Any, args: dict[str, Any]) -> None:
     qe_hist = np.array(qe_hist).T
     theta_deg = np.rad2deg(2 * np.arccos(np.clip(qe_hist[3], -1, 1)))
     omega_norm = np.linalg.norm(w_hist, axis=0)
-    tau_hist = np.array([attitude_control_PD(np.concatenate((q_hist[:, i], w_hist[:, i])), args) for i in range(q_hist.shape[1])]).T
+    tau_hist = np.array([PDAttitudeController(np.concatenate((q_hist[:, i], w_hist[:, i])), args) for i in range(q_hist.shape[1])]).T
 
     fig, axes = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
     _style_figure(fig)
