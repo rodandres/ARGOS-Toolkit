@@ -34,7 +34,7 @@ class SensorBase(ABC):
         self.old_measurement = np.zeros(3)
         self.last_measurement_time = 0.0
 
-        self.should_sample = True  # Flag to indicate if the sensor should sample at the current time step
+        self.measurement = np.zeros(3)
 
         if self.verbose:
             self.print_info()
@@ -50,7 +50,6 @@ class SensorBase(ABC):
         print(f"Sample Rate (Hz): {1.0 / self.sample_rate_sec}")
         print(f"Error Models: {[type(model).__name__ for model in self.error_models]}")
         print("="*50)
-
 
     def get_type(self) -> str:
         """
@@ -74,38 +73,25 @@ class SensorBase(ABC):
         simulation_data : SimulationData
             The current state of the simulation.            
         """
-        if simulation_data.t - self.last_measurement_time >= self.sample_rate_sec:
-            self.should_sample = True
+        if simulation_data.t - self.last_measurement_time >= self.sample_rate_sec:            
+
+            measurement = self.get_ideal_measurement(spacecraft_data, simulation_data)
+            
+            for error_model in self.error_models:
+                measurement = error_model.apply(measurement, dt=simulation_data.dt_master)
+    
+            self.old_measurement = measurement
+            self.last_measurement_time = simulation_data.t
+    
+            self.measurement = measurement
         else:
             self.should_sample = False
+            self.measurement = self.old_measurement
         
-    def get_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:
-        """
-        Get the sensor output, which may include noise or other effects.
-
-        Parameters
-        ----------
-        true_state : np.ndarray
-            True state vector.
-
-        Returns
-        -------
-        np.ndarray
-            Sensor output.
-        """
+    def get_measurement(self) -> np.ndarray:
+        return self.measurement
         
-        if not self.should_sample:
-            return self.old_measurement
         
-        measurement = self.get_ideal_measurement(spacecraft_data, simulation_data)
-
-        for error_model in self.error_models:
-            measurement = error_model.apply(measurement, dt=simulation_data.dt_master)
-
-        self.old_measurement = measurement
-        self.last_measurement_time = simulation_data.t
-
-        return measurement
 
     @abstractmethod
     def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:

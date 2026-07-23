@@ -138,7 +138,7 @@ class Simulation:
             self.simulation_data.t = self.simulation_data.tick * self.simulation_data.dt_master
 
             for spacecraft in self.simulation_data.spacecrafts:
-                spacecraft.compute_tick_step(self.simulation_data.tick, self.simulation_data.dt_master)
+                spacecraft.compute_tick_step(self.simulation_data)
 
             if self.simulation_data.tick % self.simulation_data.dt_propagation == 0:
                 self.__propagate_dynamics()
