@@ -75,6 +75,25 @@ class GaussianStdSensor(SensorBase):
         """
         return self.measure(true_state)
 
+    def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:
+        """
+        Get the ideal sensor measurement without any noise or errors.
+
+        Parameters
+        ----------
+        spacecraft_data : SpacecraftData
+            The current state of the spacecraft.
+        simulation_data : SimulationData
+            The current state of the simulation.
+
+        Returns
+        -------
+        np.ndarray
+            Ideal sensor measurement.
+        """
+        # This method should be implemented in subclasses to return the ideal measurement based on the spacecraft and simulation data.
+        raise NotImplementedError("Subclasses must implement this method.")
+
 class GaussianCovarianceSensor(SensorBase):
     """
     Sensor model with correlated Gaussian noise.
@@ -146,3 +165,22 @@ class GaussianCovarianceSensor(SensorBase):
             Sensor output.
         """
         return self.measure(true_state)
+
+    def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:
+        """
+        Get the ideal sensor measurement without any noise or errors.
+
+        Parameters
+        ----------
+        spacecraft_data : SpacecraftData
+            The current state of the spacecraft.
+        simulation_data : SimulationData
+            The current state of the simulation.
+
+        Returns
+        -------
+        np.ndarray
+            Ideal sensor measurement.
+        """
+        # This method should be implemented in subclasses to return the ideal measurement based on the spacecraft and simulation data.
+        raise NotImplementedError("Subclasses must implement this method.")

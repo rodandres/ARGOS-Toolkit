@@ -81,7 +81,6 @@ class Spacecraft():
         # Check and set the GNC components
         self.has_gnc = self.check_gnc_components(mission_manager, actuators, sensors)
 
-
         if self.spacecraft_data.verbose:
             print(f"="*10 + " Spacecraft created successfully. " + "="*10)
             self.show_spacecraft_basic_info()
@@ -113,7 +112,17 @@ class Spacecraft():
 
         self.mission_manager = mission_manager
 
-        self.update_gnc_components()  # Update the current phase and its associated components
+        
+        phase = self.mission_manager.get_current_phase()
+
+        self.current_phase = phase
+        self.current_controller = phase.controller
+        self.current_guidance = phase.guidance
+        self.current_navigation = phase.navigation
+
+        self.current_controller_dt = phase.dt_control
+        self.current_guidance_dt = phase.dt_guid
+        self.current_navigation_dt = phase.dt_nav
 
         return True  # GNC components are present
 
@@ -124,14 +133,7 @@ class Spacecraft():
         print(f"Inertia Tensor: \n{self.spacecraft_data.inertia_tensor}")
 
     def show_spacecraft_gnc_info(self):
-        print(f"Actuators: {self.spacecraft_data.actuators}")
-        print(f"Sensors: {self.spacecraft_data.sensors}")
-        print(f"Controllers: {self.spacecraft_data.controllers}")
-        print(f"Guidance: {self.spacecraft_data.guidance}")
-
-        print(f"Navigation Time Step: {self.spacecraft_data.dt_nav} s")
-        print(f"Guidance Time Step: {self.spacecraft_data.dt_guid} s")
-        print(f"Control Time Step: {self.spacecraft_data.dt_control} s")
+        print("NOT IMPLEMENTED: GNC information display is not yet implemented.")
 
     def show_spacecraft_state_info(self):
         print("True State (Inertial Frame):")
@@ -182,7 +184,10 @@ class Spacecraft():
         self.show_spacecraft_reference_info()    
         
     def get_gnc_dts(self):
-        return self.spacecraft_data.dt_nav, self.spacecraft_data.dt_guid, self.spacecraft_data.dt_control
+        if self.has_gnc:
+            return self.current_navigation_dt, self.current_guidance_dt, self.current_controller_dt
+        else:
+            return np.nan, np.nan, np.nan
     
     def __compute_navigation(self):
         pass
@@ -201,13 +206,14 @@ class Spacecraft():
 
     def update_gnc_components(self):
         # Update the current phase and its associated components
-        self.current_phase = self.mission_manager.get_current_phase()
-        self.current_controller = self.current_phase.controller
-        self.current_guidance = self.current_phase.guidance
-        self.current_navigation = self.current_phase.navigation
-        self.current_controller_dt = self.current_phase.dt_control
-        self.current_guidance_dt = self.current_phase.dt_guid
-        self.current_navigation_dt = self.current_phase.dt_nav        
+        if self.mission_manager.has_transition_occurred():
+            self.current_phase = self.mission_manager.get_current_phase()
+            self.current_controller = self.current_phase.controller
+            self.current_guidance = self.current_phase.guidance
+            self.current_navigation = self.current_phase.navigation
+            self.current_controller_dt = self.current_phase.dt_control
+            self.current_guidance_dt = self.current_phase.dt_guid
+            self.current_navigation_dt = self.current_phase.dt_nav        
 
     def compute_tick_step(self, simulation_data):
 
@@ -221,9 +227,10 @@ class Spacecraft():
 
         if self.has_gnc:
             # Update mission manager
-            self.mission_manager.update(simulation_data)
+            phase_has_changed = self.mission_manager.update(simulation_data)
 
-            self.update_gnc_components()
+            if phase_has_changed:
+                self.update_gnc_components()
 
             # Check if it's time to compute navigation
             if tick % int(self.current_navigation_dt / dt_master) == 0:

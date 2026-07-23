@@ -2,15 +2,17 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from py.modules.new.simulation import SimulationData
-
+from py.modules.controllers import ControllerBase
+from py.modules.guidance import GuidanceBase
+from py.modules.navigation import NavigationBase
 
 @dataclass
 class MissionPhase:
     
     name: str
-    controller: object
-    guidance: object
-    navigation: object
+    controller: ControllerBase
+    guidance: GuidanceBase
+    navigation: NavigationBase
 
     dt_nav: float
     dt_guid: float
@@ -65,15 +67,29 @@ class MissionManager: # NOTE add method to print info about the transitions
             "condition": condition,
         }
 
-    def update(self, simulation_data: SimulationData):
-        current_phase_name = self.current_phase.name
-        if current_phase_name in self.transitions:
-            for transition_name, transition_info in self.transitions[current_phase_name].items():
-                if transition_info["condition"](simulation_data):
-                    self.current_phase = transition_info["target_phase"]
-                    if self.verbose:
-                        print(f"Transitioned from '{current_phase_name}' to '{self.current_phase.name}' via '{transition_name}'.")
-                    break  # Exit after the first valid transition
+    def update(self, simulation_data):
+
+        current_phase = self.current_phase.name
+
+        if current_phase not in self.transitions:
+            return False
+
+        for transition_name, transition in self.transitions[current_phase].items():
+
+            if transition["condition"](simulation_data):
+
+                self.current_phase = transition["target_phase"]
+
+                if self.verbose:
+                    print(
+                        f"Transitioned from '{current_phase}' "
+                        f"to '{self.current_phase.name}' "
+                        f"via '{transition_name}'."
+                    )
+
+                return True
+
+        return False
 
     def get_current_phase(self) -> MissionPhase:
         return self.current_phase

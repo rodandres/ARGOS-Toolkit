@@ -11,7 +11,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from py.modules.sensors import SensorBase
-    from py.modules.controllers import ControllerBase
+    from py.modules.controllers.controller_base import ControllerBase
     from py.modules.actuators import ActuatorBase
     from py.modules.perturbations import PerturbationBase
 
