@@ -2,21 +2,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from py.modules.new.simulation import SimulationData
-from py.modules.controllers import ControllerBase
-from py.modules.guidance import GuidanceBase
-from py.modules.navigation import NavigationBase
 
-@dataclass
-class MissionPhase:
-    
-    name: str
-    controller: ControllerBase
-    guidance: GuidanceBase
-    navigation: NavigationBase
-
-    dt_nav: float
-    dt_guid: float
-    dt_control: float
+from py.general.dataclasses import MissionPhase
 
 
 class MissionManager: # NOTE add method to print info about the transitions

@@ -1,58 +1,6 @@
-from dataclasses import dataclass, field
-
 import numpy as np
 
-@dataclass
-class SpacecraftData:
-    name: str
-
-    mass: float
-    inertia_tensor: np.ndarray
-
-    # Spacraft state variables in inertial frame (same as the inertial frame of the simulation)
-    true_pos: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    true_vel: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    true_accel: np.ndarray = field(default_factory=lambda: np.zeros(3))
-
-    true_q: np.ndarray = field(default_factory=lambda: np.array([1, 0, 0, 0]))
-    true_omega: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    true_alpha: np.ndarray = field(default_factory=lambda: np.zeros(3))
-
-    # Spacecraft state variables in sensor frame (same as the sensor frame of the spacecraft)
-    measured_pos: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    measured_vel: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    measured_accel: np.ndarray = field(default_factory=lambda: np.zeros(3))
-
-    measured_q: np.ndarray = field(default_factory=lambda: np.array([1, 0, 0, 0]))
-    measured_omega: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    measured_alpha: np.ndarray = field(default_factory=lambda: np.zeros(3))
-
-    # Spacraft state variables in body frame (same as the body frame of the spacecraft)
-    body_pos: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    body_vel: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    body_accel: np.ndarray = field(default_factory=lambda: np.zeros(3))
-
-    body_q: np.ndarray = field(default_factory=lambda: np.array([1, 0, 0, 0]))
-    body_omega: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    body_alpha: np.ndarray = field(default_factory=lambda: np.zeros(3))
-
-    # Reference state variables in inertial frame (same as the inertial frame of the simulation)
-    true_ref_pos: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    true_ref_vel: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    true_ref_accel: np.ndarray = field(default_factory=lambda: np.zeros(3))
-
-    true_ref_q: np.ndarray = field(default_factory=lambda: np.array([1, 0, 0, 0]))
-    true_ref_omega: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    true_ref_alpha: np.ndarray = field(default_factory=lambda: np.zeros(3))
-
-    # Reference state variables in sensor frame (same as the sensor frame of the spacecraft)
-    measured_ref_pos: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    measured_ref_vel: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    measured_ref_accel: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    measured_ref_q: np.ndarray = field(default_factory=lambda: np.array([1, 0, 0, 0]))
-    measured_ref_omega: np.ndarray = field(default_factory=lambda: np.zeros(3))
-    measured_ref_alpha: np.ndarray = field(default_factory=lambda: np.zeros(3))
-
+from py.general.dataclasses import SpacecraftData
 
 class Spacecraft():
 
@@ -126,7 +74,6 @@ class Spacecraft():
 
         return True  # GNC components are present
 
-
     def show_spacecraft_basic_info(self):
         print(f"Spacecraft Name: {self.spacecraft_data.name}")
         print(f"Mass: {self.spacecraft_data.mass} kg")
@@ -189,16 +136,34 @@ class Spacecraft():
         else:
             return np.nan, np.nan, np.nan
     
-    def __compute_navigation(self):
-        pass
+    def __compute_navigation(self, simulation_data):        
 
-    def __compute_guidance(self):
-        # Placeholder for guidance computation logic
-        pass
+        if self.__should_compute(simulation_data, self.current_navigation_dt):
+            estimation = self.current_navigation.estimate(self.sensors)
 
-    def __compute_control(self):
-        # Placeholder for control computation logic
-        pass
+            self.spacecraft_data.estimated_pos = estimation.spacecraft_estimated_position
+            self.spacecraft_data.estimated_vel = estimation.spacecraft_estimated_velocity
+            self.spacecraft_data.estimated_accel = estimation.spacecraft_estimated_acceleration
+            self.spacecraft_data.estimated_q = estimation.spacecraft_estimated_attitude
+            self.spacecraft_data.estimated_omega = estimation.spacecraft_estimated_angular_velocity
+            self.spacecraft_data.estimated_alpha = estimation.spacecraft_estimated_angular_acceleration
+
+            self.spacecraft_data.estimated_ref_pos = estimation.reference_estimated_position
+            self.spacecraft_data.estimated_ref_vel = estimation.reference_estimated_velocity
+            self.spacecraft_data.estimated_ref_accel = estimation.reference_estimated_acceleration
+            self.spacecraft_data.estimated_ref_q = estimation.reference_estimated_attitude
+            self.spacecraft_data.estimated_ref_omega = estimation.reference_estimated_angular_velocity
+            self.spacecraft_data.estimated_ref_alpha = estimation.reference_estimated_angular_acceleration
+
+    def __compute_guidance(self, simulation_data):
+        if self.__should_compute(simulation_data, self.current_guidance_dt):
+            # Placeholder for guidance computation logic
+            pass
+
+    def __compute_control(self, simulation_data):            
+        if self.__should_compute(simulation_data, self.current_controller_dt):
+            # Placeholder for control computation logic
+            pass
 
     def __compute_actuation(self):
         # Placeholder for actuation computation logic
@@ -213,17 +178,19 @@ class Spacecraft():
             self.current_navigation = self.current_phase.navigation
             self.current_controller_dt = self.current_phase.dt_control
             self.current_guidance_dt = self.current_phase.dt_guid
-            self.current_navigation_dt = self.current_phase.dt_nav        
+            self.current_navigation_dt = self.current_phase.dt_nav
 
-    def compute_tick_step(self, simulation_data):
-
+    def __should_compute(self, simulation_data, dt_component):
         tick = simulation_data.tick
         dt_master = simulation_data.dt_master
+
+        return tick % int(dt_component / dt_master) == 0
+
+    def compute_tick_step(self, simulation_data):
 
         # Update sensors
         for sensor in self.spacecraft_data.sensors:
             sensor.update(self.spacecraft_data, simulation_data)
-
 
         if self.has_gnc:
             # Update mission manager
@@ -232,15 +199,6 @@ class Spacecraft():
             if phase_has_changed:
                 self.update_gnc_components()
 
-            # Check if it's time to compute navigation
-            if tick % int(self.current_navigation_dt / dt_master) == 0:
-                self.__compute_navigation()
-
-            # Check if it's time to compute guidance
-            if tick % int(self.current_guidance_dt / dt_master) == 0:
-                self.__compute_guidance()
-
-            # Check if it's time to compute control
-            if tick % int(self.current_controller_dt / dt_master) == 0:
-                self.__compute_control()
-
+            self.__compute_navigation(simulation_data)
+            self.__compute_guidance(simulation_data)
+            self.__compute_control(simulation_data)
