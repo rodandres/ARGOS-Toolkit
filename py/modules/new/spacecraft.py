@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 
 from py.general.dataclasses import SpacecraftData
@@ -13,9 +14,7 @@ class Spacecraft():
             name=name,
 
             mass=mass,
-            inertia_tensor=inertia_tensor,
-
-            verbose=verbose
+            inertia_tensor=inertia_tensor,            
         )
 
         self.spacecraft_data = spacecraft_data
@@ -26,10 +25,12 @@ class Spacecraft():
         self.spacecraft_data.true_q = initial_state[6:10]
         self.spacecraft_data.true_omega = initial_state[10:13]
 
+        self.verbose = verbose
+
         # Check and set the GNC components
         self.has_gnc = self.check_gnc_components(mission_manager, actuators, sensors)
 
-        if self.spacecraft_data.verbose:
+        if self.verbose:
             print(f"="*10 + " Spacecraft created successfully. " + "="*10)
             self.show_spacecraft_basic_info()
             self.show_spacecraft_gnc_info()
@@ -40,6 +41,11 @@ class Spacecraft():
         has_mission_manager = mission_manager is not None
         has_actuators = actuators is not None and len(actuators) > 0
         has_sensors = sensors is not None and len(sensors) > 0
+        
+        self.actuators = actuators
+        self.sensors = sensors
+
+        self.has_sensors = has_sensors
 
         if has_mission_manager and not has_actuators:
             raise ValueError("Mission manager is present, but no actuators are defined.")
@@ -47,16 +53,14 @@ class Spacecraft():
             raise ValueError("Mission manager is present, but no sensors are defined.")
 
         if has_actuators and not has_mission_manager:
-            raise Warning("Actuators are defined, but no mission manager is present. The spacecraft may not be able to perform any actions.")
+            warnings.warn("Actuators are defined, but no mission manager is present. The spacecraft may not be able to perform any actions.")
 
         if has_sensors and not has_mission_manager:
-            raise Warning("Sensors are defined, but no mission manager is present. The spacecraft may not be able to process sensor data.")
+            warnings.warn("Sensors are defined, but no mission manager is present. The spacecraft may not be able to process sensor data.")
 
         if not has_mission_manager:
             return False  # No GNC components present
 
-        self.actuators = actuators
-        self.sensors = sensors
 
         self.mission_manager = mission_manager
 
@@ -83,46 +87,10 @@ class Spacecraft():
         print("NOT IMPLEMENTED: GNC information display is not yet implemented.")
 
     def show_spacecraft_state_info(self):
-        print("True State (Inertial Frame):")
-        print(f"Position: {self.spacecraft_data.true_pos}")
-        print(f"Velocity: {self.spacecraft_data.true_vel}")
-        print(f"Acceleration: {self.spacecraft_data.true_accel}")
-        print(f"Quaternion: {self.spacecraft_data.true_q}")
-        print(f"Angular Velocity: {self.spacecraft_data.true_omega}")
-        print(f"Angular Acceleration: {self.spacecraft_data.true_alpha}")
-
-        print("\nMeasured State (Sensor Frame):")
-        print(f"Position: {self.spacecraft_data.measured_pos}")
-        print(f"Velocity: {self.spacecraft_data.measured_vel}")
-        print(f"Acceleration: {self.spacecraft_data.measured_accel}")
-        print(f"Quaternion: {self.spacecraft_data.measured_q}")
-        print(f"Angular Velocity: {self.spacecraft_data.measured_omega}")
-        print(f"Angular Acceleration: {self.spacecraft_data.measured_alpha}")
-
-        print("\nBody State (Body Frame):")
-        print(f"Position: {self.spacecraft_data.body_pos}")
-        print(f"Velocity: {self.spacecraft_data.body_vel}")
-        print(f"Acceleration: {self.spacecraft_data.body_accel}")
-        print(f"Quaternion: {self.spacecraft_data.body_q}")
-        print(f"Angular Velocity: {self.spacecraft_data.body_omega}")
-        print(f"Angular Acceleration: {self.spacecraft_data.body_alpha}")
+        print("NOT IMPLEMENTED: Spacecraft state information display is not yet implemented.")
 
     def show_spacecraft_reference_info(self):
-        print("True Reference State (Inertial Frame):")
-        print(f"Position: {self.spacecraft_data.true_ref_pos}")
-        print(f"Velocity: {self.spacecraft_data.true_ref_vel}")
-        print(f"Acceleration: {self.spacecraft_data.true_ref_accel}")
-        print(f"Quaternion: {self.spacecraft_data.true_ref_q}")
-        print(f"Angular Velocity: {self.spacecraft_data.true_ref_omega}")
-        print(f"Angular Acceleration: {self.spacecraft_data.true_ref_alpha}")
-
-        print("\nMeasured Reference State (Sensor Frame):")
-        print(f"Position: {self.spacecraft_data.measured_ref_pos}")
-        print(f"Velocity: {self.spacecraft_data.measured_ref_vel}")
-        print(f"Acceleration: {self.spacecraft_data.measured_ref_accel}")
-        print(f"Quaternion: {self.spacecraft_data.measured_ref_q}")
-        print(f"Angular Velocity: {self.spacecraft_data.measured_ref_omega}")
-        print(f"Angular Acceleration: {self.spacecraft_data.measured_ref_alpha}")
+       print("NOT IMPLEMENTED: Spacecraft reference information display is not yet implemented.")
 
     def show_spacecraft_all_info(self):
         self.show_spacecraft_basic_info()
@@ -136,31 +104,21 @@ class Spacecraft():
         else:
             return np.nan, np.nan, np.nan
     
-    def __compute_navigation(self, simulation_data):        
+    def __compute_navigation(self, simulation_data):
 
         if self.__should_compute(simulation_data, self.current_navigation_dt):
             estimation = self.current_navigation.estimate(self.sensors)
 
-            self.spacecraft_data.estimated_pos = estimation.spacecraft_estimated_position
-            self.spacecraft_data.estimated_vel = estimation.spacecraft_estimated_velocity
-            self.spacecraft_data.estimated_accel = estimation.spacecraft_estimated_acceleration
-            self.spacecraft_data.estimated_q = estimation.spacecraft_estimated_attitude
-            self.spacecraft_data.estimated_omega = estimation.spacecraft_estimated_angular_velocity
-            self.spacecraft_data.estimated_alpha = estimation.spacecraft_estimated_angular_acceleration
-
-            self.spacecraft_data.estimated_ref_pos = estimation.reference_estimated_position
-            self.spacecraft_data.estimated_ref_vel = estimation.reference_estimated_velocity
-            self.spacecraft_data.estimated_ref_accel = estimation.reference_estimated_acceleration
-            self.spacecraft_data.estimated_ref_q = estimation.reference_estimated_attitude
-            self.spacecraft_data.estimated_ref_omega = estimation.reference_estimated_angular_velocity
-            self.spacecraft_data.estimated_ref_alpha = estimation.reference_estimated_angular_acceleration
-
+            self.spacecraft_data.navigation_estimated_data = estimation
+            
     def __compute_guidance(self, simulation_data):
         if self.__should_compute(simulation_data, self.current_guidance_dt):
             # Placeholder for guidance computation logic
-            pass
+            self.spacecraft_data.guidance_reference_data = self.current_guidance.compute_reference(
+                self.spacecraft_data.navigation_estimated_data, simulation_data
+            )
 
-    def __compute_control(self, simulation_data):            
+    def __compute_control(self, simulation_data):
         if self.__should_compute(simulation_data, self.current_controller_dt):
             # Placeholder for control computation logic
             pass
@@ -170,15 +128,14 @@ class Spacecraft():
         pass
 
     def update_gnc_components(self):
-        # Update the current phase and its associated components
-        if self.mission_manager.has_transition_occurred():
-            self.current_phase = self.mission_manager.get_current_phase()
-            self.current_controller = self.current_phase.controller
-            self.current_guidance = self.current_phase.guidance
-            self.current_navigation = self.current_phase.navigation
-            self.current_controller_dt = self.current_phase.dt_control
-            self.current_guidance_dt = self.current_phase.dt_guid
-            self.current_navigation_dt = self.current_phase.dt_nav
+        # Update the current phase and its associated components        
+        self.current_phase = self.mission_manager.get_current_phase()
+        self.current_controller = self.current_phase.controller
+        self.current_guidance = self.current_phase.guidance
+        self.current_navigation = self.current_phase.navigation
+        self.current_controller_dt = self.current_phase.dt_control
+        self.current_guidance_dt = self.current_phase.dt_guid
+        self.current_navigation_dt = self.current_phase.dt_nav
 
     def __should_compute(self, simulation_data, dt_component):
         tick = simulation_data.tick
@@ -189,8 +146,9 @@ class Spacecraft():
     def compute_tick_step(self, simulation_data):
 
         # Update sensors
-        for sensor in self.spacecraft_data.sensors:
-            sensor.update(self.spacecraft_data, simulation_data)
+        if self.has_sensors:
+            for sensor in self.sensors:
+                sensor.update(self.spacecraft_data, simulation_data)
 
         if self.has_gnc:
             # Update mission manager

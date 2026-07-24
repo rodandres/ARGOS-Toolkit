@@ -9,21 +9,7 @@ if str(REPO_ROOT) not in sys.path:
 import numpy as np
 
 from py.modules.new.spacecraft import Spacecraft
-
-@dataclass
-class SimulationData:
-    max_sim_time: float
-
-    dt_master: float
-    dt_propagation: float
-    
-    spacecrafts: list
-
-    t = 0.0
-    tick = 0
-    verbose: bool = False
-
-    DCM_inertial_to_body: np.ndarray = field(default_factory=lambda: np.eye(3))
+from py.general.dataclasses import SimulationData
 
 class Simulation:
     def __init__(self, max_sim_time: float, dt_propagation: float, verbose: bool = False):        
