@@ -1,6 +1,3 @@
-# NOTAS POR TODO LADO
-# HACE FALTA IMPLEMENTAR EL GET_OUTPUT
-
 import warnings
 import numpy as np
 from py.modules.actuators.actuators_base import ActuatorBase
@@ -20,8 +17,7 @@ class RCSThruster(ActuatorBase):
         minimum_on_time: float = 0.01,
         activation_threshold: float = 0.0,
 
-        override_torque: bool = False,
-        override_torque_value: float | None = None
+        override_torque_value: np.ndarray | None = None
     ):
         
         super().__init__()
@@ -36,12 +32,13 @@ class RCSThruster(ActuatorBase):
 
         self.activation_threshold = activation_threshold
 
+        self.direction = direction
+
         self._check_initialization()
 
         if self.position is None:
             self.position = np.zeros(3)  # Default position at the origin
 
-        self.direction = direction
 
         if self.direction is None:
             self.direction = np.array([1, 0, 0])  # Default direction along the X-axis
@@ -49,7 +46,11 @@ class RCSThruster(ActuatorBase):
 
         self.direction = self.direction / np.linalg.norm(self.direction)  # Normalize the direction vector
 
-        self.override_torque = override_torque        
+        self.override_torque_value = override_torque_value
+        if self.override_torque_value is None:
+            self.override_torque = False
+        else:
+            self.override_torque = True
 
         # ==========================================================
         # Internal actuator state
@@ -67,7 +68,7 @@ class RCSThruster(ActuatorBase):
             self._compute_command = self._compute_bangbang_command
             self._update_method = self._update_bangbang_method
 
-        self.actual_force = np.zeros(3)  # Initialize the actual force output
+        self._actual_force = np.zeros(3)  # Initialize the actual force output
         self._actual_torque = np.zeros(3)  # Initialize the actual torque output
 
     def _check_initialization(self):
@@ -105,18 +106,24 @@ class RCSThruster(ActuatorBase):
 
         self._compute_command(desired_force)        
 
-    def update(self, local_time: float) -> np.ndarray:
+    def update(self, local_time: float):
 
         if not self.command_active:
-            self.actual_force = np.zeros(3)
-            self._actual_torque = np.zeros(3)                            
+            self._actual_force = np.zeros(3)
+            self._actual_torque = np.zeros(3)
+            return
 
-        
-            # NOTAS:
-            # - esta ya no devuelve nada, todo se actualiza internamente y se puede obtener con get_output()
+        self._update_method(local_time)
 
 
-        return np.zeros(3)  # Default case, should not reach here
+    def get_output(self) -> ActuatorOutput:
+        """
+        Returns the current output of the actuator as an ActuatorOutput dataclass.
+        """
+        return ActuatorOutput(
+            force=self._actual_force,
+            torque=self._actual_torque
+        )
 
     # ==========================================================
     # Internal command models
@@ -147,21 +154,19 @@ class RCSThruster(ActuatorBase):
     def _update_pwm_method(self, local_time: float):
         window_time = local_time % self.modulation_window
         if window_time < self.on_time:
-            return self.nominal_thrust * self.direction
+            self._actual_force = self.nominal_thrust * self.direction
+            self._actual_torque = np.cross(self.position, self._actual_force)  # Calculate torque based on position and force
+
+            if self.override_torque:
+                self._actual_torque = self.override_torque_value  # Override torque if the flag is set
+
         else:
-            return np.zeros(3)  # No force applied outside the on-time window
+            self._actual_force = np.zeros(3)  # No force applied outside the on-time window
+            self._actual_torque = np.zeros(3)  # No torque applied outside the on-time window
 
-        # NOTA
-        # - esta función ya no devuelve nada, todo se actualiza internamente y se puede obtener con get_output()
-        # - falta hacer el calculo del torque aplicado, que depende de la posición del thruster y la fuerza aplicada
-        # - falta hacer el override del torque, que es un flag que permite forzar un torque fijo en lugar de calcularlo a partir de la fuerza y la posición del thruster
+    def _update_bangbang_method(self, local_time: float):
+        self._actual_force = self.nominal_thrust * self.direction if self.command_active else np.zeros(3)
+        self._actual_torque = np.cross(self.position, self._actual_force)
 
-    def _update_bangbang_method(self):
-        return self.nominal_thrust * self.direction
-    
-        # NOTA
-        # - esta función ya no devuelve nada, todo se actualiza internamente y se puede obtener con get_output()
-        # - falta hacer el calculo del torque aplicado, que depende de la posición del thruster y la fuerza aplicada
-        # - falta hacer el override del torque, que es un flag que permite forzar un torque fijo en lugar de calcularlo a partir de la fuerza y la posición del thruster
-        
-        
+        if self.override_torque:
+            self._actual_torque = self.override_torque_value  # Override torque if the flag is set
