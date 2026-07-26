@@ -148,7 +148,7 @@ class Spacecraft():
             torque += actuator_output.torque
 
         self.spacecraft_data.current_force_exerted = force
-        self.current_torque_exerted = torque
+        self.spacecraft_data.current_torque_exerted = torque
 
     def update_gnc_components(self):
         # Update the current phase and its associated components        
