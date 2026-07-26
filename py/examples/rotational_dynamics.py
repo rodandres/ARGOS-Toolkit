@@ -10,7 +10,7 @@ from py.general.data_classes_declaration import *
 from py.modules.math import quaternion_from_euler
 from py.modules.sensors.generic_sensor import GaussianCovarianceSensor
 from py.modules.controllers.classic_controllers import PDAttitudeController
-from py.modules.actuators import RCSThruster
+from py.modules.actuators.actuators_base import RCSThruster_old as RCSThruster
 from py.modules.perturbations import GravityGradientPerturbation, SolarPressurePerturbation
 
 from py.sim_engines.rotational_dynamics_engine import sim

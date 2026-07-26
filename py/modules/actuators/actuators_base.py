@@ -1,32 +1,48 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from py.general.dataclasses import ActuatorOutput
 
 class ActuatorBase(ABC):
     """
     Abstract interface for all spacecraft actuators.
 
     Every actuator must implement a command update stage and a command
-    execution stage.
+    execution stage.    
     """
 
-    @abstractmethod
-    def set_command(self, command):
+    def __init__(self):        
+        self.is_available = True  # Flag to indicate if the actuator is available for use
+        self.has_been_used = False  # Flag to indicate if the actuator has been used at least once
+        self.is_controlable = True  # Flag to indicate if the actuator can be controlled
+
+        self.override_torque = False
+
+    @abstractmethod 
+    def set_command(self, command):  # Saves the value of force or torque command for later application.
         """
         Store or process the commanded actuator input.
         """
         pass
 
     @abstractmethod
-    def apply_command(self):
+    def update(self, local_time: float) -> np.ndarray:
         """
-        Apply the previously stored command and return the actuator output.
+        Update the actuator state based on the current time.
+        """
+        pass
+
+    @abstractmethod
+    def get_output(self) -> 'ActuatorOutput':
+        """
+        Return the current output of the actuator.
         """
         pass
 
 
-class RCSThruster(ActuatorBase):
+class RCSThruster_old(ActuatorBase):
     """
     Single RCS thruster model.
 
@@ -188,3 +204,9 @@ class RCSThruster(ActuatorBase):
         self.is_firing = (
             projected_torque >= self.activation_threshold
         )
+
+    def get_output(self) -> 'ActuatorOutput':
+        """
+        Return the current output of the actuator.
+        """
+        pass 

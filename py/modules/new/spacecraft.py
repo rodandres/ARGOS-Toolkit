@@ -2,12 +2,14 @@ import warnings
 import numpy as np
 
 from py.general.dataclasses import SpacecraftData
+from py.modules.new.mission_manager import MissionManager
+from py.modules.sensors.sensor_base import SensorBase
 
 class Spacecraft():
 
     def __init__(self, name: str, mass: float, initial_state: np.ndarray, inertia_tensor: np.ndarray, 
-                 actuators: list | None = None, sensors: list | None = None,
-                 mission_manager: object | None = None,
+                 actuators: list | None = None, sensors: list[SensorBase] | None = None,
+                 mission_manager: MissionManager | None = None,
                  verbose: bool = False):
 
         spacecraft_data = SpacecraftData(
@@ -24,7 +26,6 @@ class Spacecraft():
         self.spacecraft_data.true_vel = initial_state[3:6]
         self.spacecraft_data.true_q = initial_state[6:10]
         self.spacecraft_data.true_omega = initial_state[10:13]
-
         self.verbose = verbose
 
         # Check and set the GNC components

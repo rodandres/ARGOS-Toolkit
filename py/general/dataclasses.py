@@ -2,9 +2,12 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from py.modules.controllers import ControllerBase
-from py.modules.guidance import GuidanceBase
-from py.modules.navigation import NavigationBase
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from py.modules.controllers.classic_controllers import ControllerBase
+    from py.modules.guidance import GuidanceBase
+    from py.modules.navigation import NavigationBase
 
 @dataclass
 class MissionPhase:
@@ -59,6 +62,11 @@ class GuidanceReference:
     angular_acceleration: np.ndarray = field(default_factory=lambda: np.zeros(3))
 
 @dataclass
+class ControlOutput:
+    force: np.ndarray = field(default_factory=lambda: np.zeros(3))
+    torque: np.ndarray = field(default_factory=lambda: np.zeros(3))
+
+@dataclass
 class SpacecraftData:
     name: str
 
@@ -91,3 +99,9 @@ class SpacecraftData:
 
     navigation_estimated_data: EstimationOutput = field(default_factory=EstimationOutput)
     guidance_reference_data: GuidanceReference = field(default_factory=GuidanceReference)
+    control_output_data: ControlOutput = field(default_factory=ControlOutput)
+
+@dataclass
+class ActuatorOutput:
+    force: np.ndarray = field(default_factory=lambda: np.zeros(3))
+    torque: np.ndarray = field(default_factory=lambda: np.zeros(3))

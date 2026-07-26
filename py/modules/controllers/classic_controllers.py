@@ -23,7 +23,7 @@ class PDAttitudeController(ControllerBase):
         self.minimum_torque = minimum_torque
         self.maximum_torque = maximum_torque
 
-    def compute_control(
+    def compute_control_old(
         self,
         shared_data: SimSharedData,
     ) -> np.ndarray:
@@ -87,3 +87,6 @@ class PDAttitudeController(ControllerBase):
             )
 
         return commanded_torque
+
+    def compute_control():
+        pass

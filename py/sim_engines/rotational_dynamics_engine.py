@@ -37,7 +37,7 @@ def compute_guidance(shared_data, sim_settings):
 def compute_control(shared_data, sim_settings):
     """Compute control torque command."""
 
-    tau = sim_settings.controller.compute_control(shared_data)
+    tau = sim_settings.controller.compute_control_old(shared_data)
 
     shared_data.tau_from_control = tau
 
