@@ -52,7 +52,7 @@ class ControllerBase(ABC):
 
 class ControlAllocatorBase(ABC):
 
-    def __add_actuators(self, actuators: list[ActuatorBase]):
+    def set_actuators(self, actuators: list[ActuatorBase]):
         """
         Add actuators to the control allocator.
 

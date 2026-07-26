@@ -5,17 +5,20 @@ import numpy as np
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from py.modules.controllers.classic_controllers import ControllerBase
-    from py.modules.guidance import GuidanceBase
-    from py.modules.navigation import NavigationBase
+    from py.modules.controllers.controller_base import ControllerBase, ControlAllocatorBase
+    from py.modules.guidance.guidance_base import GuidanceBase
+    from py.modules.navigation.navigation_base import NavigationBase
 
 @dataclass
 class MissionPhase:
     
     name: str
-    controller: ControllerBase
     guidance: GuidanceBase
     navigation: NavigationBase
+    controller: ControllerBase
+
+    allocator: ControlAllocatorBase
+
 
     dt_nav: float
     dt_guid: float
@@ -100,6 +103,11 @@ class SpacecraftData:
     navigation_estimated_data: EstimationOutput = field(default_factory=EstimationOutput)
     guidance_reference_data: GuidanceReference = field(default_factory=GuidanceReference)
     control_output_data: ControlOutput = field(default_factory=ControlOutput)
+
+    current_force_exerted: np.ndarray = field(default_factory=lambda: np.zeros(3))
+    current_torque_exerted: np.ndarray = field(default_factory=lambda: np.zeros(3))
+
+
 
 @dataclass
 class ActuatorOutput:

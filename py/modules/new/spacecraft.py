@@ -29,7 +29,7 @@ class Spacecraft():
         self.verbose = verbose
 
         # Check and set the GNC components
-        self.has_gnc = self.check_gnc_components(mission_manager, actuators, sensors)
+        self.has_gnc = self.check_gnc_components(mission_manager, actuators, sensors)        
 
         if self.verbose:
             print(f"="*10 + " Spacecraft created successfully. " + "="*10)
@@ -69,9 +69,11 @@ class Spacecraft():
         phase = self.mission_manager.get_current_phase()
 
         self.current_phase = phase
-        self.current_controller = phase.controller
         self.current_guidance = phase.guidance
         self.current_navigation = phase.navigation
+        self.current_controller = phase.controller
+        self.current_allocator = phase.allocator
+        self.current_allocator.set_actuators(self.actuators)
 
         self.current_controller_dt = phase.dt_control
         self.current_guidance_dt = phase.dt_guid
@@ -121,19 +123,44 @@ class Spacecraft():
 
     def __compute_control(self, simulation_data):
         if self.__should_compute(simulation_data, self.current_controller_dt):
-            # Placeholder for control computation logic
-            pass
+            self.spacecraft_data.control_output_data = self.current_controller.compute_control(
+                self.spacecraft_data.guidance_reference_data, self.spacecraft_data.navigation_estimated_data, simulation_data
+            )
 
-    def __compute_actuation(self):
+            self.current_allocator.allocate(self.spacecraft_data.control_output_data)
+
+    def __compute_actuation(self, simulation_data):
         # Placeholder for actuation computation logic
-        pass
+        force = np.zeros(3)
+        torque = np.zeros(3)
+
+        if self.actuators is None:
+            self.spacecraft_data.current_force_exerted = force
+            self.spacecraft_data.current_torque_exerted = torque
+            return
+
+        for actuator in self.actuators:
+            actuator.update(simulation_data.t)
+
+            actuator_output = actuator.get_output()
+
+            force += actuator_output.force
+            torque += actuator_output.torque
+
+        self.spacecraft_data.current_force_exerted = force
+        self.current_torque_exerted = torque
 
     def update_gnc_components(self):
         # Update the current phase and its associated components        
         self.current_phase = self.mission_manager.get_current_phase()
-        self.current_controller = self.current_phase.controller
         self.current_guidance = self.current_phase.guidance
         self.current_navigation = self.current_phase.navigation
+        self.current_controller = self.current_phase.controller
+
+        self.current_allocator = self.current_phase.allocator
+        self.current_allocator.set_actuators(self.actuators)
+
+
         self.current_controller_dt = self.current_phase.dt_control
         self.current_guidance_dt = self.current_phase.dt_guid
         self.current_navigation_dt = self.current_phase.dt_nav
@@ -141,6 +168,8 @@ class Spacecraft():
     def __should_compute(self, simulation_data, dt_component):
         tick = simulation_data.tick
         dt_master = simulation_data.dt_master
+
+
 
         return tick % int(dt_component / dt_master) == 0
 
@@ -161,3 +190,5 @@ class Spacecraft():
             self.__compute_navigation(simulation_data)
             self.__compute_guidance(simulation_data)
             self.__compute_control(simulation_data)
+
+        self.__compute_actuation(simulation_data)

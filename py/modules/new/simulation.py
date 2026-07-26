@@ -84,7 +84,7 @@ class Simulation:
         if self.simulation_data.verbose:
             print(f"Spacecraft '{name}' added to the simulation.")
 
-    def __set_dt_master(self):
+    def __set_dt_master(self): # POSSIBLE BUG: dts must be with a minimum common multiple
         dts = [self.simulation_data.dt_propagation]  # Start with the master propagation time step
         for spacecraft in self.simulation_data.spacecrafts.values():
             dt_nav, dt_guid, dt_control = spacecraft.get_gnc_dts()
