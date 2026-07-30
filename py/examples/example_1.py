@@ -100,20 +100,27 @@ sensors = [AbsoluteSensor(100, verbose=False)]  # Sample rate of 100 Hz
 # Next step is define the guidance law
 from py.general.dataclasses import GuidanceReference
 from py.modules.guidance.guidance_base import GuidanceBase
+from py.modules.guidance.basic_laws import ConstantReferenceGuidance, CustomGuidanceLaw
 from py.modules.math import quaternion_from_euler
 
 objective_orientation = [0, 0, 0]  # Desired orientation in Euler angles (degrees)
 
-class SimpleGuidance(GuidanceBase):
-    def compute_reference(self, navigation_estimated_data, simulation_sata):
 
-        ref = GuidanceReference(
-            attitude = quaternion_from_euler(np.deg2rad(objective_orientation[0]), np.deg2rad(objective_orientation[1]), np.deg2rad(objective_orientation[2]))
-        )
+def compute_reference(navigation_estimated_data, simulation_sata):
 
-        return ref
+    ref = GuidanceReference(
+        attitude = quaternion_from_euler(np.deg2rad(objective_orientation[0]), np.deg2rad(objective_orientation[1]), np.deg2rad(objective_orientation[2]))
+    )
 
-guidance_law = SimpleGuidance()
+    return ref
+
+guidance_law = ConstantReferenceGuidance(
+    desired_quat = quaternion_from_euler(np.deg2rad(objective_orientation[0]), np.deg2rad(objective_orientation[1]), np.deg2rad(objective_orientation[2]))
+)
+
+guidance_law = CustomGuidanceLaw(
+    custom_reference_function= compute_reference
+)
 
 # Now define the navigation law
 from py.general.dataclasses import EstimationOutput
