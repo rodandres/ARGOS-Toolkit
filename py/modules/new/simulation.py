@@ -110,18 +110,18 @@ class Simulation:
         self.simulation_data.dt_master = min(dts)
 
     def __init_simulation(self):
-        if self.simulation_data.verbose:
+        if self.verbose:
             print("Initializing simulation...")
         
         self.__set_dt_master()
     
-        if self.simulation_data.verbose:
+        if self.verbose:
             print("Simulation initialized.")
     
     def simulate(self):
         self.__init_simulation()
 
-        if self.simulation_data.verbose:
+        if self.verbose:
             print("Starting simulation...")
 
         while self.simulation_data.t < self.simulation_data.max_sim_time:
