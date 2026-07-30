@@ -81,6 +81,7 @@ class ConstantReferenceGuidance(GuidanceBase):
 class CustomGuidanceLaw(GuidanceBase):
     def __init__(self, custom_reference_function):
         self.custom_reference_function = custom_reference_function
+        super().__init__()
 
     def _check_initialization(self):
         if not callable(self.custom_reference_function):
@@ -96,4 +97,9 @@ class CustomGuidanceLaw(GuidanceBase):
         Returns:
             A GuidanceReference object containing the desired position, velocity, acceleration, quaternion, angular velocity, and angular acceleration.
         """
-        return self.custom_reference_function(navigation_estimated_data, simulation_data)
+        reference = self.custom_reference_function(navigation_estimated_data, simulation_data)
+
+        if not isinstance(reference, GuidanceReference):
+            raise TypeError("The custom_reference_function must return a GuidanceReference object.")
+        
+        return reference

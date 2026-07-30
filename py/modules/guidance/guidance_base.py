@@ -2,7 +2,17 @@ from abc import ABC, abstractmethod
 
 from py.general.dataclasses import EstimationOutput, SimulationData, GuidanceReference
 
-class GuidanceBase(ABC):    
+class GuidanceBase(ABC):
+
+    def __init__(self):
+        self._check_initialization()
+
+    @abstractmethod
+    def _check_initialization(self):
+        """
+        Check if the guidance system has been properly initialized.
+        Raises an exception if not initialized.
+        """        
 
     @abstractmethod
     def compute_reference(self, navigation_estimated_data: EstimationOutput, simulation_data: SimulationData)->GuidanceReference:
