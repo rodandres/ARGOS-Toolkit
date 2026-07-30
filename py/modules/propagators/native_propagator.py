@@ -72,3 +72,55 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
         """
         # Implement any initialization logic needed for the native rotational propagator
         pass
+
+class NativeTranslationalPropagator(TranslationalPropagatorBase):
+
+    def __init__(self, integration_method: str = "NATIVE_RK45"):
+        super().__init__(integration_method)
+
+    def translational_dynamics(self, t, state, mass, applied_force, disturbance_force):
+        position = state[:3].copy()
+        velocity = state[3:].copy()
+
+        acceleration = (applied_force + disturbance_force) / mass
+
+        return np.concatenate((velocity, acceleration))
+
+    def rel2bp(self, t, state, mu):
+        r = state[:3].copy()
+        v = state[3:].copy()
+
+        drdt = v
+        dvdt = -mu * r / np.linalg.norm(r)**3
+
+        return np.concatenate((drdt, dvdt))
+
+
+    def propagate(self, simulation_data, environment):
+
+        for spacecraft in simulation_data.spacecrafts:
+            position = spacecraft.spacecraft_data.true_pos
+            velocity = spacecraft.spacecraft_data.true_vel
+
+            mass = spacecraft.spacecraft_data.mass
+            applied_force = spacecraft.spacecraft_data.current_force_exerted            
+
+            # Define the state vector
+            state = np.concatenate((position, velocity))
+
+            t_end = min(simulation_data.t + simulation_data.dt_propagation, simulation_data.max_sim_time)
+    
+            mu = 6.67430e-11 * 5.972e24
+
+            sol = solve(self.rel2bp,
+                        [simulation_data.t, t_end],
+                        state,
+                        self.integration_method,
+                        args=(mu, ), h0=simulation_data.dt_propagation, h_adaptative=True
+                        )
+
+            state_end = sol.y[:, -1]
+
+            spacecraft.spacecraft_data.true_pos = state_end[0:3]
+            spacecraft.spacecraft_data.true_vel = state_end[3:6]
+            

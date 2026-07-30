@@ -51,10 +51,10 @@ class Simulation:
     def add_spacecraft(self,
                        mass: float,
                        initial_state: np.ndarray, # pos, vel, quat, omega in inertial frame (numpy array of shape (13,))
-                       inertia_tensor: np.ndarray,
-                       actuators: list, # NOTE: Add the type of the list
-                       sensors: list, # NOTE: Add the type of the list
-                       mission_manager, # NOTE: Add the type of the mission manager
+                       inertia_tensor: np.ndarray | None=None,
+                       actuators: list | None=None, # NOTE: Add the type of the list
+                       sensors: list | None=None, # NOTE: Add the type of the list
+                       mission_manager: object | None=None, # NOTE: Add the type of the mission manager
                        name: str |None=None,
                        verbose=False):
         
@@ -98,6 +98,15 @@ class Simulation:
 
         if self.verbose:
             print(f"Spacecraft '{name}' added to the simulation.")
+
+    def add_spacecraft_target(self, spacecraft_name, target_name):
+        for spacecraft in self.simulation_data.spacecrafts:
+            if spacecraft.spacecraft_data.name == spacecraft_name:
+                spacecraft.spacecraft_data.target_name = target_name
+                if self.verbose:
+                    print(f"Target '{target_name}' assigned to spacecraft '{spacecraft_name}'.")
+                return
+
 
     def __set_dt_master(self): # POSSIBLE BUG: dts must be with a minimum common multiple
         dts = [self.simulation_data.dt_propagation]  # Start with the master propagation time step
