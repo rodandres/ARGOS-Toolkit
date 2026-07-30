@@ -1,6 +1,11 @@
+# NOTAS DE IMPLEMENTACION:
+# Se debe añadir una verificacion antes de correr la sim garantizando que se tengan spacecrafts
+# Se debe añadir una verificacion o manejo de los propagadores en caso de ser None
+
 from dataclasses import dataclass, field
 from pathlib import Path
 import sys
+from tabnanny import verbose
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -10,43 +15,59 @@ import numpy as np
 
 from py.modules.new.spacecraft import Spacecraft
 from py.general.dataclasses import SimulationData
+from py.general.data_save import SimulationHistory
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from py.modules.propagators.propagator_base import TranslationalPropagatorBase, RotationalPropagatorBase
+    from py.modules.enviroments.environment_base import EnvironmentBase
 
 class Simulation:
-    def __init__(self, max_sim_time: float, dt_propagation: float, verbose: bool = False):        
+    def __init__(self, max_sim_time: float, dt_propagation: float,
+                 environment: EnvironmentBase,
+                 rotational_propagator_engine: RotationalPropagatorBase | None=None,
+                 translational_propagator_engine: TranslationalPropagatorBase | None=None,
+                 verbose: bool = False):        
 
         simulation_data = SimulationData(
             max_sim_time=max_sim_time,
-            dt_propagation=dt_propagation,
-            verbose=verbose
-        )
+            dt_propagation=dt_propagation,            
+            spacecrafts=[],
+            dt_master=dt_propagation  # Initialize dt_master with dt_propagation; will be updated later
+            )
 
         self.simulation_data = simulation_data
 
-        
+        self.rotational_propagator_engine = rotational_propagator_engine
+        self.translational_propagator_engine = translational_propagator_engine
+
+        self.environment = environment
+
+        self.simulation_history = SimulationHistory()
+
+        self.verbose = verbose
+
     def add_spacecraft(self,
-                       spacecraft_mass: float,
-                       spacecraft_inertia_tensor: np.ndarray,
-                       spacecraft_actuators: list, # NOTE: Add the type of the list
-                       spacecraft_sensors: list, # NOTE: Add the type of the list
-                       spacecraft_controllers: list, # NOTE: Add the type of the list
-                       spacecraft_guidance: list, # NOTE: Add the type of the list
-                       spacecraft_dt_nav: float,
-                       spacecraft_dt_guid: float,
-                       spacecraft_dt_control: float,
+                       mass: float,
                        initial_state: np.ndarray, # pos, vel, quat, omega in inertial frame (numpy array of shape (13,))
+                       inertia_tensor: np.ndarray,
+                       actuators: list, # NOTE: Add the type of the list
+                       sensors: list, # NOTE: Add the type of the list
+                       mission_manager, # NOTE: Add the type of the mission manager
                        name: str |None=None,
                        verbose=False):
         
 
         # Check mass type
-        if not isinstance(spacecraft_mass, (int, float)):
+        if not isinstance(mass, (int, float)):
             raise TypeError("Spacecraft mass must be a number (int or float).")
         
         # Check inertia tensor type and shape
-        if not isinstance(spacecraft_inertia_tensor, np.ndarray):
+        if not isinstance(inertia_tensor, np.ndarray):
             raise TypeError("Spacecraft inertia tensor must be a numpy ndarray.")
 
-        if spacecraft_inertia_tensor.shape != (3, 3):
+        if inertia_tensor.shape != (3, 3):
             raise ValueError("Spacecraft inertia tensor must be a 3x3 matrix.")
 
         # Check actuators, sensors, controllers, and guidance types
@@ -64,55 +85,39 @@ class Simulation:
 
         spacecraft = Spacecraft(
             name=name,
-            mass=spacecraft_mass,
-            inertia_tensor=spacecraft_inertia_tensor,
-            actuators=spacecraft_actuators,
-            sensors=spacecraft_sensors,
-            controllers=spacecraft_controllers,
-            guidance=spacecraft_guidance,
-            dt_nav=spacecraft_dt_nav,
-            dt_guid=spacecraft_dt_guid,
-            dt_control=spacecraft_dt_control,
+            mass=mass,
             initial_state=initial_state,
+            inertia_tensor=inertia_tensor,
+            actuators=actuators,
+            sensors=sensors,            
+            mission_manager=mission_manager,            
             verbose=verbose
         )
 
-        self.simulation_data.spacecrafts[name] = {
-            "spacecraft": spacecraft
-        }
+        self.simulation_data.spacecrafts.append(spacecraft)
 
-        if self.simulation_data.verbose:
+        if self.verbose:
             print(f"Spacecraft '{name}' added to the simulation.")
 
     def __set_dt_master(self): # POSSIBLE BUG: dts must be with a minimum common multiple
         dts = [self.simulation_data.dt_propagation]  # Start with the master propagation time step
-        for spacecraft in self.simulation_data.spacecrafts.values():
+        for spacecraft in self.simulation_data.spacecrafts:
             dt_nav, dt_guid, dt_control = spacecraft.get_gnc_dts()
-            dts.append((dt_nav, dt_guid, dt_control))
+            dts.append(dt_nav)
+            dts.append(dt_guid)
+            dts.append(dt_control)
 
         self.simulation_data.dt_master = min(dts)
 
-    def __set_solver(self):
-        # Placeholder for solver selection logic
-        # This method can be expanded to select and configure the appropriate numerical solver based on simulation settings.
-        pass
-        
     def __init_simulation(self):
         if self.simulation_data.verbose:
             print("Initializing simulation...")
         
-
         self.__set_dt_master()
-        self.__set_solver()
     
-
         if self.simulation_data.verbose:
             print("Simulation initialized.")
-
-    def __propagate_dynamics(self):
-        # NOTE: This method should implement the dynamics propagation logic for the simulation.
-        pass
-
+    
     def simulate(self):
         self.__init_simulation()
 
@@ -123,16 +128,23 @@ class Simulation:
             
             self.simulation_data.t = self.simulation_data.tick * self.simulation_data.dt_master
 
+            #if self.verbose: print(f"Simulation time: {self.simulation_data.t:.2f} seconds")
+
             for spacecraft in self.simulation_data.spacecrafts:
                 spacecraft.compute_tick_step(self.simulation_data)
 
-            if self.simulation_data.tick % self.simulation_data.dt_propagation == 0:
-                self.__propagate_dynamics()
+            if self.simulation_data.tick % int(self.simulation_data.dt_propagation / self.simulation_data.dt_master) == 0:
+                if self.translational_propagator_engine is not None:
+                    self.translational_propagator_engine.propagate(self.simulation_data, self.environment)  # Assuming environment is not needed for translational propagation
+                if self.rotational_propagator_engine is not None:                    
+                    self.rotational_propagator_engine.propagate(self.simulation_data, self.environment)  # Assuming environment is not needed for rotational propagation
 
-            self.simulation_data.tick += 1
-
-        # TODO: Add logging and history recording here if needed.
+            # Save the current state to history
+            self.simulation_history.record(self.simulation_data)
+            self.simulation_data.tick += 1        
         
+        if self.verbose: print("Simulation completed.")
 
-        if self.simulation_data.verbose:
-            print("Simulation completed.")
+        self.simulation_history.finalize()  # Finalize the history after the simulation is complete
+
+        return self.simulation_history

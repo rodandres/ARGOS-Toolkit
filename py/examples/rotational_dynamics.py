@@ -47,7 +47,7 @@ thruster_X_pos = RCSThruster(
     thrust_direction=1,
     maximum_torque=1000,
     command_mode="PWM",
-    modulation_window=0.5,
+    modulation_window=0.1,
     minimum_on_time=0.01
 )
 
@@ -56,7 +56,7 @@ thruster_X_neg = RCSThruster(
     thrust_direction=-1,
     maximum_torque=1000,
     command_mode="PWM",
-    modulation_window=0.5,
+    modulation_window=0.1,
     minimum_on_time=0.01
 )
 
@@ -65,7 +65,7 @@ thruster_Y_pos = RCSThruster(
     thrust_direction=1,
     maximum_torque=1000,
     command_mode="PWM",
-    modulation_window=0.5,
+    modulation_window=0.1,
     minimum_on_time=0.01
 )
 
@@ -74,7 +74,7 @@ thruster_Y_neg = RCSThruster(
     thrust_direction=-1,
     maximum_torque=1000,
     command_mode="PWM",
-    modulation_window=0.5,
+    modulation_window=0.1,
     minimum_on_time=0.01
 )
 
@@ -83,7 +83,7 @@ thruster_Z_pos = RCSThruster(
     thrust_direction=1,
     maximum_torque=1000,
     command_mode="PWM",
-    modulation_window=0.5,
+    modulation_window=0.1,
     minimum_on_time=0.01
 )
 
@@ -92,7 +92,7 @@ thruster_Z_neg = RCSThruster(
     thrust_direction=-1,
     maximum_torque=1000,
     command_mode="PWM",
-    modulation_window=0.5,
+    modulation_window=0.1,
     minimum_on_time=0.01
 )
 

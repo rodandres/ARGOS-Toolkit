@@ -124,7 +124,8 @@ class Spacecraft():
     def __compute_control(self, simulation_data):
         if self.__should_compute(simulation_data, self.current_controller_dt):
             self.spacecraft_data.control_output_data = self.current_controller.compute_control(
-                self.spacecraft_data.guidance_reference_data, self.spacecraft_data.navigation_estimated_data, simulation_data
+                self.spacecraft_data.navigation_estimated_data,
+                self.spacecraft_data.guidance_reference_data
             )
 
             self.current_allocator.allocate(self.spacecraft_data.control_output_data)
@@ -143,6 +144,7 @@ class Spacecraft():
             actuator.update(simulation_data.t)
 
             actuator_output = actuator.get_output()
+            #print(f"Actuator output: Force = {actuator_output.force}, Torque = {actuator_output.torque}")
 
             force += actuator_output.force
             torque += actuator_output.torque
@@ -168,9 +170,6 @@ class Spacecraft():
     def __should_compute(self, simulation_data, dt_component):
         tick = simulation_data.tick
         dt_master = simulation_data.dt_master
-
-
-
         return tick % int(dt_component / dt_master) == 0
 
     def compute_tick_step(self, simulation_data):

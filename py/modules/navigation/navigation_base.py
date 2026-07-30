@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from py.modules.sensors import SensorBase
+from py.modules.sensors.sensor_base import SensorBase
 from py.general.dataclasses import EstimationOutput
 
 class NavigationBase(ABC):

@@ -50,7 +50,7 @@ class RCSThruster(ActuatorBase):
         if self.override_torque_value is None:
             self.override_torque = False
         else:
-            self.override_torque = True
+            self.override_torque = True            
 
         # ==========================================================
         # Internal actuator state
@@ -70,6 +70,9 @@ class RCSThruster(ActuatorBase):
 
         self._actual_force = np.zeros(3)  # Initialize the actual force output
         self._actual_torque = np.zeros(3)  # Initialize the actual torque output
+
+
+        self.command_time = 0.0
 
     def _check_initialization(self):
         if self.nominal_thrust <= 0:
@@ -104,6 +107,7 @@ class RCSThruster(ActuatorBase):
             warnings.warn("Warning: Desired force is negative. Setting to zero. Check the control allocation logic.")
             desired_force = 0.0
 
+        self.command_time = None
         self._compute_command(desired_force)        
 
     def update(self, local_time: float):
@@ -113,8 +117,10 @@ class RCSThruster(ActuatorBase):
             self._actual_torque = np.zeros(3)
             return
 
-        self._update_method(local_time)
+        if self.command_time is None:
+            self.command_time = local_time
 
+        self._update_method(local_time)
 
     def get_output(self) -> ActuatorOutput:
         """
@@ -129,12 +135,17 @@ class RCSThruster(ActuatorBase):
     # Internal command models
     # ==========================================================
 
-    def _compute_pwm_command(self, commanded_force: float):
+    def _compute_pwm_command(self, commanded_input: float):
         """
         Compute PWM valve opening time.
         """
 
-        duty_cycle = commanded_force / self.nominal_thrust
+
+        if self.override_torque:
+            duty_cycle = commanded_input/ self.override_torque_value
+        else:
+            duty_cycle = commanded_input / self.nominal_thrust
+        
         duty_cycle = np.clip(duty_cycle, 0.0, 1.0)
 
         self.on_time = (duty_cycle * self.modulation_window)
@@ -144,29 +155,52 @@ class RCSThruster(ActuatorBase):
             self.on_time = 0.0
             self.command_active = False
 
-    def _compute_bangbang_command(self, commanded_force: float):
+    def _compute_bangbang_command(self, commanded_input: float):
         """
         Compute bang-bang firing state.
         """
 
-        self.command_active = commanded_force >= self.activation_threshold
+        self.command_active = commanded_input >= self.activation_threshold
 
     def _update_pwm_method(self, local_time: float):
-        window_time = local_time % self.modulation_window
+        # if local_time < self.on_time:
+        #     self._actual_force = self.nominal_thrust * self.direction
+        #     self._actual_torque = np.cross(self.position, self._actual_force)  # Calculate torque based on position and force
+
+        #     if self.override_torque:
+        #         self._actual_torque = self.override_torque_value * self.direction  # Override torque if the flag is set
+        # else:
+        #     self._actual_force = np.zeros(3)  # No force applied outside the on-time window
+        #     self._actual_torque = np.zeros(3)  # No torque applied outside the on-time window    
+
+        window_time = local_time - self.command_time
+
         if window_time < self.on_time:
             self._actual_force = self.nominal_thrust * self.direction
             self._actual_torque = np.cross(self.position, self._actual_force)  # Calculate torque based on position and force
 
             if self.override_torque:
-                self._actual_torque = self.override_torque_value  # Override torque if the flag is set
-
+                self._actual_torque = self.override_torque_value * self.direction  # Override torque if the flag is set
         else:
             self._actual_force = np.zeros(3)  # No force applied outside the on-time window
             self._actual_torque = np.zeros(3)  # No torque applied outside the on-time window
+
+        # window_time = local_time % self.modulation_window
+
+        # if window_time < self.on_time:
+        #     self._actual_force = self.nominal_thrust * self.direction
+        #     self._actual_torque = np.cross(self.position, self._actual_force)
+
+        #     if self.override_torque:
+        #         self._actual_torque = self.override_torque_value * self.direction
+
+        # else:
+        #     self._actual_force = np.zeros(3)
+        #     self._actual_torque = np.zeros(3)
 
     def _update_bangbang_method(self, local_time: float):
         self._actual_force = self.nominal_thrust * self.direction if self.command_active else np.zeros(3)
         self._actual_torque = np.cross(self.position, self._actual_force)
 
         if self.override_torque:
-            self._actual_torque = self.override_torque_value  # Override torque if the flag is set
+            self._actual_torque = self.override_torque_value * self.direction  # Override torque if the flag is set

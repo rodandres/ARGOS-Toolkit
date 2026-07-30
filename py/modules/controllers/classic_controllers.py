@@ -3,6 +3,8 @@ import numpy as np
 from py.general.data_classes_declaration import SimSharedData
 from py.modules.math import quaternion_error as quat_error
 
+from py.general.dataclasses import ControlOutput
+
 
 class PDAttitudeController(ControllerBase):
     """
@@ -88,5 +90,69 @@ class PDAttitudeController(ControllerBase):
 
         return commanded_torque
 
-    def compute_control():
-        pass
+    def compute_control(self, estimated_state, reference):
+        """
+        Compute the control torque required to track the reference attitude.
+        """
+
+        # ==========================================================
+        # State retrieval
+        # ==========================================================
+
+        actual_quaternion = estimated_state.spacecraft_attitude.copy()
+        actual_angular_velocity = estimated_state.spacecraft_angular_velocity.copy()        
+
+        # TODO:
+        # Replace the true spacecraft state by the estimated state once
+        # the navigation filter is integrated.
+
+        reference_quaternion = reference.attitude
+
+        # ==========================================================
+        # Quaternion attitude error
+        # ==========================================================
+
+        actual_quaternion /= np.linalg.norm(actual_quaternion)
+
+        quaternion_error = quat_error(
+            reference_quaternion,
+            actual_quaternion,
+        )
+
+        quaternion_vector = quaternion_error[:3]
+        quaternion_scalar = quaternion_error[3]
+
+        # Always follow the shortest rotation.
+        if quaternion_scalar < 0.0:
+
+            quaternion_vector *= -1.0
+
+        # ==========================================================
+        # PD control law
+        # ==========================================================
+
+        commanded_torque = (
+            -self.proportional_gain * quaternion_vector
+            -self.derivative_gain * actual_angular_velocity
+        )
+
+        # ==========================================================
+        # Torque saturation
+        # ==========================================================
+
+        if (
+            self.minimum_torque is not None
+            and self.maximum_torque is not None
+        ):
+            commanded_torque = np.clip(
+                commanded_torque,
+                self.minimum_torque,
+                self.maximum_torque,
+            )
+
+
+
+        return ControlOutput(
+            force=np.zeros(3),
+            torque=commanded_torque
+        )

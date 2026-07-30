@@ -1,9 +1,11 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from py.modules.new.simulation import SimulationData
+from typing import TYPE_CHECKING
 
-from py.general.dataclasses import MissionPhase
+if TYPE_CHECKING:
+    from py.modules.new.simulation import SimulationData
+    from py.general.dataclasses import MissionPhase
 
 
 class MissionManager: # NOTE add method to print info about the transitions

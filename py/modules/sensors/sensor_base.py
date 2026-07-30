@@ -17,9 +17,9 @@ class SensorBase(ABC):
                  verbose: bool = False):
         
         
-        self.sensor_type = sensor_type
-        self.sensor_pos = _as_3d_array(sensor_pos, "sensor_pos") # Position of the sensor in the spacecraft body frame (numpy array of shape (3,))
-        self.sensor_rotation = _as_3d_array(sensor_rotation, "sensor_rotation") # Rotation of the sensor in the spacecraft body frame (numpy array of shape (3,))
+        self.type = sensor_type
+        self.position = _as_3d_array(sensor_pos, "sensor_pos") # Position of the sensor in the spacecraft body frame (numpy array of shape (3,))
+        self.rotation = _as_3d_array(sensor_rotation, "sensor_rotation") # Rotation of the sensor in the spacecraft body frame (numpy array of shape (3,))
         self.sample_rate_sec = 1.0 / sample_rate_freq
         self.error_models = error_models  # Tuple of error models to apply to the sensor measurement
         self.verbose = verbose
@@ -28,11 +28,11 @@ class SensorBase(ABC):
         sensor_rotation = _as_3d_array(sensor_rotation, "sensor_rotation")
         sensor_rotation_rad = np.radians(sensor_rotation)
 
-        self.sensor_rotation_quat = quaternion_from_euler(sensor_rotation_rad[0], sensor_rotation_rad[1], sensor_rotation_rad[2])  # Quaternion representing the sensor rotation in the body frame
-        self.DCM_sensor_to_body = quaternion_to_DCM(self.sensor_rotation_quat)  # Direction Cosine Matrix from sensor frame to body frame
+        self.rotation_quat = quaternion_from_euler(sensor_rotation_rad[0], sensor_rotation_rad[1], sensor_rotation_rad[2])  # Quaternion representing the sensor rotation in the body frame
+        self.DCM_sensor_to_body = quaternion_to_DCM(self.rotation_quat)  # Direction Cosine Matrix from sensor frame to body frame
 
         self.old_measurement = np.zeros(3)
-        self.last_measurement_time = 0.0
+        self.last_measurement_time = -self.sample_rate_sec  # Initialize to ensure the first measurement is taken at t=0
 
         self.measurement = np.zeros(3)
 
@@ -44,9 +44,9 @@ class SensorBase(ABC):
         Print the sensor information.
         """
         print("="*50)
-        print(f"Sensor Type: {self.sensor_type}")
-        print(f"Sensor Position (Body Frame): {self.sensor_pos}")
-        print(f"Sensor Rotation (Body Frame): {self.sensor_rotation}")
+        print(f"Sensor Type: {self.type}")
+        print(f"Sensor Position (Body Frame): {self.position}")
+        print(f"Sensor Rotation (Body Frame): {self.rotation}")
         print(f"Sample Rate (Hz): {1.0 / self.sample_rate_sec}")
         print(f"Error Models: {[type(model).__name__ for model in self.error_models]}")
         print("="*50)
@@ -60,7 +60,7 @@ class SensorBase(ABC):
         str
             Sensor type.
         """        
-        return self.sensor_type
+        return self.type
     
     def update(self, spacecraft_data, simulation_data):
         """
@@ -73,7 +73,10 @@ class SensorBase(ABC):
         simulation_data : SimulationData
             The current state of the simulation.            
         """
-        if simulation_data.t - self.last_measurement_time >= self.sample_rate_sec:            
+
+        if self.verbose: print("Sensor Update: ", self.type, " at time: ", simulation_data.t)
+        if simulation_data.t - self.last_measurement_time >= self.sample_rate_sec:
+            if self.verbose: print("Sensor Sampling: ", self.type, " at time: ", simulation_data.t)
 
             measurement = self.get_ideal_measurement(spacecraft_data, simulation_data)
             
@@ -85,6 +88,7 @@ class SensorBase(ABC):
     
             self.measurement = measurement
         else:
+            if self.verbose: print("Sensor Not Sampling: ", self.type, " at time: ", simulation_data.t)
             self.should_sample = False
             self.measurement = self.old_measurement
         

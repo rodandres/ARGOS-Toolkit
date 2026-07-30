@@ -210,3 +210,9 @@ class RCSThruster_old(ActuatorBase):
         Return the current output of the actuator.
         """
         pass 
+
+    def update(self, local_time: float) -> np.ndarray:
+        """
+        Update the actuator state based on the current time.
+        """
+        pass

@@ -184,3 +184,21 @@ class GaussianCovarianceSensor(SensorBase):
         """
         # This method should be implemented in subclasses to return the ideal measurement based on the spacecraft and simulation data.
         raise NotImplementedError("Subclasses must implement this method.")
+    
+
+class AbsoluteSensor(SensorBase):
+
+    def __init__(self, sample_rate_freq, verbose=False):
+
+        super().__init__(
+            sensor_type="AbsoluteSensor",
+            sensor_pos=np.zeros(3),
+            sensor_rotation=np.zeros(3),
+            sample_rate_freq= sample_rate_freq,
+            error_models=(),
+            verbose=verbose
+        )
+
+    def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:        
+        return spacecraft_data.true_pos, spacecraft_data.true_vel, spacecraft_data.true_accel, spacecraft_data.true_q, spacecraft_data.true_omega, spacecraft_data.true_alpha
+    
