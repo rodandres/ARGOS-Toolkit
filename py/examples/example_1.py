@@ -124,30 +124,26 @@ guidance_law = CustomGuidanceLaw(
 
 # Now define the navigation law
 from py.general.dataclasses import EstimationOutput
-from py.modules.navigation.navigation_base import NavigationBase
+from py.modules.navigation.basic_laws import IdealNavigation, CustomNavigation
 
-class SimpleNavigation(NavigationBase):
-    def estimate(self, sensors):
+def estimate( sensors):
 
-        for sensor in sensors:
-            if sensor.type   == "AbsoluteSensor":
-                sensor_data = sensor.get_measurement()                
+    for sensor in sensors:
+        if sensor.type   == "AbsoluteSensor":
+            sensor_data = sensor.get_measurement()                
 
-                estimated_position = sensor_data[0]
-                estimated_velocity = sensor_data[1]
-                estimated_acceleration = sensor_data[2]
-                estimated_attitude = sensor_data[3]
-                estimated_angular_velocity = sensor_data[4]
-                estimated_angular_acceleration = sensor_data[5]                
+            estimated_attitude = sensor_data[0][3]
+            estimated_angular_velocity = sensor_data[0][4]            
 
-                return EstimationOutput(
-                    spacecraft_attitude=estimated_attitude,
-                    spacecraft_angular_velocity=estimated_angular_velocity
-                )
+            return EstimationOutput(
+                spacecraft_attitude=estimated_attitude,
+                spacecraft_angular_velocity=estimated_angular_velocity
+            )                
 
-                break
-
-navigation_law = SimpleNavigation()
+navigation_law = CustomNavigation(
+    custom_estimation_function=estimate
+)
+navigation_law = IdealNavigation()  # Using the ideal navigation law for this example
 
 # Next define the control law
 from py.modules.controllers.classic_controllers import PDAttitudeController
@@ -160,68 +156,34 @@ control_law = PDAttitudeController(
 )
 
 # And we need a control allocator as we have multiple actuators
-from py.modules.controllers.controller_base import ControlAllocatorBase
+from py.modules.controllers.basic_laws import CustomControlAllocator, BasicRCSAllocator
 
-class SimpleControlAllocator(ControlAllocatorBase):
-    def allocate(self, control_output):
-        #print("="*10)
-        torque_to_allocate = control_output.torque
-        # Extract direction and magnitude of the torque to allocate
-        torque_magnitude = np.linalg.norm(torque_to_allocate)
-        torque_direction = torque_to_allocate / torque_magnitude if torque_magnitude != 0 else np.zeros(3)
-        #print(f"Torque to allocate: {torque_to_allocate}, Magnitude: {torque_magnitude}, Direction: {torque_direction}")
-        for actuator in self.actuators:
-            # Calculate the dot product between the actuator's direction and the torque direction
-            dot_product = np.dot(actuator.direction, torque_direction)
-            # If the dot product is positive, the actuator can contribute to the torque
-            if dot_product > 0:
-                # Allocate a portion of the torque to this actuator based on its direction
-                allocated_torque = dot_product * torque_magnitude
-                #print(f"Allocating torque {allocated_torque} to actuator with direction {actuator.direction}")
-                # Set the actuator's command based on the allocated torque                
-                actuator.set_command(allocated_torque)
-            else:
-                # If the actuator cannot contribute, set its command to zero
-                actuator.set_command(0)
+def allocate(control_output, actuators):
+    #print("="*10)
+    torque_to_allocate = control_output.torque
+    # Extract direction and magnitude of the torque to allocate
+    torque_magnitude = np.linalg.norm(torque_to_allocate)
+    torque_direction = torque_to_allocate / torque_magnitude if torque_magnitude != 0 else np.zeros(3)
+    #print(f"Torque to allocate: {torque_to_allocate}, Magnitude: {torque_magnitude}, Direction: {torque_direction}")
+    for actuator in actuators:
+        # Calculate the dot product between the actuator's direction and the torque direction
+        dot_product = np.dot(actuator.direction, torque_direction)
+        # If the dot product is positive, the actuator can contribute to the torque
+        if dot_product > 0:
+            # Allocate a portion of the torque to this actuator based on its direction
+            allocated_torque = dot_product * torque_magnitude
+            #print(f"Allocating torque {allocated_torque} to actuator with direction {actuator.direction}")
+            # Set the actuator's command based on the allocated torque                
+            actuator.set_command(allocated_torque)
+        else:
+            # If the actuator cannot contribute, set its command to zero
+            actuator.set_command(0)
 
-# class SimpleControlAllocator(ControlAllocatorBase):
 
-#     def allocate(self, control_output):
-
-#         commanded_torque = control_output.torque
-
-#         for actuator in self.actuators:
-
-#             # Actual torque direction generated by the thruster
-#             force_direction = actuator.direction
-
-#             actuator_torque_direction = np.cross(
-#                 actuator.position,
-#                 force_direction
-#             )
-
-#             norm = np.linalg.norm(actuator_torque_direction)
-
-#             if norm == 0:
-#                 actuator.set_command(0)
-#                 continue
-
-#             actuator_torque_direction /= norm
-
-#             # Projection of requested torque on actuator torque axis
-#             allocated_torque = np.dot(
-#                 commanded_torque,
-#                 actuator_torque_direction
-#             )
-
-#             if allocated_torque > 0:
-#                 actuator.set_command(
-#                     allocated_torque
-#                 )
-#             else:
-#                 actuator.set_command(0)
-
-allocator_law = SimpleControlAllocator()                
+allocator_law = BasicRCSAllocator()
+allocator_law = CustomControlAllocator(
+    allocation_function= allocate
+)
 
 # With that, we can define a mission phase and a mission manager
 # Classes

@@ -66,4 +66,10 @@ class CustomNavigation(NavigationBase):
         Returns:
             An EstimationOutput object containing the estimated state of the spacecraft.
         """
-        return self.custom_estimation_function(sensors)    
+
+        output = self.custom_estimation_function(sensors)
+
+        if not isinstance(output, EstimationOutput):
+            raise TypeError("custom_estimation_function must return an EstimationOutput object.")
+
+        return output
