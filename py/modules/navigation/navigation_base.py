@@ -5,6 +5,17 @@ from py.general.dataclasses import EstimationOutput
 
 class NavigationBase(ABC):
 
+    def __init__(self):
+        self._check_initialization()
+
+    @abstractmethod
+    def _check_initialization(self):
+        """
+        Check if the navigation system has been properly initialized.
+        Raises an exception if not initialized.
+        """
+        pass
+
     @abstractmethod
     def estimate(self, sensors: list[SensorBase]) -> EstimationOutput:
 

@@ -197,8 +197,44 @@ class AbsoluteSensor(SensorBase):
             sample_rate_freq= sample_rate_freq,
             error_models=(),
             verbose=verbose
+        )            
+
+    def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:
+        parent_spacecraft_data_to_return = (            
+            spacecraft_data.true_pos,
+            spacecraft_data.true_vel,
+            spacecraft_data.true_accel,
+            spacecraft_data.true_q,
+            spacecraft_data.true_omega,
+            spacecraft_data.true_alpha
         )
 
-    def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:        
-        return spacecraft_data.true_pos, spacecraft_data.true_vel, spacecraft_data.true_accel, spacecraft_data.true_q, spacecraft_data.true_omega, spacecraft_data.true_alpha
+        reference_spacecraft_data_to_return = None
+        reference_spacecraft_name = spacecraft_data.reference_spacecraft_name
+
+        if reference_spacecraft_name is not None:
+            for spacecraft in simulation_data.spacecraft_list:
+                if spacecraft.name == reference_spacecraft_name:
+                    reference_spacecraft_data = spacecraft.spacecraft_data
+                    reference_spacecraft_data_to_return = (
+                        reference_spacecraft_data.true_pos,
+                        reference_spacecraft_data.true_vel,
+                        reference_spacecraft_data.true_accel,
+                        reference_spacecraft_data.true_q,
+                        reference_spacecraft_data.true_omega,
+                        reference_spacecraft_data.true_alpha
+                    )
+                    
+                    break
+        else:
+            reference_spacecraft_data_to_return = (            
+                np.zeros(3),
+                np.zeros(3),
+                np.zeros(3),
+                np.array([0, 0, 0, 1]),
+                np.zeros(3),
+                np.zeros(3)
+            )
+                       
+        return parent_spacecraft_data_to_return, reference_spacecraft_data_to_return
     
