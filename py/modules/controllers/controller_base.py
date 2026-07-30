@@ -10,6 +10,17 @@ if TYPE_CHECKING:
 
 
 class ControllerBase(ABC):
+    def __init__(self):
+        self._check_initialization()
+
+    @abstractmethod
+    def _check_initialization(self):
+        """
+        Check if the controller has been properly initialized.
+        Raises an exception if not initialized.
+        """
+        pass
+    
     """
     Abstract interface for spacecraft control laws.
     """
@@ -51,6 +62,16 @@ class ControllerBase(ABC):
         pass
 
 class ControlAllocatorBase(ABC):
+    def __init__(self):
+        self._check_initialization()
+
+    @abstractmethod
+    def _check_initialization(self):
+        """
+        Check if the control allocator has been properly initialized.
+        Raises an exception if not initialized.
+        """
+        pass
 
     def set_actuators(self, actuators: list[ActuatorBase]):
         """

@@ -25,6 +25,34 @@ class PDAttitudeController(ControllerBase):
         self.minimum_torque = minimum_torque
         self.maximum_torque = maximum_torque
 
+        super().__init__()
+
+    def _check_initialization(self):
+        if not isinstance(self.proportional_gain, (int, float)):
+            raise TypeError("proportional_gain must be a numeric value.")
+
+        if not isinstance(self.derivative_gain, (int, float)):
+            raise TypeError("derivative_gain must be a numeric value.")
+
+        if self.minimum_torque is not None and not isinstance(
+            self.minimum_torque, (int, float)
+        ):
+            raise TypeError("minimum_torque must be a numeric value or None.")
+
+        if self.maximum_torque is not None and not isinstance(
+            self.maximum_torque, (int, float)
+        ):
+            raise TypeError("maximum_torque must be a numeric value or None.")
+
+        if (
+            self.minimum_torque is not None
+            and self.maximum_torque is not None
+            and self.minimum_torque > self.maximum_torque
+        ):
+            raise ValueError(
+                "minimum_torque cannot be greater than maximum_torque."
+            )
+
     def compute_control_old(
         self,
         shared_data: SimSharedData,
