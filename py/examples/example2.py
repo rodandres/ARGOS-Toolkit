@@ -35,9 +35,8 @@ initial_angular_velocity = np.array([0, 0, 0])  # Initial angular velocity in ra
 
 sim.add_spacecraft(
     name="SC1",
-    initial_state= np.concatenate((initial_position_SC1, initial_velocity_SC1, initial_attitude, initial_angular_velocity)),    
-    mass=500,  # Mass in kg
-    inertia_tensor=np.diag([100, 100, 100]),  # Inertia
+    initial_position=initial_position_SC1,
+    initial_velocity=initial_velocity_SC1,
     sensors=sensors
 )
 initial_position_SC2 = np.array([0, 7000e3, 0])  # Initial position in meters
@@ -45,9 +44,8 @@ initial_velocity_SC2 = np.array([7.5e3, 0, 0])
 
 sim.add_spacecraft(
     name="SC2",
-    initial_state= np.concatenate((initial_position_SC2 + np.array([1000, 0, 0]), initial_velocity_SC2, initial_attitude, initial_angular_velocity)),
-    mass=500,  # Mass in kg
-    inertia_tensor=np.diag([100, 100, 100]),  # Inertia
+    initial_position=initial_position_SC2,
+    initial_velocity=initial_velocity_SC2,    
     sensors=sensors
 )
 

@@ -49,39 +49,52 @@ class Simulation:
         self.verbose = verbose
 
     def add_spacecraft(self,
-                       mass: float,
-                       initial_state: np.ndarray, # pos, vel, quat, omega in inertial frame (numpy array of shape (13,))
+                       mass: float | None=None, # NOTE: Add the type of the mass               
+                       initial_position: np.ndarray | None=None, # NOTE: Add the type of the initial position
+                       initial_velocity: np.ndarray | None=None, # NOTE: Add the type of the initial
+                       initial_attitude: np.ndarray | None=None, # NOTE: Add the type of the initial attitude
+                       initial_angular_velocity: np.ndarray | None=None, # NOTE: Add the type of
                        inertia_tensor: np.ndarray | None=None,
                        actuators: list | None=None, # NOTE: Add the type of the list
                        sensors: list | None=None, # NOTE: Add the type of the list
                        mission_manager: object | None=None, # NOTE: Add the type of the mission manager
+                       target_name: str | None=None, # NOTE: Add the type of the target name
                        name: str |None=None,
                        verbose=False):
         
 
-        # Check mass type
-        if not isinstance(mass, (int, float)):
-            raise TypeError("Spacecraft mass must be a number (int or float).")
-        
-        # Check inertia tensor type and shape
-        if not isinstance(inertia_tensor, np.ndarray):
-            raise TypeError("Spacecraft inertia tensor must be a numpy ndarray.")
+        if mass is None:
+            if verbose: print("Mass not provided. Using default mass of 0 kg.")
+            mass = 0.0  # Default mass
 
-        if inertia_tensor.shape != (3, 3):
-            raise ValueError("Spacecraft inertia tensor must be a 3x3 matrix.")
+        if initial_position is None:
+            if verbose: print("Initial position not provided. Using default position of [0, 0, 0].")
+            initial_position = np.zeros(3)  # Default position
 
-        # Check actuators, sensors, controllers, and guidance types
-        # TODO: Implement type checks for actuators, sensors, controllers, and guidance if specific types are defined.
+        if initial_velocity is None:
+            if verbose: print("Initial velocity not provided. Using default velocity of [0, 0, 0].")
+            initial_velocity = np.zeros(3)  # Default velocity
 
-        # Check initial state type and shape
-        if not isinstance(initial_state, np.ndarray):
-            raise TypeError("Initial state must be a numpy ndarray.")
-        if initial_state.shape != (13,):
-            raise ValueError("Initial state must be a numpy array of shape (13,) representing pos, vel, quat, omega in inertial frame.")
+        if initial_attitude is None:
+            if verbose: print("Initial attitude not provided. Using default quaternion of [0, 0, 0, 1].")
+            initial_attitude = np.array([0, 0, 0, 1])  # Default quaternion
 
+        if initial_angular_velocity is None:
+            if verbose: print("Initial angular velocity not provided. Using default angular velocity of [0, 0, 0].")
+            initial_angular_velocity = np.zeros(3)  # Default angular velocity
+
+        if inertia_tensor is None:
+            if verbose: print("Inertia tensor not provided. Using default inertia tensor of identity matrix of zeros.")
+            inertia_tensor = np.zeros((3, 3))  # Default inertia tensor
+
+        if mission_manager is None:
+            if verbose: print("Mission manager not provided. Using default mission manager of None.")
+            mission_manager = None  # Default mission manager
 
         if name is None:
-            name = f"Spacecraft_{len(self.simulation_data.spacecrafts)+1}"
+            name = f"Spacecraft_{len(self.simulation_data.spacecrafts)+1}"        
+
+        initial_state = np.concatenate((initial_position, initial_velocity, initial_attitude, initial_angular_velocity))
 
         spacecraft = Spacecraft(
             name=name,
@@ -95,6 +108,10 @@ class Simulation:
         )
 
         self.simulation_data.spacecrafts.append(spacecraft)
+
+        if target_name is not None:
+            self.add_spacecraft_target(spacecraft_name=name, target_name=target_name)
+            if self.verbose: print(f"Target '{target_name}' assigned to spacecraft '{name}'.")
 
         if self.verbose:
             print(f"Spacecraft '{name}' added to the simulation.")

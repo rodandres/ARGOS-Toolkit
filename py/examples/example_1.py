@@ -215,15 +215,14 @@ mission_manager = MissionManager(
 from py.modules.math import quaternion_from_euler
 from py.general.general_data import Ix_total, Iy_total, Iz_total
 
-inital_pos = np.array([0.0, 0.0, 0.0])  # Initial position in meters
 initial_vel = np.array([0.0, 0.0, 0.0])  # Initial velocity in meters per second
 initial_orientation = initial_orientation = [45, -30, -10]  # Initial orientation in Euler angles (degrees)
 initial_orientation_quat = quaternion_from_euler(np.deg2rad(initial_orientation[0]), np.deg2rad(initial_orientation[1]), np.deg2rad(initial_orientation[2]))
 initial_angular_velocity = np.array([-0.08, 0.05, 0.1])  # Initial angular velocity in rad/s
 
-sim.add_spacecraft(
-    mass= 1.0, # kg NOTE: This is a placeholder value. Replace with the actual mass of the spacecraft.
-    initial_state= np.concatenate((inital_pos, initial_vel, initial_orientation_quat, initial_angular_velocity)),
+sim.add_spacecraft(    
+    initial_attitude= initial_orientation_quat,
+    initial_angular_velocity= initial_angular_velocity,
     inertia_tensor= np.diag([Ix_total, Iy_total, Iz_total]),  # Inertia tensor in kg*m^2
     actuators = thrusters,
     sensors = sensors,
