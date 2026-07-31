@@ -62,10 +62,10 @@ class Spacecraft():
             print("="*10 + " End of spacecraft information. " + "="*10)
 
     def _init_state_variables(self, initial_state: np.ndarray):
-        self.spacecraft_data.true_pos = initial_state[0:3]
-        self.spacecraft_data.true_vel = initial_state[3:6]
-        self.spacecraft_data.true_q = initial_state[6:10]
-        self.spacecraft_data.true_omega = initial_state[10:13]
+        self.spacecraft_data.true_state.position = initial_state[0:3]
+        self.spacecraft_data.true_state.velocity = initial_state[3:6]
+        self.spacecraft_data.true_state.attitude = initial_state[6:10]
+        self.spacecraft_data.true_state.angular_velocity = initial_state[10:13]
 
     def _check_initialization(self):
         
@@ -168,15 +168,15 @@ class Spacecraft():
         if self._should_compute(simulation_data, self.current_navigation_dt):
             estimation = self.current_navigation_law.estimate(self.sensors)
 
-            self.spacecraft_data.navigation_estimated_data = estimation
+            self.spacecraft_data.estimated_data = estimation
             
     def update_guidance(self, simulation_data):
         if self.has_guidance_law is False:
             return
 
         if self._should_compute(simulation_data, self.current_guidance_dt):            
-            self.spacecraft_data.guidance_reference_data = self.current_guidance_law.compute_reference(
-                self.spacecraft_data.navigation_estimated_data, simulation_data
+            self.spacecraft_data.reference_data = self.current_guidance_law.compute_reference(
+                self.spacecraft_data.estimated_data, simulation_data
             )
 
     def update_control(self, simulation_data):
@@ -185,8 +185,8 @@ class Spacecraft():
 
         if self._should_compute(simulation_data, self.current_control_dt):
             self.spacecraft_data.control_output_data = self.current_control_law.compute_control(
-                self.spacecraft_data.navigation_estimated_data,
-                self.spacecraft_data.guidance_reference_data
+                self.spacecraft_data.estimated_data,
+                self.spacecraft_data.reference_data
             )
 
             self.current_allocator.allocate(self.spacecraft_data.control_output_data)

@@ -202,12 +202,12 @@ class AbsoluteSensor(SensorBase):
     def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:
 
         parent_spacecraft_data_to_return = (            
-            spacecraft_data.true_pos,
-            spacecraft_data.true_vel,
-            spacecraft_data.true_accel,
-            spacecraft_data.true_q,
-            spacecraft_data.true_omega,
-            spacecraft_data.true_alpha
+            spacecraft_data.true_state.position,
+            spacecraft_data.true_state.velocity,
+            spacecraft_data.true_state.acceleration,
+            spacecraft_data.true_state.attitude,
+            spacecraft_data.true_state.angular_velocity,
+            spacecraft_data.true_state.angular_acceleration
         )
 
         reference_spacecraft_data_to_return = None
@@ -219,12 +219,12 @@ class AbsoluteSensor(SensorBase):
                 if spacecraft.name == reference_spacecraft_name:                    
                     reference_spacecraft_data = spacecraft.spacecraft_data
                     reference_spacecraft_data_to_return = (
-                        reference_spacecraft_data.true_pos,
-                        reference_spacecraft_data.true_vel,
-                        reference_spacecraft_data.true_accel,
-                        reference_spacecraft_data.true_q,
-                        reference_spacecraft_data.true_omega,
-                        reference_spacecraft_data.true_alpha
+                        reference_spacecraft_data.true_state.position,
+                        reference_spacecraft_data.true_state.velocity,
+                        reference_spacecraft_data.true_state.acceleration,
+                        reference_spacecraft_data.true_state.attitude,
+                        reference_spacecraft_data.true_state.angular_velocity,
+                        reference_spacecraft_data.true_state.angular_acceleration
                     )
                     
                     break

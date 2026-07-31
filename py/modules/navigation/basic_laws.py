@@ -1,6 +1,6 @@
 import numpy as np
 from py.modules.navigation.navigation_base import NavigationBase
-from py.general.dataclasses import EstimationOutput
+from py.general.dataclasses import EstimationOutput, StateVariables
 
 class IdealNavigation(NavigationBase):
     def __init__(self):
@@ -31,22 +31,37 @@ class IdealNavigation(NavigationBase):
         spacecraft_sensor_data = sensor_data[0]
         reference_sensor_data = sensor_data[1]
 
-                 
-        return EstimationOutput(
-            spacecraft_position=spacecraft_sensor_data[0],
-            spacecraft_velocity=spacecraft_sensor_data[1],
-            spacecraft_acceleration=spacecraft_sensor_data[2],
-            spacecraft_attitude=spacecraft_sensor_data[3],
-            spacecraft_angular_velocity=spacecraft_sensor_data[4],
-            spacecraft_angular_acceleration=spacecraft_sensor_data[5],
-
-            reference_position=reference_sensor_data[0],
-            reference_velocity=reference_sensor_data[1],
-            reference_acceleration=reference_sensor_data[2],
-            reference_attitude=reference_sensor_data[3],
-            reference_angular_velocity=reference_sensor_data[4],
-            reference_angular_acceleration=reference_sensor_data[5]
+        spacecraft_state = StateVariables(
+            position=spacecraft_sensor_data[0],
+            velocity=spacecraft_sensor_data[1],
+            acceleration=spacecraft_sensor_data[2],
+            attitude=spacecraft_sensor_data[3],
+            angular_velocity=spacecraft_sensor_data[4],
+            angular_acceleration=spacecraft_sensor_data[5]
         )
+
+        reference_state = StateVariables(
+            position=reference_sensor_data[0],
+            velocity=reference_sensor_data[1],
+            acceleration=reference_sensor_data[2],
+            attitude=reference_sensor_data[3],
+            angular_velocity=reference_sensor_data[4],
+            angular_acceleration=reference_sensor_data[5]
+        )
+
+        return EstimationOutput(
+            spacecraft_state=spacecraft_state,
+            reference_state=reference_state
+        )
+
+class CustomNavigation(NavigationBase):
+    def __init__(self, custom_estimation_function):
+        self.custom_estimation_function = custom_estimation_function
+        super().__init__()
+
+    def _check_initialization(self):
+        if not callable(self.custom_estimation_function):
+            raise ValueError("custom_estimation_function must be callable.")        
 
 class CustomNavigation(NavigationBase):
     def __init__(self, custom_estimation_function):

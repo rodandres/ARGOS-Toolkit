@@ -37,8 +37,8 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
     def propagate(self, simulation_data, environment):
 
         for spacecraft in simulation_data.spacecrafts:
-            q = spacecraft.spacecraft_data.true_q
-            omega = spacecraft.spacecraft_data.true_omega
+            q = spacecraft.spacecraft_data.true_state.attitude
+            omega = spacecraft.spacecraft_data.true_state.angular_velocity
 
             I = spacecraft.inertia_tensor
             I_inv = spacecraft.inertia_tensor_inv
@@ -59,10 +59,10 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
 
             state_end = sol.y[:, -1]
 
-            spacecraft.spacecraft_data.true_q = state_end[0:4]
-            spacecraft.spacecraft_data.true_q /= np.linalg.norm(spacecraft.spacecraft_data.true_q)  # Normalize quaternion
-            spacecraft.spacecraft_data.true_omega = state_end[4:7]
-            spacecraft.spacecraft_data.true_alpha = self.quaternion_dynamics(t_end, state_end, I, I_inv, applied_torque, disturbance_torque)[4:7]
+            spacecraft.spacecraft_data.true_state.attitude = state_end[0:4]
+            spacecraft.spacecraft_data.true_state.attitude /= np.linalg.norm(spacecraft.spacecraft_data.true_state.attitude)  # Normalize quaternion
+            spacecraft.spacecraft_data.true_state.angular_velocity = state_end[4:7]
+            spacecraft.spacecraft_data.true_state.angular_acceleration = self.quaternion_dynamics(t_end, state_end, I, I_inv, applied_torque, disturbance_torque)[4:7]
 
     def initialize(self, simulation_data):
         """
@@ -100,8 +100,8 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
     def propagate(self, simulation_data, environment):
 
         for spacecraft in simulation_data.spacecrafts:
-            position = spacecraft.spacecraft_data.true_pos
-            velocity = spacecraft.spacecraft_data.true_vel
+            position = spacecraft.spacecraft_data.true_state.position
+            velocity = spacecraft.spacecraft_data.true_state.velocity
 
             mass = spacecraft.mass
             applied_force = spacecraft.spacecraft_data.current_force_exerted            
@@ -122,6 +122,6 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
 
             state_end = sol.y[:, -1]
 
-            spacecraft.spacecraft_data.true_pos = state_end[0:3]
-            spacecraft.spacecraft_data.true_vel = state_end[3:6]
+            spacecraft.spacecraft_data.true_state.position = state_end[0:3]
+            spacecraft.spacecraft_data.true_state.velocity = state_end[3:6]
             

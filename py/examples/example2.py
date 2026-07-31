@@ -85,78 +85,47 @@ result = sim.simulate()
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
 
-# Obtener datos de ambos spacecrafts
-sc1_data = result.spacecrafts_history["SC1"]
-sc2_data = result.spacecrafts_history["SC2"]
+
+# ==========================================================
+# Get spacecraft history
+# ==========================================================
+
+sc1 = result.spacecrafts_history["SC1"]
+sc2 = result.spacecrafts_history["SC2"]
 
 t = result.time
 
 
-
-# ===========================
-# Position vs Time
-# ===========================
-
-plt.figure(figsize=(12, 8))
-
-plt.subplot(2,1,1)
-
-plt.plot(t, sc1_data.true_pos[:,0], label="SC1 X")
-plt.plot(t, sc1_data.true_pos[:,1], label="SC1 Y")
-plt.plot(t, sc1_data.true_pos[:,2], label="SC1 Z")
-
-plt.plot(t, sc2_data.true_pos[:,0], "--", label="SC2 X")
-plt.plot(t, sc2_data.true_pos[:,1], "--", label="SC2 Y")
-plt.plot(t, sc2_data.true_pos[:,2], "--", label="SC2 Z")
-
-plt.title("Spacecraft Position Over Time")
-plt.xlabel("Time (s)")
-plt.ylabel("Position (m)")
-plt.grid(True)
-plt.legend()
+# True positions
+r1 = sc1.true_state["position"]
+r2 = sc2.true_state["position"]
 
 
-# ===========================
-# Velocity vs Time
-# ===========================
-
-plt.subplot(2,1,2)
-
-plt.plot(t, sc1_data.true_vel[:,0], label="SC1 Vx")
-plt.plot(t, sc1_data.true_vel[:,1], label="SC1 Vy")
-plt.plot(t, sc1_data.true_vel[:,2], label="SC1 Vz")
-
-plt.plot(t, sc2_data.true_vel[:,0], "--", label="SC2 Vx")
-plt.plot(t, sc2_data.true_vel[:,1], "--", label="SC2 Vy")
-plt.plot(t, sc2_data.true_vel[:,2], "--", label="SC2 Vz")
-
-plt.title("Spacecraft Velocity Over Time")
-plt.xlabel("Time (s)")
-plt.ylabel("Velocity (m/s)")
-plt.grid(True)
-plt.legend()
-
-plt.tight_layout()
-
-
-
-# ===========================
+# ==========================================================
 # 2D Orbit XY
-# ===========================
+# ==========================================================
 
-plt.figure(figsize=(8,8))
+plt.figure(figsize=(8, 8))
 
-r1 = sc1_data.true_pos
-r2 = sc2_data.true_pos
+plt.plot(
+    r1[:, 0],
+    r1[:, 1],
+    label="SC1 Orbit"
+)
 
-plt.plot(r1[:,0], r1[:,1], label="SC1 Orbit")
-plt.plot(r2[:,0], r2[:,1], "--", label="SC2 Orbit")
+plt.plot(
+    r2[:, 0],
+    r2[:, 1],
+    "--",
+    label="SC2 Orbit"
+)
 
 
 # Earth
 earth = plt.Circle(
-    (0,0),
+    (0, 0),
     6378e3,
     color="blue",
     alpha=0.3,
@@ -166,31 +135,62 @@ earth = plt.Circle(
 plt.gca().add_patch(earth)
 
 
-# Start/end points
-plt.scatter(r1[0,0], r1[0,1], color="green", marker="o", label="SC1 Start")
-plt.scatter(r1[-1,0], r1[-1,1], color="red", marker="o", label="SC1 End")
+# Initial/final points
 
-plt.scatter(r2[0,0], r2[0,1], color="green", marker="x", label="SC2 Start")
-plt.scatter(r2[-1,0], r2[-1,1], color="red", marker="x", label="SC2 End")
+plt.scatter(
+    r1[0,0],
+    r1[0,1],
+    color="green",
+    marker="o",
+    label="SC1 Start"
+)
+
+plt.scatter(
+    r1[-1,0],
+    r1[-1,1],
+    color="red",
+    marker="o",
+    label="SC1 End"
+)
 
 
-plt.xlabel("X (m)")
-plt.ylabel("Y (m)")
-plt.title("Spacecraft Orbits - REL2BP")
+plt.scatter(
+    r2[0,0],
+    r2[0,1],
+    color="green",
+    marker="x",
+    label="SC2 Start"
+)
+
+plt.scatter(
+    r2[-1,0],
+    r2[-1,1],
+    color="red",
+    marker="x",
+    label="SC2 End"
+)
+
+
+plt.xlabel("X [m]")
+plt.ylabel("Y [m]")
+plt.title("Spacecraft Orbits - XY Plane")
 plt.axis("equal")
 plt.grid(True)
 plt.legend()
 
 
 
-
-# ===========================
+# ==========================================================
 # 3D Orbit
-# ===========================
+# ==========================================================
 
-fig = plt.figure(figsize=(10,8))
+fig = plt.figure(figsize=(10, 8))
 
-ax = fig.add_subplot(111, projection="3d")
+ax = fig.add_subplot(
+    111,
+    projection="3d"
+)
+
 
 ax.plot(
     r1[:,0],
@@ -208,126 +208,231 @@ ax.plot(
 )
 
 
-# Start points
 ax.scatter(
     r1[0,0],
     r1[0,1],
     r1[0,2],
-    color="green"
+    color="green",
+    label="SC1 Start"
 )
+
 
 ax.scatter(
     r2[0,0],
     r2[0,1],
     r2[0,2],
-    color="lime"
+    color="lime",
+    label="SC2 Start"
 )
 
 
-ax.set_xlabel("X (m)")
-ax.set_ylabel("Y (m)")
-ax.set_zlabel("Z (m)")
+ax.set_xlabel("X [m]")
+ax.set_ylabel("Y [m]")
+ax.set_zlabel("Z [m]")
 
 ax.set_title("3D Spacecraft Orbits")
 ax.legend()
 
 
 
+# ==========================================================
+# Position history
+# True / Estimated own / Estimated target
+# ==========================================================
 
-sc1 = result.spacecrafts_history["SC1"]
-sc2 = result.spacecrafts_history["SC2"]
+
+def plot_position(ax, t, data, title):
+
+    labels = [
+        "X",
+        "Y",
+        "Z"
+    ]
+
+    for i in range(3):
+        ax.plot(
+            t,
+            data[:,i],
+            label=labels[i]
+        )
+
+    ax.set_title(title)
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("Position [m]")
+    ax.grid(True)
+    ax.legend()
 
 
-print(sc1.true_pos.shape)
-print(sc1.navigation_estimated_data["spacecraft_position"].shape)
-print(sc1.navigation_estimated_data["reference_position"].shape)
-
-print(np.isnan(sc1.true_pos).any())
-print(np.isnan(sc1.navigation_estimated_data["spacecraft_position"]).any())
-print(np.isnan(sc1.navigation_estimated_data["reference_position"]).any())
-t = result.time
 
 fig, ax = plt.subplots(
     3,
     2,
-    figsize=(16, 12),
+    figsize=(16,12),
     constrained_layout=True
 )
+
 
 # ==========================================================
 # SC1
 # ==========================================================
 
-# True state
-ax[0,0].plot(t, sc1.true_pos[:,0], label="X")
-ax[0,0].plot(t, sc1.true_pos[:,1], label="Y")
-ax[0,0].plot(t, sc1.true_pos[:,2], label="Z")
-ax[0,0].set_title("SC1 - True Position")
-ax[0,0].set_xlabel("Time [s]")
-ax[0,0].set_ylabel("Position [m]")
-ax[0,0].grid(True)
-ax[0,0].legend()
+plot_position(
+    ax[0,0],
+    t,
+    sc1.true_state["position"],
+    "SC1 - True Position"
+)
 
-# Estimated own state
-est = sc1.navigation_estimated_data["spacecraft_position"]
 
-ax[1,0].plot(t, est[:,0], label="X")
-ax[1,0].plot(t, est[:,1], label="Y")
-ax[1,0].plot(t, est[:,2], label="Z")
-ax[1,0].set_title("SC1 - Estimated Own Position")
-ax[1,0].set_xlabel("Time [s]")
-ax[1,0].set_ylabel("Position [m]")
-ax[1,0].grid(True)
-ax[1,0].legend()
+plot_position(
+    ax[1,0],
+    t,
+    sc1.estimated_data["spacecraft_state"]["position"],
+    "SC1 - Estimated Own Position"
+)
 
-# Estimated target state
-ref = sc1.navigation_estimated_data["reference_position"]
 
-ax[2,0].plot(t, ref[:,0], label="X")
-ax[2,0].plot(t, ref[:,1], label="Y")
-ax[2,0].plot(t, ref[:,2], label="Z")
-ax[2,0].set_title("SC1 - Estimated Target Position")
-ax[2,0].set_xlabel("Time [s]")
-ax[2,0].set_ylabel("Position [m]")
-ax[2,0].grid(True)
-ax[2,0].legend()
+plot_position(
+    ax[2,0],
+    t,
+    sc1.estimated_data["reference_state"]["position"],
+    "SC1 - Estimated Target Position"
+)
+
+
 
 # ==========================================================
 # SC2
 # ==========================================================
 
-# True state
-ax[0,1].plot(t, sc2.true_pos[:,0], label="X")
-ax[0,1].plot(t, sc2.true_pos[:,1], label="Y")
-ax[0,1].plot(t, sc2.true_pos[:,2], label="Z")
-ax[0,1].set_title("SC2 - True Position")
-ax[0,1].set_xlabel("Time [s]")
-ax[0,1].set_ylabel("Position [m]")
-ax[0,1].grid(True)
-ax[0,1].legend()
+plot_position(
+    ax[0,1],
+    t,
+    sc2.true_state["position"],
+    "SC2 - True Position"
+)
 
-# Estimated own state
-est = sc2.navigation_estimated_data["spacecraft_position"]
 
-ax[1,1].plot(t, est[:,0], label="X")
-ax[1,1].plot(t, est[:,1], label="Y")
-ax[1,1].plot(t, est[:,2], label="Z")
-ax[1,1].set_title("SC2 - Estimated Own Position")
-ax[1,1].set_xlabel("Time [s]")
-ax[1,1].set_ylabel("Position [m]")
-ax[1,1].grid(True)
-ax[1,1].legend()
+plot_position(
+    ax[1,1],
+    t,
+    sc2.estimated_data["spacecraft_state"]["position"],
+    "SC2 - Estimated Own Position"
+)
 
-# Estimated target state
-ref = sc2.navigation_estimated_data["reference_position"]
 
-ax[2,1].plot(t, ref[:,0], label="X")
-ax[2,1].plot(t, ref[:,1], label="Y")
-ax[2,1].plot(t, ref[:,2], label="Z")
-ax[2,1].set_title("SC2 - Estimated Target Position")
-ax[2,1].set_xlabel("Time [s]")
-ax[2,1].set_ylabel("Position [m]")
-ax[2,1].grid(True)
-ax[2,1].legend()
+plot_position(
+    ax[2,1],
+    t,
+    sc2.estimated_data["reference_state"]["position"],
+    "SC2 - Estimated Target Position"
+)
+
+
+
+# ==========================================================
+# Quaternion comparison SC1
+# ==========================================================
+
+fig, ax = plt.subplots(
+    3,
+    1,
+    figsize=(12,10),
+    sharex=True
+)
+
+
+true_q = sc1.true_state["attitude"]
+
+estimated_q = sc1.estimated_data["spacecraft_state"]["attitude"]
+
+reference_q = sc1.estimated_data["reference_state"]["attitude"]
+
+
+for i in range(4):
+
+    ax[0].plot(
+        t,
+        true_q[:,i],
+        label=f"q{i}"
+    )
+
+    ax[1].plot(
+        t,
+        estimated_q[:,i],
+        label=f"q{i}"
+    )
+
+    ax[2].plot(
+        t,
+        reference_q[:,i],
+        label=f"q{i}"
+    )
+
+
+ax[0].set_title("SC1 True Quaternion")
+ax[1].set_title("SC1 Estimated Quaternion")
+ax[2].set_title("SC1 Reference Quaternion")
+
+
+for a in ax:
+    a.grid(True)
+    a.legend()
+
+
+ax[-1].set_xlabel("Time [s]")
+
+
+
+# ==========================================================
+# Control output
+# ==========================================================
+
+force = sc1.control_output_data["force"]
+torque = sc1.control_output_data["torque"]
+
+fig, ax = plt.subplots(
+    2,
+    1,
+    figsize=(12,8),
+    sharex=True
+)
+
+
+labels = [
+    "X",
+    "Y",
+    "Z"
+]
+
+
+for i in range(3):
+
+    ax[0].plot(
+        t,
+        force[:,i],
+        label=f"F{labels[i]}"
+    )
+
+
+    ax[1].plot(
+        t,
+        torque[:,i],
+        label=f"T{labels[i]}"
+    )
+
+
+ax[0].set_title("SC1 Control Force")
+ax[1].set_title("SC1 Control Torque")
+
+
+for a in ax:
+    a.grid(True)
+    a.legend()
+
+
+ax[-1].set_xlabel("Time [s]")
+
+
 
 plt.show()

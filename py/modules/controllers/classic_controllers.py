@@ -127,14 +127,14 @@ class PDAttitudeController(ControllerBase):
         # State retrieval
         # ==========================================================
 
-        actual_quaternion = estimated_state.spacecraft_attitude.copy()
-        actual_angular_velocity = estimated_state.spacecraft_angular_velocity.copy()        
+        actual_quaternion = estimated_state.spacecraft_state.attitude.astype(float).copy()
+        actual_angular_velocity = estimated_state.spacecraft_state.angular_velocity.astype(float).copy()     
 
         # TODO:
         # Replace the true spacecraft state by the estimated state once
         # the navigation filter is integrated.
 
-        reference_quaternion = reference.attitude
+        reference_quaternion = reference.state.attitude.astype(float).copy()
 
         # ==========================================================
         # Quaternion attitude error
