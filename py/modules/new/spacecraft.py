@@ -30,6 +30,8 @@ class Spacecraft():
 
         self.mission_manager = mission_manager
 
+        self.spacecraft_data.target_name = None  # Name of the target spacecraft, if any
+
         self.current_phase = None
         self.current_guidance_law = None
         self.current_navigation_law = None
@@ -212,3 +214,8 @@ class Spacecraft():
         self.spacecraft_data.current_force_exerted = force
         self.spacecraft_data.current_torque_exerted = torque    
 
+    def change_target(self, new_target_name: str):
+        self.spacecraft_data.target_name = new_target_name
+        print("ENtro acá")
+        if self.verbose:
+            print(f"Spacecraft '{self.name}' target changed to '{new_target_name}'.")

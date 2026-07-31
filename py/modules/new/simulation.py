@@ -110,16 +110,15 @@ class Simulation:
         self.simulation_data.spacecrafts.append(spacecraft)
 
         if target_name is not None:
-            self.add_spacecraft_target(spacecraft_name=name, target_name=target_name)
-            if self.verbose: print(f"Target '{target_name}' assigned to spacecraft '{name}'.")
+            self.add_spacecraft_target(spacecraft_name=name, target_name=target_name)            
 
         if self.verbose:
             print(f"Spacecraft '{name}' added to the simulation.")
 
     def add_spacecraft_target(self, spacecraft_name, target_name):
         for spacecraft in self.simulation_data.spacecrafts:
-            if spacecraft.spacecraft_data.name == spacecraft_name:
-                spacecraft.spacecraft_data.target_name = target_name
+            if spacecraft.name == spacecraft_name:
+                spacecraft.change_target(target_name)                
                 if self.verbose:
                     print(f"Target '{target_name}' assigned to spacecraft '{spacecraft_name}'.")
                 return
@@ -146,8 +145,6 @@ class Simulation:
     
         if self.verbose:
             print("Simulation initialized.")
-
-
 
 
     def simulate(self):

@@ -102,7 +102,7 @@ class SpacecraftData:
     current_force_exerted: np.ndarray = field(default_factory=lambda: np.zeros(3))
     current_torque_exerted: np.ndarray = field(default_factory=lambda: np.zeros(3))
 
-    reference_spacecraft_name: str | None = None  # Name of the reference spacecraft, if any
+    target_name: str | None = None  # Name of the reference spacecraft, if any
 
 
 

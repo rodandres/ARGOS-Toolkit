@@ -27,6 +27,44 @@ sim = Simulation(max_sim_time=3*60*60,
 from py.modules.sensors.generic_sensor import AbsoluteSensor
 
 sensors = [AbsoluteSensor(100, verbose=False)]  # Sample rate of 100 Hz
+sensors2 = [AbsoluteSensor(100, verbose=False)]  # Sample rate of 100 Hz
+
+from py.modules.navigation.basic_laws import IdealNavigation
+from py.general.dataclasses import MissionPhase
+from py.modules.new.mission_manager import MissionManager
+
+nav_law = IdealNavigation()
+nav_law2 = IdealNavigation()
+
+phase = MissionPhase(
+    name="Phase 1",
+    navigation=nav_law,
+    dt_nav=1.0  # Navigation update every 1 second
+)
+phase2 = MissionPhase(
+    name="Phase 1",
+    navigation=nav_law2,
+    dt_nav=1.0  # Navigation update every 1 second
+)
+
+mission_manager = MissionManager(
+    initial_phase=phase
+)
+
+mission_manager2 = MissionManager(
+    initial_phase=phase2
+) 
+
+initial_position_SC2 = np.array([0, 7000e3, 0])  # Initial position in meters
+initial_velocity_SC2 = np.array([7.5e3, 0, 0])
+
+sim.add_spacecraft(
+    name="SC2",
+    initial_position=initial_position_SC2,
+    initial_velocity=initial_velocity_SC2,
+    sensors=sensors2,
+    mission_manager=mission_manager2,
+)
 
 initial_position_SC1 = np.array([7000e3, 0, 3500e3])  # Initial position in meters
 initial_velocity_SC1 = np.array([0, 7.5e3, 0])
@@ -37,16 +75,9 @@ sim.add_spacecraft(
     name="SC1",
     initial_position=initial_position_SC1,
     initial_velocity=initial_velocity_SC1,
-    sensors=sensors
-)
-initial_position_SC2 = np.array([0, 7000e3, 0])  # Initial position in meters
-initial_velocity_SC2 = np.array([7.5e3, 0, 0])
-
-sim.add_spacecraft(
-    name="SC2",
-    initial_position=initial_position_SC2,
-    initial_velocity=initial_velocity_SC2,    
-    sensors=sensors
+    sensors=sensors,
+    mission_manager=mission_manager,
+    target_name="SC2"
 )
 
 # We can now simulate
@@ -60,6 +91,8 @@ sc1_data = result.spacecrafts_history["SC1"]
 sc2_data = result.spacecrafts_history["SC2"]
 
 t = result.time
+
+
 
 # ===========================
 # Position vs Time
@@ -105,7 +138,7 @@ plt.grid(True)
 plt.legend()
 
 plt.tight_layout()
-plt.show()
+
 
 
 # ===========================
@@ -148,7 +181,7 @@ plt.axis("equal")
 plt.grid(True)
 plt.legend()
 
-plt.show()
+
 
 
 # ===========================
@@ -197,5 +230,104 @@ ax.set_zlabel("Z (m)")
 
 ax.set_title("3D Spacecraft Orbits")
 ax.legend()
+
+
+
+
+sc1 = result.spacecrafts_history["SC1"]
+sc2 = result.spacecrafts_history["SC2"]
+
+
+print(sc1.true_pos.shape)
+print(sc1.navigation_estimated_data["spacecraft_position"].shape)
+print(sc1.navigation_estimated_data["reference_position"].shape)
+
+print(np.isnan(sc1.true_pos).any())
+print(np.isnan(sc1.navigation_estimated_data["spacecraft_position"]).any())
+print(np.isnan(sc1.navigation_estimated_data["reference_position"]).any())
+t = result.time
+
+fig, ax = plt.subplots(
+    3,
+    2,
+    figsize=(16, 12),
+    constrained_layout=True
+)
+
+# ==========================================================
+# SC1
+# ==========================================================
+
+# True state
+ax[0,0].plot(t, sc1.true_pos[:,0], label="X")
+ax[0,0].plot(t, sc1.true_pos[:,1], label="Y")
+ax[0,0].plot(t, sc1.true_pos[:,2], label="Z")
+ax[0,0].set_title("SC1 - True Position")
+ax[0,0].set_xlabel("Time [s]")
+ax[0,0].set_ylabel("Position [m]")
+ax[0,0].grid(True)
+ax[0,0].legend()
+
+# Estimated own state
+est = sc1.navigation_estimated_data["spacecraft_position"]
+
+ax[1,0].plot(t, est[:,0], label="X")
+ax[1,0].plot(t, est[:,1], label="Y")
+ax[1,0].plot(t, est[:,2], label="Z")
+ax[1,0].set_title("SC1 - Estimated Own Position")
+ax[1,0].set_xlabel("Time [s]")
+ax[1,0].set_ylabel("Position [m]")
+ax[1,0].grid(True)
+ax[1,0].legend()
+
+# Estimated target state
+ref = sc1.navigation_estimated_data["reference_position"]
+
+ax[2,0].plot(t, ref[:,0], label="X")
+ax[2,0].plot(t, ref[:,1], label="Y")
+ax[2,0].plot(t, ref[:,2], label="Z")
+ax[2,0].set_title("SC1 - Estimated Target Position")
+ax[2,0].set_xlabel("Time [s]")
+ax[2,0].set_ylabel("Position [m]")
+ax[2,0].grid(True)
+ax[2,0].legend()
+
+# ==========================================================
+# SC2
+# ==========================================================
+
+# True state
+ax[0,1].plot(t, sc2.true_pos[:,0], label="X")
+ax[0,1].plot(t, sc2.true_pos[:,1], label="Y")
+ax[0,1].plot(t, sc2.true_pos[:,2], label="Z")
+ax[0,1].set_title("SC2 - True Position")
+ax[0,1].set_xlabel("Time [s]")
+ax[0,1].set_ylabel("Position [m]")
+ax[0,1].grid(True)
+ax[0,1].legend()
+
+# Estimated own state
+est = sc2.navigation_estimated_data["spacecraft_position"]
+
+ax[1,1].plot(t, est[:,0], label="X")
+ax[1,1].plot(t, est[:,1], label="Y")
+ax[1,1].plot(t, est[:,2], label="Z")
+ax[1,1].set_title("SC2 - Estimated Own Position")
+ax[1,1].set_xlabel("Time [s]")
+ax[1,1].set_ylabel("Position [m]")
+ax[1,1].grid(True)
+ax[1,1].legend()
+
+# Estimated target state
+ref = sc2.navigation_estimated_data["reference_position"]
+
+ax[2,1].plot(t, ref[:,0], label="X")
+ax[2,1].plot(t, ref[:,1], label="Y")
+ax[2,1].plot(t, ref[:,2], label="Z")
+ax[2,1].set_title("SC2 - Estimated Target Position")
+ax[2,1].set_xlabel("Time [s]")
+ax[2,1].set_ylabel("Position [m]")
+ax[2,1].grid(True)
+ax[2,1].legend()
 
 plt.show()

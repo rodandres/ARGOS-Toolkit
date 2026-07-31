@@ -200,6 +200,7 @@ class AbsoluteSensor(SensorBase):
         )            
 
     def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:
+
         parent_spacecraft_data_to_return = (            
             spacecraft_data.true_pos,
             spacecraft_data.true_vel,
@@ -210,11 +211,12 @@ class AbsoluteSensor(SensorBase):
         )
 
         reference_spacecraft_data_to_return = None
-        reference_spacecraft_name = spacecraft_data.reference_spacecraft_name
-
+        reference_spacecraft_name = spacecraft_data.target_name        
+        
         if reference_spacecraft_name is not None:
-            for spacecraft in simulation_data.spacecraft_list:
-                if spacecraft.name == reference_spacecraft_name:
+            
+            for spacecraft in simulation_data.spacecrafts:
+                if spacecraft.name == reference_spacecraft_name:                    
                     reference_spacecraft_data = spacecraft.spacecraft_data
                     reference_spacecraft_data_to_return = (
                         reference_spacecraft_data.true_pos,
