@@ -107,7 +107,7 @@ class SimulationHistory:
     def record(self, simulation_data):
         self.time.append(simulation_data.t)
         for i, spacecraft in enumerate(simulation_data.spacecrafts):
-            name = spacecraft.spacecraft_data.name
+            name = spacecraft.name
 
             if name not in self.spacecrafts_history:
                 self.spacecrafts_history[name] = SpacecraftHistory()

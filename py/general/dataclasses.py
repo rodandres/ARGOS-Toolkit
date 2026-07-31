@@ -13,16 +13,15 @@ if TYPE_CHECKING:
 class MissionPhase:
     
     name: str
-    guidance: GuidanceBase
-    navigation: NavigationBase
-    controller: ControllerBase
+    guidance: GuidanceBase | None = None
+    navigation: NavigationBase | None = None
+    controller: ControllerBase | None = None
 
-    allocator: ControlAllocatorBase
+    allocator: ControlAllocatorBase | None = None
 
-
-    dt_nav: float
-    dt_guid: float
-    dt_control: float
+    dt_nav: float | None = None
+    dt_guid: float | None = None
+    dt_control: float | None = None
 
 @dataclass
 class SimulationData:
@@ -71,10 +70,6 @@ class ControlOutput:
 
 @dataclass
 class SpacecraftData:
-    name: str
-
-    mass: float
-    inertia_tensor: np.ndarray
 
     # Spacraft state variables in inertial frame (same as the inertial frame of the simulation)
     true_pos: np.ndarray = field(default_factory=lambda: np.zeros(3))

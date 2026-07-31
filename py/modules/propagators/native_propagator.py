@@ -8,7 +8,7 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
     def __init__(self, integration_method: str = "NATIVE_RK45"):
         super().__init__(integration_method)    
 
-    def quaternion_dynamics(self, t, state, inertia_matrix, applied_torque, disturbance_torque):        
+    def quaternion_dynamics(self, t, state, inertia_matrix, inverse_inertia_matrix, applied_torque, disturbance_torque):        
 
         q = state[:4].copy()
         omega = state[4:].copy()
@@ -17,7 +17,7 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
         q /= np.linalg.norm(q)
 
         I = inertia_matrix
-        I_inv = np.linalg.inv(I)
+        I_inv = inverse_inertia_matrix
 
 
         omega_dot = I_inv @ (applied_torque + disturbance_torque - np.cross(omega, I @ omega))
@@ -40,7 +40,8 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
             q = spacecraft.spacecraft_data.true_q
             omega = spacecraft.spacecraft_data.true_omega
 
-            I = spacecraft.spacecraft_data.inertia_tensor
+            I = spacecraft.inertia_tensor
+            I_inv = spacecraft.inertia_tensor_inv
             applied_torque = spacecraft.spacecraft_data.current_torque_exerted
             disturbance_torque = environment.get_perturbation_torque()
 
@@ -53,7 +54,7 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
                         [simulation_data.t, t_end],
                         state,
                         self.integration_method,
-                        args=(I, applied_torque, disturbance_torque), h0=simulation_data.dt_propagation, h_adaptative=False
+                        args=(I, I_inv, applied_torque, disturbance_torque), h0=simulation_data.dt_propagation, h_adaptative=False
                         )            
 
             state_end = sol.y[:, -1]
@@ -61,7 +62,7 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
             spacecraft.spacecraft_data.true_q = state_end[0:4]
             spacecraft.spacecraft_data.true_q /= np.linalg.norm(spacecraft.spacecraft_data.true_q)  # Normalize quaternion
             spacecraft.spacecraft_data.true_omega = state_end[4:7]
-            spacecraft.spacecraft_data.true_alpha = self.quaternion_dynamics(t_end, state_end, I, applied_torque, disturbance_torque)[4:7]
+            spacecraft.spacecraft_data.true_alpha = self.quaternion_dynamics(t_end, state_end, I, I_inv, applied_torque, disturbance_torque)[4:7]
 
     def initialize(self, simulation_data):
         """
@@ -102,7 +103,7 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
             position = spacecraft.spacecraft_data.true_pos
             velocity = spacecraft.spacecraft_data.true_vel
 
-            mass = spacecraft.spacecraft_data.mass
+            mass = spacecraft.mass
             applied_force = spacecraft.spacecraft_data.current_force_exerted            
 
             # Define the state vector

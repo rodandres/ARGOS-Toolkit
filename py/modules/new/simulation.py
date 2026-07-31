@@ -84,8 +84,8 @@ class Simulation:
             initial_angular_velocity = np.zeros(3)  # Default angular velocity
 
         if inertia_tensor is None:
-            if verbose: print("Inertia tensor not provided. Using default inertia tensor of identity matrix of zeros.")
-            inertia_tensor = np.zeros((3, 3))  # Default inertia tensor
+            if verbose: print("Inertia tensor not provided. Using default inertia tensor of identity matrix.")
+            inertia_tensor = np.eye(3)  # Default inertia tensor
 
         if mission_manager is None:
             if verbose: print("Mission manager not provided. Using default mission manager of None.")
@@ -124,28 +124,34 @@ class Simulation:
                     print(f"Target '{target_name}' assigned to spacecraft '{spacecraft_name}'.")
                 return
 
-
-    def __set_dt_master(self): # POSSIBLE BUG: dts must be with a minimum common multiple
+    def _set_dt_master(self): # POSSIBLE BUG: dts must be with a minimum common multiple
         dts = [self.simulation_data.dt_propagation]  # Start with the master propagation time step
         for spacecraft in self.simulation_data.spacecrafts:
             dt_nav, dt_guid, dt_control = spacecraft.get_gnc_dts()
-            dts.append(dt_nav)
-            dts.append(dt_guid)
-            dts.append(dt_control)
+            print(f"Spacecraft '{spacecraft.name}' dt_nav: {dt_nav}, dt_guid: {dt_guid}, dt_control: {dt_control}")
+            if not np.isnan(dt_nav):
+                dts.append(dt_nav)
+            if not np.isnan(dt_guid):
+                dts.append(dt_guid)
+            if not np.isnan(dt_control):
+                dts.append(dt_control)
 
         self.simulation_data.dt_master = min(dts)
 
-    def __init_simulation(self):
+    def _init_simulation(self):
         if self.verbose:
             print("Initializing simulation...")
         
-        self.__set_dt_master()
+        self._set_dt_master()
     
         if self.verbose:
             print("Simulation initialized.")
-    
+
+
+
+
     def simulate(self):
-        self.__init_simulation()
+        self._init_simulation()
 
         if self.verbose:
             print("Starting simulation...")
@@ -154,10 +160,25 @@ class Simulation:
             
             self.simulation_data.t = self.simulation_data.tick * self.simulation_data.dt_master
 
-            #if self.verbose: print(f"Simulation time: {self.simulation_data.t:.2f} seconds")
-
             for spacecraft in self.simulation_data.spacecrafts:
-                spacecraft.compute_tick_step(self.simulation_data)
+
+                # Update Mission Manager
+                spacecraft.update_mission_manager(self.simulation_data)
+
+                # Update sensors
+                spacecraft.update_sensors(self.simulation_data)
+
+                # Update Navigation
+                spacecraft.update_navigation(self.simulation_data)
+
+                # Update Guidance
+                spacecraft.update_guidance(self.simulation_data)
+
+                # Update Control
+                spacecraft.update_control(self.simulation_data)
+
+                # Compute Actuation
+                spacecraft.compute_actuation(self.simulation_data)            
 
             if self.simulation_data.tick % int(self.simulation_data.dt_propagation / self.simulation_data.dt_master) == 0:
                 if self.translational_propagator_engine is not None:

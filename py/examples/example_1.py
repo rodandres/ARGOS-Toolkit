@@ -205,8 +205,6 @@ phase = MissionPhase(
     dt_control = 0.1 # Control update rate (10 Hz)
 )
 
-
-
 mission_manager = MissionManager(
     initial_phase= phase
 )

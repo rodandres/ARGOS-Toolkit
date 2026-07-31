@@ -17,6 +17,40 @@ class MissionManager: # NOTE add method to print info about the transitions
 
         self.transitions = {}  # Dictionary to hold transitions between phases
 
+    def _check_phase(self, phase: MissionPhase):
+        if not isinstance(phase, MissionPhase):
+            raise TypeError("phase must be an instance of MissionPhase.")
+
+        if phase.name in self.phases:
+            raise ValueError(f"Phase '{phase.name}' already exists.")
+
+        guidance_law = phase.guidance
+        navigation_law = phase.navigation
+        control_law = phase.controller
+
+        dt_nav = phase.dt_nav
+        dt_guid = phase.dt_guid
+        dt_control = phase.dt_control
+
+        if guidance_law is not None and dt_guid is None:
+            raise ValueError("dt_guid must be provided if guidance law is specified.")
+
+        if navigation_law is not None and dt_nav is None:
+            raise ValueError("dt_nav must be provided if navigation law is specified.")
+
+        if control_law is not None and dt_control is None:
+            raise ValueError("dt_control must be provided if control law is specified.")
+
+        if dt_nav is not None and navigation_law is None:
+            raise ValueError("Navigation law must be specified if dt_nav is provided.")
+
+        if dt_guid is not None and guidance_law is None:
+            raise ValueError("Guidance law must be specified if dt_guid is provided.")
+
+        if dt_control is not None and control_law is None:
+            raise ValueError("Control law must be specified if dt_control is provided.")
+        
+
     def add_phases(self, phase: MissionPhase | list[MissionPhase]):
         if isinstance(phase, list):
             for p in phase:                
@@ -25,6 +59,7 @@ class MissionManager: # NOTE add method to print info about the transitions
             self.__add_phase(phase)
 
     def __add_phase(self, phase: MissionPhase):
+        self._check_phase(phase)
         if phase.name in self.phases:
             raise ValueError(f"Phase '{phase.name}' already exists.")
         self.phases[phase.name] = phase
@@ -79,6 +114,3 @@ class MissionManager: # NOTE add method to print info about the transitions
                 return True
 
         return False
-
-    def get_current_phase(self) -> MissionPhase:
-        return self.current_phase
