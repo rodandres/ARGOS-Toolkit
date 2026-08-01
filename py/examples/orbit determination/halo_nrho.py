@@ -178,3 +178,5 @@ if __name__ == "__main__":
         f"Apolune = {final_orbit.apolune_km:.1f} km  "
         f"Stability indices = {np.round(final_orbit.stability_indices.real, 3)}"
     )
+    print(f"State vector: {final_orbit.u} normalized units")
+    print(f"State vector: {final_orbit.u*384400.0} km")
