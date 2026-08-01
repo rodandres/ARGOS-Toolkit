@@ -87,6 +87,22 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
 
         return np.concatenate((velocity, acceleration))
 
+    def cr3bp(self, t, state, mu):
+        x, y, z, x_dot, y_dot, z_dot = state
+        r1 = np.sqrt((x + mu)**2 + y**2 + z**2)
+        r2 = np.sqrt((x - (1 - mu))**2 + y**2 + z**2)    
+    
+        omega_x = x - ((1 - mu) * (x + mu) / r1**3) - (mu * (x - (1 - mu)) / r2**3)
+        omega_y = y - ((1 - mu) * y / r1**3) - (mu * y / r2**3)
+        omega_z = - (1 - mu) * (z / r1**3) - (mu * (z / r2**3))
+        
+        x_ddot = 2 * y_dot + omega_x
+        y_ddot = -2 * x_dot + omega_y
+        z_ddot = omega_z
+    
+        return np.array([x_dot, y_dot, z_dot, x_ddot, y_ddot, z_ddot])
+
+
     def rel2bp(self, t, state, mu):
         r = state[:3].copy()
         v = state[3:].copy()
@@ -111,9 +127,10 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
 
             t_end = min(simulation_data.t + simulation_data.dt_propagation, simulation_data.max_sim_time)
     
-            mu = 6.67430e-11 * 5.972e24
+            mu = 6.67430e-11 * 5.972e24 # For LEO
+            mu = 1.215e-2 # For Earth-Moon system - CR3BP
 
-            sol = solve(self.rel2bp,
+            sol = solve(self.cr3bp,
                         [simulation_data.t, t_end],
                         state,
                         self.integration_method,
