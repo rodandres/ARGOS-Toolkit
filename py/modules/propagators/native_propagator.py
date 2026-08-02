@@ -3,6 +3,12 @@ import numpy as np
 
 from py.modules.solvers.solvers_base import solve
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from py.modules.new.spacecraft import Spacecraft
+    from py.general.dataclasses import SimulationData
+    from py.modules.enviroments.environment_base import EnvironmentBase
+
 class NativeRotationalPropagator(RotationalPropagatorBase):
 
     def __init__(self, integration_method: str = "NATIVE_RK45"):
@@ -34,35 +40,35 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
         return np.concatenate((q_dot, omega_dot))
 
 
-    def propagate(self, simulation_data, environment):
 
-        for spacecraft in simulation_data.spacecrafts:
-            q = spacecraft.spacecraft_data.true_state.attitude
-            omega = spacecraft.spacecraft_data.true_state.angular_velocity
+    def propagate(self, spacecraft: Spacecraft, simulation_data: SimulationData, environment: EnvironmentBase):
+        
+        q = spacecraft.spacecraft_data.true_state.attitude
+        omega = spacecraft.spacecraft_data.true_state.angular_velocity
 
-            I = spacecraft.inertia_tensor
-            I_inv = spacecraft.inertia_tensor_inv
-            applied_torque = spacecraft.spacecraft_data.current_torque_exerted
-            disturbance_torque = environment.get_perturbation_torque()
+        I = spacecraft.inertia_tensor
+        I_inv = spacecraft.inertia_tensor_inv
+        applied_torque = spacecraft.spacecraft_data.current_torque_exerted
+        disturbance_torque = environment.get_perturbation_torque()
 
-            # Define the state vector
-            state = np.concatenate((q, omega))
+        # Define the state vector
+        state = np.concatenate((q, omega))
 
-            t_end = min(simulation_data.t + simulation_data.dt_propagation, simulation_data.max_sim_time)
+        t_end = min(spacecraft.spacecraft_data.t + spacecraft.spacecraft_data.current_propagation_dt, simulation_data.max_sim_time)
 
-            sol = solve(self.quaternion_dynamics,
-                        [simulation_data.t, t_end],
-                        state,
-                        self.integration_method,
-                        args=(I, I_inv, applied_torque, disturbance_torque), h0=simulation_data.dt_propagation, h_adaptative=False
-                        )            
+        sol = solve(self.quaternion_dynamics,
+                    [spacecraft.spacecraft_data.t, t_end],
+                    state,
+                    self.integration_method,
+                    args=(I, I_inv, applied_torque, disturbance_torque), h0=spacecraft.spacecraft_data.current_propagation_dt, h_adaptative=False
+                    )            
 
-            state_end = sol.y[:, -1]
+        state_end = sol.y[:, -1]
 
-            spacecraft.spacecraft_data.true_state.attitude = state_end[0:4]
-            spacecraft.spacecraft_data.true_state.attitude /= np.linalg.norm(spacecraft.spacecraft_data.true_state.attitude)  # Normalize quaternion
-            spacecraft.spacecraft_data.true_state.angular_velocity = state_end[4:7]
-            spacecraft.spacecraft_data.true_state.angular_acceleration = self.quaternion_dynamics(t_end, state_end, I, I_inv, applied_torque, disturbance_torque)[4:7]
+        spacecraft.spacecraft_data.true_state.attitude = state_end[0:4]
+        spacecraft.spacecraft_data.true_state.attitude /= np.linalg.norm(spacecraft.spacecraft_data.true_state.attitude)  # Normalize quaternion
+        spacecraft.spacecraft_data.true_state.angular_velocity = state_end[4:7]
+        spacecraft.spacecraft_data.true_state.angular_acceleration = self.quaternion_dynamics(t_end, state_end, I, I_inv, applied_torque, disturbance_torque)[4:7]
 
     def initialize(self, simulation_data):
         """
@@ -113,32 +119,30 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
         return np.concatenate((drdt, dvdt))
 
 
-    def propagate(self, simulation_data, environment):
-
-        for spacecraft in simulation_data.spacecrafts:
-            position = spacecraft.spacecraft_data.true_state.position
-            velocity = spacecraft.spacecraft_data.true_state.velocity
-
-            mass = spacecraft.mass
-            applied_force = spacecraft.spacecraft_data.current_force_exerted            
-
-            # Define the state vector
-            state = np.concatenate((position, velocity))
-
-            t_end = min(simulation_data.t + simulation_data.dt_propagation, simulation_data.max_sim_time)
+    def propagate(self, spacecraft, simulation_data, environment):
     
-            mu = 6.67430e-11 * 5.972e24 # For LEO
-            mu = 1.215e-2 # For Earth-Moon system - CR3BP
+        position = spacecraft.spacecraft_data.true_state.position
+        velocity = spacecraft.spacecraft_data.true_state.velocity
 
-            sol = solve(self.cr3bp,
-                        [simulation_data.t, t_end],
-                        state,
-                        self.integration_method,
-                        args=(mu, ), h0=simulation_data.dt_propagation, h_adaptative=True
-                        )
+        mass = spacecraft.mass
+        applied_force = spacecraft.spacecraft_data.current_force_exerted            
 
-            state_end = sol.y[:, -1]
+        # Define the state vector
+        state = np.concatenate((position, velocity))
 
-            spacecraft.spacecraft_data.true_state.position = state_end[0:3]
-            spacecraft.spacecraft_data.true_state.velocity = state_end[3:6]
-            
+        t_end = min(spacecraft.spacecraft_data.t + spacecraft.spacecraft_data.current_propagation_dt, simulation_data.max_sim_time)                
+
+        mu = 6.67430e-11 * 5.972e24 # For LEO
+        mu = 1.215e-2 # For Earth-Moon system - CR3BP
+
+        sol = solve(self.cr3bp,
+                    [spacecraft.spacecraft_data.t, t_end],
+                    state,
+                    self.integration_method,
+                    args=(mu, ), h0=spacecraft.spacecraft_data.current_propagation_dt, h_adaptative=True
+                    )
+
+        state_end = sol.y[:, -1]
+
+        spacecraft.spacecraft_data.true_state.position = state_end[0:3]
+        spacecraft.spacecraft_data.true_state.velocity = state_end[3:6]

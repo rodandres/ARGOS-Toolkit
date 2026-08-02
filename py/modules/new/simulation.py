@@ -24,23 +24,16 @@ if TYPE_CHECKING:
     from py.modules.enviroments.environment_base import EnvironmentBase
 
 class Simulation:
-    def __init__(self, max_sim_time: float, dt_propagation: float,
-                 environment: EnvironmentBase,
-                 rotational_propagator_engine: RotationalPropagatorBase | None=None,
-                 translational_propagator_engine: TranslationalPropagatorBase | None=None,
+    def __init__(self, max_sim_time: float,
+                 environment: EnvironmentBase,                 
                  verbose: bool = False):        
 
         simulation_data = SimulationData(
-            max_sim_time=max_sim_time,
-            dt_propagation=dt_propagation,            
-            spacecrafts=[],
-            dt_master=dt_propagation  # Initialize dt_master with dt_propagation; will be updated later
+            max_sim_time=max_sim_time,                    
+            spacecrafts=[],            
             )
 
-        self.simulation_data = simulation_data
-
-        self.rotational_propagator_engine = rotational_propagator_engine
-        self.translational_propagator_engine = translational_propagator_engine
+        self.simulation_data = simulation_data        
 
         self.environment = environment
 
@@ -124,9 +117,9 @@ class Simulation:
                 return
 
     def _set_dt_master(self): # POSSIBLE BUG: dts must be with a minimum common multiple
-        dts = [self.simulation_data.dt_propagation]  # Start with the master propagation time step
+        dts = []
         for spacecraft in self.simulation_data.spacecrafts:
-            dt_nav, dt_guid, dt_control = spacecraft.get_gnc_dts()
+            dt_nav, dt_guid, dt_control, dt_propagation = spacecraft.get_dts()
             print(f"Spacecraft '{spacecraft.name}' dt_nav: {dt_nav}, dt_guid: {dt_guid}, dt_control: {dt_control}")
             if not np.isnan(dt_nav):
                 dts.append(dt_nav)
@@ -134,6 +127,8 @@ class Simulation:
                 dts.append(dt_guid)
             if not np.isnan(dt_control):
                 dts.append(dt_control)
+
+            dts.append(dt_propagation)  # Add the spacecraft's propagation time step
 
         self.simulation_data.dt_master = min(dts)
 
@@ -153,14 +148,25 @@ class Simulation:
         if self.verbose:
             print("Starting simulation...")
 
-        while self.simulation_data.t < self.simulation_data.max_sim_time:
-            
-            self.simulation_data.t = self.simulation_data.tick * self.simulation_data.dt_master
+
+        t = 0.0
+        current_ts = []
+        self.simulation_data.t = np.nan
+        self.simulation_data.tick = np.nan
+
+        while t < self.simulation_data.max_sim_time:
+
 
             for spacecraft in self.simulation_data.spacecrafts:
+                if spacecraft.spacecraft_data.t >= self.simulation_data.max_sim_time:                    
+                    continue  # Skip this spacecraft if its time exceeds the max simulation time
 
                 # Update Mission Manager
-                spacecraft.update_mission_manager(self.simulation_data)
+                has_mission_changed = spacecraft.update_mission_manager(self.simulation_data)
+
+                # Check for updates in dts due to possible changes in the mission phase
+                if has_mission_changed:
+                    self._set_dt_master()  # Update the master time step if any spacecraft's mission phase changed
 
                 # Update sensors
                 spacecraft.update_sensors(self.simulation_data)
@@ -175,20 +181,74 @@ class Simulation:
                 spacecraft.update_control(self.simulation_data)
 
                 # Compute Actuation
-                spacecraft.compute_actuation(self.simulation_data)            
+                spacecraft.compute_actuation(self.simulation_data)  
 
-            if self.simulation_data.tick % int(self.simulation_data.dt_propagation / self.simulation_data.dt_master) == 0:
-                if self.translational_propagator_engine is not None:
-                    self.translational_propagator_engine.propagate(self.simulation_data, self.environment)  # Assuming environment is not needed for translational propagation
-                if self.rotational_propagator_engine is not None:                    
-                    self.rotational_propagator_engine.propagate(self.simulation_data, self.environment)  # Assuming environment is not needed for rotational propagation
+                # Propagate Translational and Rotational Dynamics
+                spacecraft.propagate_translational(self.simulation_data, self.environment)
+                spacecraft.propagate_rotational(self.simulation_data, self.environment)
 
-            # Save the current state to history
-            self.simulation_history.record(self.simulation_data)
-            self.simulation_data.tick += 1        
+                t_spacecraft = spacecraft.spacecraft_data.t
+                spacecraft.spacecraft_data.t += spacecraft.spacecraft_data.current_master_dt
+                spacecraft.spacecraft_data.tick += 1
+                current_ts.append(t_spacecraft)
+
+                self.simulation_history.record_spacecraft(spacecraft)
+
+
+            try:
+                t = min(current_ts)
+            except ValueError:                
+                break  # Exit the loop if there are no spacecrafts to simulate
+
+            current_ts = []  # Reset for the next iteration
+            
         
         if self.verbose: print("Simulation completed.")
 
         self.simulation_history.finalize()  # Finalize the history after the simulation is complete
 
         return self.simulation_history
+
+
+
+
+        # while self.simulation_data.t < self.simulation_data.max_sim_time:
+            
+        #     self.simulation_data.t = self.simulation_data.tick * self.simulation_data.dt_master
+
+        #     for spacecraft in self.simulation_data.spacecrafts:
+
+        #         # Update Mission Manager
+        #         has_mission_changed = spacecraft.update_mission_manager(self.simulation_data)
+
+        #         # Check for updates in dts due to possible changes in the mission phase
+        #         if has_mission_changed:
+        #             self._set_dt_master()  # Update the master time step if any spacecraft's mission phase changed
+
+        #         # Update sensors
+        #         spacecraft.update_sensors(self.simulation_data)
+
+        #         # Update Navigation
+        #         spacecraft.update_navigation(self.simulation_data)
+
+        #         # Update Guidance
+        #         spacecraft.update_guidance(self.simulation_data)
+
+        #         # Update Control
+        #         spacecraft.update_control(self.simulation_data)
+
+        #         # Compute Actuation
+        #         spacecraft.compute_actuation(self.simulation_data)  
+
+        #         # Propagate Translational and Rotational Dynamics
+        #         spacecraft.propagate_translational(self.simulation_data, self.environment)
+        #         spacecraft.propagate_rotational(self.simulation_data, self.environment)
+
+
+        #     #if self.simulation_data.tick % int(self.simulation_data.dt_propagation / self.simulation_data.dt_master) == 0:
+        #     #    if self.translational_propagator_engine is not None:
+        #     #        self.translational_propagator_engine.propagate(self.simulation_data, self.environment)  # Assuming environment is not needed for translational propagation
+        #     #    if self.rotational_propagator_engine is not None:                    
+        #     #        self.rotational_propagator_engine.propagate(self.simulation_data, self.environment)  # Assuming environment is not needed for rotational propagation
+
+            # Save the current state to history

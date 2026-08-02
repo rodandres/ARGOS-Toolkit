@@ -17,7 +17,7 @@ class Spacecraft():
                  mission_manager: MissionManager | None = None,
                  verbose: bool = False):                        
 
-        # --- ATRIBUTES DECLARATION ---
+        # --- ATRIBUTES DECLARATION ---        
         self.name = name
         self.mass = mass
         self.inertia_tensor = inertia_tensor
@@ -31,6 +31,9 @@ class Spacecraft():
         self.mission_manager = mission_manager
 
         self.spacecraft_data.target_name = None  # Name of the target spacecraft, if any
+
+        self.rotational_model = None
+        self.translational_model = None        
 
         self.current_phase = None
         self.current_guidance_law = None
@@ -48,6 +51,8 @@ class Spacecraft():
         self.has_navigation_law = False
         self.has_guidance_law = False
         self.has_control_law = False
+        self.has_translational_model = False
+        self.has_rotational_model = False
 
         self._init_state_variables(initial_state)
         self._check_initialization()
@@ -115,6 +120,24 @@ class Spacecraft():
 
             self.current_allocator.set_actuators(self.actuators)
 
+        if phase.translational_model is None:
+            self.has_translational_model = False
+            self.translational_model = None
+        else:
+            self.has_translational_model = True
+            self.translational_model = phase.translational_model
+
+        if phase.rotational_model is None:
+            self.has_rotational_model = False
+            self.rotational_model = None
+        else:
+            self.has_rotational_model = True
+            self.rotational_model = phase.rotational_model
+
+        self.spacecraft_data.current_propagation_dt = phase.dt_propagation
+        
+        self.spacecraft_data.current_master_dt = self.get_min_dt()
+
     def show_spacecraft_basic_info(self):
         print(f"Spacecraft Name: {self.name}")
         print(f"Mass: {self.mass} kg")
@@ -135,30 +158,40 @@ class Spacecraft():
         self.show_spacecraft_state_info()
         self.show_spacecraft_reference_info()    
         
-    def get_gnc_dts(self):        
-        return self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt
+    def get_dts(self):        
+        return self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt
+
+    def get_min_dt(self):
+        dts = [dt for dt in [self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt] if dt is not None]
+        for sensor in self.sensors:
+            if sensor.sample_rate_sec is not None:
+                dts.append(sensor.sample_rate_sec)
+
+        return min(dts) if dts else None
 
 
     def _should_compute(self, simulation_data, dt_component):
-        tick = simulation_data.tick
-        dt_master = simulation_data.dt_master
+        tick = self.spacecraft_data.tick
+        dt_master = self.spacecraft_data.current_master_dt
 
         return tick % int(dt_component / dt_master) == 0
 
     def update_mission_manager(self, simulation_data):
         if self.has_mission_manager is False:
-            return
+            return False
 
         phase_changed = self.mission_manager.update(simulation_data)
 
         if phase_changed:
             self._check_and_update_phase_info(self.mission_manager.current_phase)
+
+        return phase_changed
     
-    def update_sensors(self, simulation_data):
-        if self.has_sensors is False:
+    def update_sensors(self, simulation_data):        
+        if self.has_sensors is False:            
             return
     
-        for sensor in self.sensors:
+        for sensor in self.sensors:            
             sensor.update(self.spacecraft_data, simulation_data)
     
     def update_navigation(self, simulation_data):
@@ -204,7 +237,7 @@ class Spacecraft():
         self.spacecraft_data.current_torque_exerted = torque        
 
         for actuator in self.actuators:
-            actuator.update(simulation_data.t)
+            actuator.update(self.spacecraft_data.t)
 
             actuator_output = actuator.get_output()
 
@@ -212,10 +245,24 @@ class Spacecraft():
             torque += actuator_output.torque
 
         self.spacecraft_data.current_force_exerted = force
-        self.spacecraft_data.current_torque_exerted = torque    
+        self.spacecraft_data.current_torque_exerted = torque
+
+    def propagate_translational(self, simulation_data, environment):
+        if self.has_translational_model is False:
+            return
+
+        if self._should_compute(simulation_data, self.spacecraft_data.current_propagation_dt):
+            self.translational_model.propagate(self, simulation_data, environment)
+
+    def propagate_rotational(self, simulation_data, environment):
+        if self.has_rotational_model is False:
+            return
+
+        if self._should_compute(simulation_data, self.spacecraft_data.current_propagation_dt):
+            self.rotational_model.propagate(self, simulation_data, environment)
 
     def change_target(self, new_target_name: str):
         self.spacecraft_data.target_name = new_target_name
-        print("ENtro acá")
+        
         if self.verbose:
             print(f"Spacecraft '{self.name}' target changed to '{new_target_name}'.")

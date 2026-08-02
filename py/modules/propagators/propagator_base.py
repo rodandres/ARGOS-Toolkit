@@ -6,7 +6,7 @@ class TranslationalPropagatorBase(ABC):
         self.integration_method = integration_method
 
     @abstractmethod
-    def propagate(self, simulation_data, environment):
+    def propagate(self, spacecraft_data, simulation_data, environment):
         """
         Propagate the translational state forward in time by dt.
 
@@ -33,7 +33,7 @@ class RotationalPropagatorBase(ABC):
             self.integration_method = integration_method
 
     @abstractmethod
-    def propagate(self, simulation_data, environment):
+    def propagate(self, spacecraft_data, simulation_data, environment):
         pass
 
 

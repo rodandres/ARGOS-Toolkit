@@ -15,19 +15,22 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator
 
 translational_propagator = NativeTranslationalPropagator(integration_method="NATIVE_RK45")
+translational_propagator2 = NativeTranslationalPropagator(integration_method="NATIVE_RK45")
 
 from py.modules.new.simulation import Simulation
-sim = Simulation(max_sim_time=3*60*60,
-                 dt_propagation= 1, # 100 Hz,
-                 environment= env,
-                 translational_propagator_engine= translational_propagator,
+sim = Simulation(max_sim_time=1*60*60,                 
+                 environment= env,                 
                  verbose = True
 )
 
+
+dt1 = 1000.0  # Propagation update every 10 seconds
+dt2 = 10.0  # Propagation update every 10 seconds
+
 from py.modules.sensors.generic_sensor import AbsoluteSensor
 
-sensors = [AbsoluteSensor(100, verbose=False)]  # Sample rate of 100 Hz
-sensors2 = [AbsoluteSensor(100, verbose=False)]  # Sample rate of 100 Hz
+sensors = [AbsoluteSensor(1/dt1, verbose=False)]  # Sample rate of 100 Hz
+sensors2 = [AbsoluteSensor(1/dt2, verbose=False)]  # Sample rate of 100 Hz
 
 from py.modules.navigation.basic_laws import IdealNavigation
 from py.general.dataclasses import MissionPhase
@@ -39,12 +42,16 @@ nav_law2 = IdealNavigation()
 phase = MissionPhase(
     name="Phase 1",
     navigation=nav_law,
-    dt_nav=1.0  # Navigation update every 1 second
+    dt_nav=dt1,  # Navigation update every 1 second
+    translational_model=translational_propagator,
+    dt_propagation= dt1  # Propagation update every 1 second
 )
 phase2 = MissionPhase(
     name="Phase 1",
     navigation=nav_law2,
-    dt_nav=1.0  # Navigation update every 1 second
+    dt_nav=dt2,  # Navigation update every 1 second
+    dt_propagation=dt2,  # Propagation update every 10 seconds
+    translational_model=translational_propagator2
 )
 
 mission_manager = MissionManager(
@@ -95,12 +102,20 @@ import numpy as np
 sc1 = result.spacecrafts_history["SC1"]
 sc2 = result.spacecrafts_history["SC2"]
 
-t = result.time
+t1 = sc1.t
+t2 = sc2.t
 
 
 # True positions
 r1 = sc1.true_state["position"]
 r2 = sc2.true_state["position"]
+
+print(t1.shape)
+print(t2.shape)
+print(r1.shape)
+print(np.unique(r1, axis=0).shape)
+print(r2.shape)
+print(np.unique(r2, axis=0).shape)
 
 
 # ==========================================================
@@ -278,7 +293,7 @@ fig, ax = plt.subplots(
 
 plot_position(
     ax[0,0],
-    t,
+    t1,
     sc1.true_state["position"],
     "SC1 - True Position"
 )
@@ -286,7 +301,7 @@ plot_position(
 
 plot_position(
     ax[1,0],
-    t,
+    t1,
     sc1.estimated_data["spacecraft_state"]["position"],
     "SC1 - Estimated Own Position"
 )
@@ -294,7 +309,7 @@ plot_position(
 
 plot_position(
     ax[2,0],
-    t,
+    t1,
     sc1.estimated_data["reference_state"]["position"],
     "SC1 - Estimated Target Position"
 )
@@ -307,7 +322,7 @@ plot_position(
 
 plot_position(
     ax[0,1],
-    t,
+    t2,
     sc2.true_state["position"],
     "SC2 - True Position"
 )
@@ -315,7 +330,7 @@ plot_position(
 
 plot_position(
     ax[1,1],
-    t,
+    t2,
     sc2.estimated_data["spacecraft_state"]["position"],
     "SC2 - Estimated Own Position"
 )
@@ -323,7 +338,7 @@ plot_position(
 
 plot_position(
     ax[2,1],
-    t,
+    t2,
     sc2.estimated_data["reference_state"]["position"],
     "SC2 - Estimated Target Position"
 )
@@ -352,19 +367,19 @@ reference_q = sc1.estimated_data["reference_state"]["attitude"]
 for i in range(4):
 
     ax[0].plot(
-        t,
+        t1,
         true_q[:,i],
         label=f"q{i}"
     )
 
     ax[1].plot(
-        t,
+        t1,
         estimated_q[:,i],
         label=f"q{i}"
     )
 
     ax[2].plot(
-        t,
+        t1,
         reference_q[:,i],
         label=f"q{i}"
     )
@@ -409,14 +424,14 @@ labels = [
 for i in range(3):
 
     ax[0].plot(
-        t,
+        t1,
         force[:,i],
         label=f"F{labels[i]}"
     )
 
 
     ax[1].plot(
-        t,
+        t1,
         torque[:,i],
         label=f"T{labels[i]}"
     )

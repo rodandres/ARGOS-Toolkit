@@ -32,6 +32,9 @@ class MissionManager: # NOTE add method to print info about the transitions
         dt_guid = phase.dt_guid
         dt_control = phase.dt_control
 
+        translational_model = phase.translational_model
+        rotational_model = phase.rotational_model
+
         if guidance_law is not None and dt_guid is None:
             raise ValueError("dt_guid must be provided if guidance law is specified.")
 
@@ -49,6 +52,12 @@ class MissionManager: # NOTE add method to print info about the transitions
 
         if dt_control is not None and control_law is None:
             raise ValueError("Control law must be specified if dt_control is provided.")
+
+        if translational_model is None and rotational_model is None:
+            raise ValueError("At least one of translational_model or rotational_model must be specified for the phase.")
+
+        if translational_model is not None or rotational_model is not None and phase.dt_propagation is None:            
+            raise ValueError("dt_propagation must be provided if either translational_model or rotational_model is specified.")
         
 
     def add_phases(self, phase: MissionPhase | list[MissionPhase]):

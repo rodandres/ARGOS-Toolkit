@@ -74,21 +74,21 @@ class SensorBase(ABC):
             The current state of the simulation.            
         """
 
-        if self.verbose: print("Sensor Update: ", self.type, " at time: ", simulation_data.t)
-        if simulation_data.t - self.last_measurement_time >= self.sample_rate_sec:
-            if self.verbose: print("Sensor Sampling: ", self.type, " at time: ", simulation_data.t)
+        if self.verbose: print("Sensor Update: ", self.type, " at time: ", spacecraft_data.t)
+        if spacecraft_data.t - self.last_measurement_time >= self.sample_rate_sec:
+            if self.verbose: print("Sensor Sampling: ", self.type, " at time: ", spacecraft_data.t)
 
             measurement = self.get_ideal_measurement(spacecraft_data, simulation_data)
             
             for error_model in self.error_models:
-                measurement = error_model.apply(measurement, dt=simulation_data.dt_master)
+                measurement = error_model.apply(measurement, dt=spacecraft_data.current_propagation_dt)
     
             self.old_measurement = measurement
-            self.last_measurement_time = simulation_data.t
+            self.last_measurement_time = spacecraft_data.t
     
             self.measurement = measurement
         else:
-            if self.verbose: print("Sensor Not Sampling: ", self.type, " at time: ", simulation_data.t)
+            if self.verbose: print("Sensor Not Sampling: ", self.type, " at time: ", spacecraft_data.t)
             self.should_sample = False
             self.measurement = self.old_measurement
         

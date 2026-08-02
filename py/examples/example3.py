@@ -6,6 +6,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+secondsdt_propagation=5e-4 
+
 # Define the environment
 from py.modules.enviroments.environments import ClassicalEnvironment
 
@@ -17,16 +19,14 @@ from py.modules.propagators.native_propagator import NativeTranslationalPropagat
 translational_propagator = NativeTranslationalPropagator(integration_method="NATIVE_RK45")
 
 from py.modules.new.simulation import Simulation
-sim = Simulation(max_sim_time=0.75952417*2,
-                 dt_propagation=5e-4, # 100 Hz,
-                 environment= env,
-                 translational_propagator_engine= translational_propagator,
+sim = Simulation(max_sim_time=0.75952417*2,                 
+                 environment= env,                 
                  verbose = True
 )
 
 from py.modules.sensors.generic_sensor import AbsoluteSensor
 
-sensors = [AbsoluteSensor(100, verbose=False)]  # Sample rate of 100 Hz
+sensors = [AbsoluteSensor(1 / secondsdt_propagation, verbose=False)]  # Sample rate of 100 Hz
 
 from py.modules.navigation.basic_laws import IdealNavigation
 from py.general.dataclasses import MissionPhase
@@ -37,7 +37,10 @@ nav_law = IdealNavigation()
 phase = MissionPhase(
     name="Phase 1",
     navigation=nav_law,
-    dt_nav=1.0  # Navigation update every 1 second
+    dt_nav=secondsdt_propagation,  # Navigation update every 1 second
+    dt_propagation=secondsdt_propagation,  # Propagation update every 10 secondsdt_propagation=5e-4, # 100 Hz,
+    translational_model=translational_propagator
+
 )
 
 mission_manager = MissionManager(
@@ -70,7 +73,7 @@ import numpy as np
 sc1 = result.spacecrafts_history["SC1"]
 sc2 = result.spacecrafts_history["SC1"]
 
-t = result.time
+t = sc1.t  # Assuming both spacecrafts have the same time history
 
 
 # True positions
@@ -98,7 +101,6 @@ plt.plot(
 )
 
 
-print("val: ", 1-1.215e-2 * 384400.0)
 # Earth
 earth = plt.Circle(
     (385000, 0),

@@ -8,11 +8,16 @@ if TYPE_CHECKING:
     from py.modules.controllers.controller_base import ControllerBase, ControlAllocatorBase
     from py.modules.guidance.guidance_base import GuidanceBase
     from py.modules.navigation.navigation_base import NavigationBase
+    from py.modules.propagators.propagator_base import TranslationalPropagatorBase, RotationalPropagatorBase
 
 @dataclass(slots=True)
 class MissionPhase:
     
     name: str
+
+    rotational_model: RotationalPropagatorBase | None = None
+    translational_model: TranslationalPropagatorBase | None = None
+
     guidance: GuidanceBase | None = None
     navigation: NavigationBase | None = None
     controller: ControllerBase | None = None
@@ -23,14 +28,15 @@ class MissionPhase:
     dt_guid: float | None = None
     dt_control: float | None = None
 
+    dt_propagation: float | None = None  # Optional propagation time step for this phase
+
 @dataclass(slots=True)
 class SimulationData:
     max_sim_time: float
 
-    dt_master: float
-    dt_propagation: float
-    
     spacecrafts: list
+
+    dt_master: float = field(default=0.1)
 
     t: float =  field(default=0.0)
     tick: int = field(default=0)
@@ -65,6 +71,13 @@ class ControlOutput:
 
 @dataclass(slots=True)
 class SpacecraftData():
+
+    t: float = 0.0
+    tick: int = 0
+    current_master_dt: float = 0.1  # Time step for the current master simulation
+
+    # Time step for the current propagation
+    current_propagation_dt: float = 0.1
 
     # Spacraft state variables in inertial frame (same as the inertial frame of the simulation)
     true_state: StateVariables = field(default_factory=StateVariables)    

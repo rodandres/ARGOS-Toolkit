@@ -23,10 +23,8 @@ rot_propagator = NativeRotationalPropagator(integration_method="NATIVE_RK45")
 # Now create the simulation object
 
 from py.modules.new.simulation import Simulation
-sim = Simulation(max_sim_time=5*60, # 3 minutes,
-                 dt_propagation= 0.01, # 100 Hz,
-                 environment= env,
-                 rotational_propagator_engine= rot_propagator,
+sim = Simulation(max_sim_time=5*60, # 3 minutes,                 
+                 environment= env,                 
                  verbose = True
 )
 
@@ -207,7 +205,10 @@ phase = MissionPhase(
 
     dt_nav = 0.1,  # Navigation update rate (10 Hz)
     dt_guid = 1,  # Guidance update rate (1 Hz)
-    dt_control = 0.1 # Control update rate (10 Hz)
+    dt_control = 0.1, # Control update rate (10 Hz)
+
+    rotational_model= rot_propagator,
+    dt_propagation= 0.01 # Propagation time step (100 Hz)
 )
 
 mission_manager = MissionManager(
@@ -411,7 +412,7 @@ result = sim.simulate()
 import matplotlib.pyplot as plt
 
 history = result.spacecrafts_history["Spacecraft_1"]
-t = result.time
+t = history.t
 
 # =====================================================
 # Retrieve data
