@@ -40,7 +40,6 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
         return np.concatenate((q_dot, omega_dot))
 
 
-
     def propagate(self, spacecraft: Spacecraft, simulation_data: SimulationData, environment: EnvironmentBase):
         
         q = spacecraft.spacecraft_data.true_state.attitude
@@ -80,19 +79,31 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
         # Implement any initialization logic needed for the native rotational propagator
         pass
 
+SUPPORTED_DYNAMICS = ["REL2BP", "CR3BP", "NEWTON"]
+
 class NativeTranslationalPropagator(TranslationalPropagatorBase):
 
-    def __init__(self, integration_method: str = "NATIVE_RK45"):
+    def __init__(self, dynamics: str = "NEWTON", integration_method: str = "NATIVE_RK45"):
         super().__init__(integration_method)
+        self.set_dynamic_model(dynamics)
 
-    def translational_dynamics(self, t, state, mass, applied_force, disturbance_force):
-        position = state[:3].copy()
-        velocity = state[3:].copy()
+    def set_dynamic_model(self, dynamics: str):
+        if dynamics not in SUPPORTED_DYNAMICS:
+            raise ValueError(f"Unsupported dynamics model: {dynamics}. Supported models are: {SUPPORTED_DYNAMICS}")
 
-        acceleration = (applied_force + disturbance_force) / mass
-
-        return np.concatenate((velocity, acceleration))
-
+        if dynamics == "REL2BP":
+            self.dynamics_function = self.rel2bp
+            mu = 6.67430e-11 * 5.972e24 # For LEO
+            self.arguments  = (mu, )
+        elif dynamics == "CR3BP":
+            self.dynamics_function = self.cr3bp
+            mu = 1.215e-2 # For Earth-Moon system - CR3BP
+            self.arguments  = (mu, )
+        elif dynamics == "NEWTON":
+            self.dynamics_function = None
+            self.arguments  = ()
+        
+        
     def cr3bp(self, t, state, mu):
         x, y, z, x_dot, y_dot, z_dot = state
         r1 = np.sqrt((x + mu)**2 + y**2 + z**2)
@@ -105,19 +116,43 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
         x_ddot = 2 * y_dot + omega_x
         y_ddot = -2 * x_dot + omega_y
         z_ddot = omega_z
-    
-        return np.array([x_dot, y_dot, z_dot, x_ddot, y_ddot, z_ddot])
 
+        velocity = np.array([x_dot, y_dot, z_dot])
+        acceleration = np.array([x_ddot, y_ddot, z_ddot])
+    
+        return velocity, acceleration
 
     def rel2bp(self, t, state, mu):
         r = state[:3].copy()
         v = state[3:].copy()
-
-        drdt = v
+        
         dvdt = -mu * r / np.linalg.norm(r)**3
 
-        return np.concatenate((drdt, dvdt))
+        velocity = np.array([v[0], v[1], v[2]])
+        acceleration = np.array([dvdt[0], dvdt[1], dvdt[2]])
 
+        return velocity, acceleration
+
+    def dynamics(self, t, state, mass, applied_force, disturbance_force):            
+
+        if self.dynamics_function is not None:
+            v_model, a_model = self.dynamics_function(t, state, *self.arguments )
+        else:
+            v_model = np.zeros(3)
+            a_model = np.zeros(3)
+        
+        if mass <= 0:
+            a_external = np.zeros(3)
+        else:
+            a_external = (applied_force + disturbance_force) / mass
+
+        a_total = a_model + a_external
+        v_total = v_model
+
+        acceleration = a_total
+        velocity = v_total
+
+        return np.concatenate((velocity, acceleration))
 
     def propagate(self, spacecraft, simulation_data, environment):
     
@@ -125,24 +160,22 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
         velocity = spacecraft.spacecraft_data.true_state.velocity
 
         mass = spacecraft.mass
-        applied_force = spacecraft.spacecraft_data.current_force_exerted            
+        applied_force = spacecraft.spacecraft_data.current_force_exerted
 
         # Define the state vector
         state = np.concatenate((position, velocity))
 
-        t_end = min(spacecraft.spacecraft_data.t + spacecraft.spacecraft_data.current_propagation_dt, simulation_data.max_sim_time)                
+        t_end = min(spacecraft.spacecraft_data.t + spacecraft.spacecraft_data.current_propagation_dt, simulation_data.max_sim_time)                            
 
-        mu = 6.67430e-11 * 5.972e24 # For LEO
-        mu = 1.215e-2 # For Earth-Moon system - CR3BP
-
-        sol = solve(self.cr3bp,
+        sol = solve(self.dynamics,
                     [spacecraft.spacecraft_data.t, t_end],
                     state,
                     self.integration_method,
-                    args=(mu, ), h0=spacecraft.spacecraft_data.current_propagation_dt, h_adaptative=True
+                    args=(mass, applied_force, np.zeros(3), ), h0=spacecraft.spacecraft_data.current_propagation_dt, h_adaptative=True
                     )
 
         state_end = sol.y[:, -1]
 
         spacecraft.spacecraft_data.true_state.position = state_end[0:3]
         spacecraft.spacecraft_data.true_state.velocity = state_end[3:6]
+        spacecraft.spacecraft_data.true_state.acceleration = self.dynamics(t_end, state_end, mass, applied_force, np.zeros(3))[3:6]

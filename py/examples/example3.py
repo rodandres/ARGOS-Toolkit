@@ -16,7 +16,7 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 # Then, define the propagators
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator
 
-translational_propagator = NativeTranslationalPropagator(integration_method="NATIVE_RK45")
+translational_propagator = NativeTranslationalPropagator(dynamics="CR3BP", integration_method="NATIVE_RK45")
 
 from py.modules.new.simulation import Simulation
 sim = Simulation(max_sim_time=0.75952417*2,                 

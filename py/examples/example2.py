@@ -14,8 +14,8 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 # Then, define the propagators
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator
 
-translational_propagator = NativeTranslationalPropagator(integration_method="NATIVE_RK45")
-translational_propagator2 = NativeTranslationalPropagator(integration_method="NATIVE_RK45")
+translational_propagator = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
+translational_propagator2 = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
 
 from py.modules.new.simulation import Simulation
 sim = Simulation(max_sim_time=1*60*60,                 
@@ -24,7 +24,7 @@ sim = Simulation(max_sim_time=1*60*60,
 )
 
 
-dt1 = 1000.0  # Propagation update every 10 seconds
+dt1 = 20.0  # Propagation update every 10 seconds
 dt2 = 10.0  # Propagation update every 10 seconds
 
 from py.modules.sensors.generic_sensor import AbsoluteSensor

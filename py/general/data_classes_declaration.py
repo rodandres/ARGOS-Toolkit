@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from py.modules.sensors import SensorBase
     from py.modules.controllers.controller_base import ControllerBase
     from py.modules.actuators.actuators_base import ActuatorBase
-    from py.modules.perturbations import PerturbationBase
+    from py.modules.enviroments.perturbations import PerturbationBase
 
 @dataclass
 class SimSharedData:
