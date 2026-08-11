@@ -3,8 +3,9 @@ from py.modules.navigation.navigation_base import NavigationBase
 from py.general.dataclasses import EstimationOutput, StateVariables
 
 class IdealNavigation(NavigationBase):
-    def __init__(self):
+    def __init__(self, sensor_to_be_use=1):
         super().__init__()        
+        self.sensor_to_be_use = sensor_to_be_use
 
     def _check_initialization(self):
         # No specific initialization checks for IdealNavigation
@@ -17,12 +18,17 @@ class IdealNavigation(NavigationBase):
 
         Args:
             sensors (list): A list of sensor objects providing data for estimation.
-        """
+        """        
         absolute_sensor = None
+        absolute_sensor_count = 0
+
         for sensor in sensors:
-            if sensor.type == "AbsoluteSensor":  # Ensure the sensor is of the correct type
-                absolute_sensor = sensor
-                break
+            if sensor.type == "AbsoluteSensor":
+                absolute_sensor_count += 1
+
+                if absolute_sensor_count == self.sensor_to_be_use:
+                    absolute_sensor = sensor
+                    break
 
         if absolute_sensor is None:
             raise ValueError("No AbsoluteSensor found in the provided sensors.")

@@ -3,21 +3,81 @@ from dataclasses import is_dataclass
 import numpy as np
 
 
-def _stack(obj_list):
+# def _stack(obj_list):
+#     """
+#     Convierte una lista de dataclasses en un diccionario de numpy arrays
+#     de forma recursiva.
+#     """
+
+#     first = obj_list[0]
+
+#     if is_dataclass(first):
+#         return {
+#             field: _stack([getattr(obj, field) for obj in obj_list])
+#             for field in first.__dataclass_fields__
+#         }
+
+#     if isinstance(first, np.ndarray):
+#         return np.asarray(obj_list)
+
+#     return obj_list
+
+def _stack(obj_list, path="root"):
     """
-    Convierte una lista de dataclasses en un diccionario de numpy arrays
-    de forma recursiva.
+    Convierte recursivamente dataclasses y arrays en estructuras
+    de NumPy, verificando consistencia de dimensiones.
     """
+
+    if not obj_list:
+        return np.asarray([])
 
     first = obj_list[0]
 
     if is_dataclass(first):
-        return {
-            field: _stack([getattr(obj, field) for obj in obj_list])
-            for field in first.__dataclass_fields__
-        }
+
+        result = {}
+
+        for field in first.__dataclass_fields__:
+
+            values = [
+                getattr(obj, field)
+                for obj in obj_list
+            ]
+
+            result[field] = _stack(
+                values,
+                path=f"{path}.{field}"
+            )
+
+        return result
 
     if isinstance(first, np.ndarray):
+
+        shapes = [np.shape(value) for value in obj_list]
+
+        if len(set(shapes)) != 1:
+
+            print("\nINCONSISTENT ARRAY SHAPES")
+            print(f"Field: {path}")
+            print(f"Number of samples: {len(obj_list)}")
+
+            unique_shapes = {}
+
+            for i, shape in enumerate(shapes):
+                unique_shapes.setdefault(shape, []).append(i)
+
+            for shape, indices in unique_shapes.items():
+                print(
+                    f"  shape={shape}, "
+                    f"samples={indices[:10]}"
+                    f"{'...' if len(indices) > 10 else ''}"
+                )
+
+            raise ValueError(
+                f"Inconsistent shapes in '{path}': "
+                f"{list(unique_shapes.keys())}"
+            )
+
         return np.asarray(obj_list)
 
     return obj_list

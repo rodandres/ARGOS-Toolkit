@@ -1,6 +1,6 @@
 import numpy as np
 from py.modules.guidance.guidance_base import GuidanceBase
-from py.general.dataclasses import GuidanceReference
+from py.general.dataclasses import GuidanceReference, StateVariables
 
 class ConstantReferenceGuidance(GuidanceBase):
     def __init__(self,
@@ -12,6 +12,8 @@ class ConstantReferenceGuidance(GuidanceBase):
         self.desired_quat = desired_quat
         self.desired_ang_vel = desired_ang_vel
         self.desired_ang_accel = desired_ang_accel
+
+        self._check_initialization()
 
     def _check_initialization(self):
         if all(x is None for x in (
@@ -69,13 +71,17 @@ class ConstantReferenceGuidance(GuidanceBase):
             A GuidanceReference object containing the desired position, velocity, acceleration, quaternion, angular velocity, and angular acceleration.
         """
 
-        return GuidanceReference(
+        state = StateVariables(
             position = self.desired_pos,
             velocity = self.desired_vel,
             acceleration = self.desired_accel,
             attitude = self.desired_quat,
             angular_velocity = self.desired_ang_vel,
             angular_acceleration = self.desired_ang_accel
+        )
+
+        return GuidanceReference(
+            state=state   
         )
 
 class CustomGuidanceLaw(GuidanceBase):

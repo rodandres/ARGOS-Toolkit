@@ -2,10 +2,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from typing import TYPE_CHECKING
+from py.general.dataclasses import MissionPhase
 
 if TYPE_CHECKING:
     from py.modules.new.simulation import SimulationData
-    from py.general.dataclasses import MissionPhase
 
 
 class MissionManager: # NOTE add method to print info about the transitions
@@ -56,8 +56,14 @@ class MissionManager: # NOTE add method to print info about the transitions
         if translational_model is None and rotational_model is None:
             raise ValueError("At least one of translational_model or rotational_model must be specified for the phase.")
 
-        if translational_model is not None or rotational_model is not None and phase.dt_propagation is None:            
-            raise ValueError("dt_propagation must be provided if either translational_model or rotational_model is specified.")
+        if (
+            (translational_model is not None or rotational_model is not None)
+            and phase.dt_propagation is None
+        ):
+            raise ValueError(
+                "dt_propagation must be provided if either translational_model "
+                "or rotational_model is specified."
+            )
         
 
     def add_phases(self, phase: MissionPhase | list[MissionPhase]):

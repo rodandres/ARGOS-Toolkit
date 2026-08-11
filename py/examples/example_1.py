@@ -121,9 +121,9 @@ guidance_law = ConstantReferenceGuidance(
     desired_quat = quaternion_from_euler(np.deg2rad(objective_orientation[0]), np.deg2rad(objective_orientation[1]), np.deg2rad(objective_orientation[2]))
 )
 
-guidance_law = CustomGuidanceLaw(
-    custom_reference_function= compute_reference
-)
+#guidance_law = CustomGuidanceLaw(
+#    custom_reference_function= compute_reference
+#)
 
 # Now define the navigation law
 from py.general.dataclasses import EstimationOutput
@@ -455,7 +455,7 @@ ax.legend(ncol=2)
 ax = axs[0, 1]
 
 for i, lbl in enumerate(("qx", "qy", "qz", "qw")):
-    ax.plot(t, navigation_q[:, i], label=lbl)
+    ax.plot(t, navigation_q[:, i], label=lbl, marker="o",)
 
 ax.set_title("Navigation Quaternion")
 ax.set_ylabel("Quaternion")
@@ -468,7 +468,7 @@ ax.legend()
 ax = axs[1, 0]
 
 for i, lbl in enumerate(("qx", "qy", "qz", "qw")):
-    ax.plot(t, guidance_q[:, i], label=lbl)
+    ax.plot(t, guidance_q[:, i], label=lbl, marker="o",)
 
 ax.set_title("Guidance Quaternion")
 ax.set_xlabel("Time [s]")
@@ -482,7 +482,7 @@ ax.legend()
 ax = axs[1, 1]
 
 for i, lbl in enumerate(("qx", "qy", "qz", "qw")):
-    ax.plot(t, true_q[:, i], label=lbl)
+    ax.plot(t, true_q[:, i], label=lbl, marker="o")
 
 ax.set_title("True Quaternion")
 ax.set_xlabel("Time [s]")
