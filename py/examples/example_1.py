@@ -33,7 +33,7 @@ sim = Simulation(max_sim_time=5*60, # 3 minutes,
 from py.modules.actuators.RCS import RCSThruster
 
 thruster_X_pos = RCSThruster(
-    nominal_thrust= 1 ,# Newtons, placeholder value
+    nominal_thrust= 0 ,# Newtons, placeholder value
     direction= np.array([1, 0, 0]),
     override_torque_value = 300,
     modulation_window= 0.1,
@@ -42,7 +42,7 @@ thruster_X_pos = RCSThruster(
 )
 
 thruster_X_neg = RCSThruster(
-    nominal_thrust= 1 ,# Newtons, placeholder value
+    nominal_thrust= 0 ,# Newtons, placeholder value
     direction= np.array([-1, 0, 0]),
     override_torque_value = 300,
     modulation_window= 0.1,
@@ -52,7 +52,7 @@ thruster_X_neg = RCSThruster(
 )
 
 thruster_Y_pos = RCSThruster(
-    nominal_thrust= 1 ,# Newtons, placeholder value
+    nominal_thrust= 0 ,# Newtons, placeholder value
     direction= np.array([0, 1, 0]),
     override_torque_value = 300,
     modulation_window= 0.1,
@@ -61,7 +61,7 @@ thruster_Y_pos = RCSThruster(
 )
 
 thruster_Y_neg = RCSThruster(
-    nominal_thrust= 1 ,# Newtons, placeholder value
+    nominal_thrust= 0 ,# Newtons, placeholder value
     direction= np.array([0, -1, 0]),
     override_torque_value = 300,
     modulation_window= 0.1,
@@ -70,7 +70,7 @@ thruster_Y_neg = RCSThruster(
 )
 
 thruster_Z_pos = RCSThruster(
-    nominal_thrust= 1 ,# Newtons, placeholder value
+    nominal_thrust= 0 ,# Newtons, placeholder value
     direction= np.array([0, 0, 1]),
     override_torque_value = 300,
     modulation_window= 0.1,
@@ -79,7 +79,7 @@ thruster_Z_pos = RCSThruster(
 )
 
 thruster_Z_neg = RCSThruster(
-    nominal_thrust= 1 ,# Newtons, placeholder value
+    nominal_thrust= 0 ,# Newtons, placeholder value
     direction= np.array([0, 0, -1]),
     override_torque_value = 300,
     modulation_window= 0.1,
@@ -237,295 +237,11 @@ sim.add_spacecraft(
 # We can now simulate
 result = sim.simulate()
 
+from py.modules.visualization.state_variables import plot_attitude_quaternions, plot_angular_velocity, plot_position
+from py.modules.visualization.control import plot_control_result
 
-# #print(result.time)
 
-# #print(result.spacecrafts_history[spacecrafts_history].quaternion[0])
-
-# import matplotlib.pyplot as plt
-
-# # # plt.plot(
-# # #     result.time,
-# # #     result.spacecrafts_history["Spacecraft_1"].quaternion[:, 0],
-# # #     label="q0"
-# # # )
-
-# # plt.figure(figsize=(10, 6))
-# # plt.plot(
-# #     result.time,
-# #     result.spacecrafts_history["Spacecraft_1"].current_torque_exerted[:, 0],
-# #     label="Tau X",
-# #     linestyle='--'
-# # )
-# # plt.plot(
-# #     result.time,
-# #     result.spacecrafts_history["Spacecraft_1"].current_torque_exerted[:, 1],
-# #     label="Tau Y"    
-# # )
-# # plt.plot(
-# #     result.time,
-# #     result.spacecrafts_history["Spacecraft_1"].current_torque_exerted[:, 2],
-# #     label="Tau Z",
-# #     linestyle='-.'
-# # )
-# # plt.legend()
-
-# # plt.figure(figsize=(10, 6))
-# # plt.plot(
-# #     result.time,
-# #     result.spacecrafts_history["Spacecraft_1"].quaternion[:, 0],
-# #     label="q0"
-# # )
-
-# # plt.plot(
-# #     result.time,
-# #     result.spacecrafts_history["Spacecraft_1"].quaternion[:, 1],
-# #     label="q1"
-# # )
-
-# # plt.plot(
-# #     result.time,
-# #     result.spacecrafts_history["Spacecraft_1"].quaternion[:, 2],
-# #     label="q2"
-# # )
-
-# # plt.plot(
-# #     result.time,
-# #     result.spacecrafts_history["Spacecraft_1"].quaternion[:, 3],
-# #     label="q3"
-# # )
-
-# # plt.legend()
-# # plt.show()
-
-
-# import matplotlib.pyplot as plt
-
-# history = result.spacecrafts_history["Spacecraft_1"]
-
-# t = result.time
-
-# true_q = history.true_q
-# navigation_q = history.navigation_estimated_data["spacecraft_attitude"]
-# guidance_q = history.guidance_reference_data["attitude"]
-
-# forces = history.control_output_data["force"]
-# torques = history.control_output_data["torque"]
-
-# fig, axs = plt.subplots(2, 2, figsize=(15, 10), sharex=True)
-
-# # =====================================================
-# # Control Output
-# # =====================================================
-# ax = axs[0, 0]
-
-# for i, lbl in enumerate(("Fx", "Fy", "Fz")):
-#     ax.plot(t, forces[:, i], label=lbl)
-
-# for i, lbl in enumerate(("Tx", "Ty", "Tz")):
-#     ax.plot(t, torques[:, i], "--", label=lbl)
-
-# ax.set_title("Control Output")
-# ax.set_ylabel("Force / Torque")
-# ax.grid(True)
-# ax.legend(ncol=2)
-
-# # =====================================================
-# # Navigation Quaternion
-# # =====================================================
-# ax = axs[0, 1]
-
-# for i, lbl in enumerate(("q0", "q1", "q2", "q3")):
-#     ax.plot(t, navigation_q[:, i], label=lbl)
-
-# ax.set_title("Navigation Quaternion")
-# ax.set_ylabel("Quaternion")
-# ax.grid(True)
-# ax.legend()
-
-# # =====================================================
-# # Guidance Quaternion
-# # =====================================================
-# ax = axs[1, 0]
-
-# for i, lbl in enumerate(("q0", "q1", "q2", "q3")):
-#     ax.plot(t, guidance_q[:, i], label=lbl)
-
-# ax.set_title("Guidance Quaternion")
-# ax.set_xlabel("Time [s]")
-# ax.set_ylabel("Quaternion")
-# ax.grid(True)
-# ax.legend()
-
-# # =====================================================
-# # True Quaternion
-# # =====================================================
-# ax = axs[1, 1]
-
-# for i, lbl in enumerate(("q0", "q1", "q2", "q3")):
-#     ax.plot(t, true_q[:, i], label=lbl)
-
-# ax.set_title("True Quaternion")
-# ax.set_xlabel("Time [s]")
-# ax.set_ylabel("Quaternion")
-# ax.grid(True)
-# ax.legend()
-
-# plt.tight_layout()
-
-# # Torque commanded by the controller
-# control_torque = history.control_output_data["torque"]
-
-# # Torque actually applied to the spacecraft
-# applied_torque = history.current_torque_exerted
-
-# labels = ["X", "Y", "Z"]
-
-# fig, axs = plt.subplots(3, 1, figsize=(12, 8), sharex=True)
-
-# for i in range(3):
-#     axs[i].plot(
-#         t,
-#         control_torque[:, i],
-#         label="Control Torque",
-#         linewidth=2,
-#     )
-
-#     axs[i].plot(
-#         t,
-#         applied_torque[:, i],
-#         "--",
-#         label="Applied Torque",
-#         linewidth=2,
-#     )
-
-#     axs[i].set_ylabel(f"$\\tau_{labels[i]}$ [N·m]")
-#     axs[i].set_title(f"Torque {labels[i]}")
-#     axs[i].grid(True)
-#     axs[i].legend()
-
-# axs[-1].set_xlabel("Time [s]")
-
-# plt.tight_layout()
-# plt.show()
-
-import matplotlib.pyplot as plt
-
-history = result.spacecrafts_history["Spacecraft_1"]
-t = history.t
-
-# =====================================================
-# Retrieve data
-# =====================================================
-
-true_q = history.true_state["attitude"]
-
-navigation_q = history.estimated_data["spacecraft_state"]["attitude"]
-
-guidance_q = history.reference_data["state"]["attitude"]
-
-forces = history.control_output_data["force"]
-torques = history.control_output_data["torque"]
-
-# =====================================================
-# Figure 1
-# =====================================================
-
-fig, axs = plt.subplots(2, 2, figsize=(15, 10), sharex=True)
-
-# -------------------------------
-# Control Output
-# -------------------------------
-ax = axs[0, 0]
-
-for i, lbl in enumerate(("Fx", "Fy", "Fz")):
-    ax.plot(t, forces[:, i], label=lbl)
-
-for i, lbl in enumerate(("Tx", "Ty", "Tz")):
-    ax.plot(t, torques[:, i], "--", label=lbl)
-
-ax.set_title("Control Output")
-ax.set_ylabel("Force / Torque")
-ax.grid(True)
-ax.legend(ncol=2)
-
-# -------------------------------
-# Navigation quaternion
-# -------------------------------
-ax = axs[0, 1]
-
-for i, lbl in enumerate(("qx", "qy", "qz", "qw")):
-    ax.plot(t, navigation_q[:, i], label=lbl, marker="o",)
-
-ax.set_title("Navigation Quaternion")
-ax.set_ylabel("Quaternion")
-ax.grid(True)
-ax.legend()
-
-# -------------------------------
-# Guidance quaternion
-# -------------------------------
-ax = axs[1, 0]
-
-for i, lbl in enumerate(("qx", "qy", "qz", "qw")):
-    ax.plot(t, guidance_q[:, i], label=lbl, marker="o",)
-
-ax.set_title("Guidance Quaternion")
-ax.set_xlabel("Time [s]")
-ax.set_ylabel("Quaternion")
-ax.grid(True)
-ax.legend()
-
-# -------------------------------
-# True quaternion
-# -------------------------------
-ax = axs[1, 1]
-
-for i, lbl in enumerate(("qx", "qy", "qz", "qw")):
-    ax.plot(t, true_q[:, i], label=lbl, marker="o")
-
-ax.set_title("True Quaternion")
-ax.set_xlabel("Time [s]")
-ax.set_ylabel("Quaternion")
-ax.grid(True)
-ax.legend()
-
-plt.tight_layout()
-
-# =====================================================
-# Figure 2 - Commanded vs Applied Torque
-# =====================================================
-
-commanded = history.control_output_data["torque"]
-applied = history.current_torque_exerted
-
-labels = ["X", "Y", "Z"]
-
-fig, axs = plt.subplots(3, 1, figsize=(12, 8), sharex=True)
-
-for i in range(3):
-
-    axs[i].plot(
-        t,
-        commanded[:, i],
-        linewidth=2,
-        label="Commanded",
-    )
-
-    axs[i].plot(
-        t,
-        applied[:, i],
-        "--",
-        linewidth=2,
-        label="Applied",
-    )
-
-    axs[i].set_ylabel(f"$\\tau_{labels[i]}$ [N·m]")
-    axs[i].set_title(f"Torque {labels[i]}")
-    axs[i].grid(True)
-    axs[i].legend()
-
-axs[-1].set_xlabel("Time [s]")
-
-plt.tight_layout()
-plt.show()
+plot_attitude_quaternions("Spacecraft_1", result)
+plot_angular_velocity("Spacecraft_1", result)
+plot_position("Spacecraft_1", result)
+plot_control_result("Spacecraft_1", result)

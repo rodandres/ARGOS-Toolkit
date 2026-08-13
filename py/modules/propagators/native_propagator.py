@@ -98,14 +98,27 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
         elif dynamics == "CR3BP":
             self.dynamics_function = self.cr3bp
             mu = 1.215e-2 # For Earth-Moon system - CR3BP
-            self.arguments  = (mu, )
+            length_factor = 384400.0e3 # Earth-Moon distance in m
+            time_factor = 27.321661 / (2.0 * np.pi) * 24 * 3600 # Sideral lunar month in seconds
+            self.arguments  = (mu, length_factor, time_factor, )
         elif dynamics == "NEWTON":
             self.dynamics_function = None
             self.arguments  = ()
         
         
-    def cr3bp(self, t, state, mu):
+    def cr3bp(self, t, state, mu, length_factor, time_factor):
         x, y, z, x_dot, y_dot, z_dot = state
+
+        # Normalize the position and velocity vectors
+        x /= length_factor
+        y /= length_factor
+        z /= length_factor
+        x_dot /= length_factor / time_factor 
+        y_dot /= length_factor / time_factor
+        z_dot /= length_factor / time_factor
+
+        t_int = t / time_factor  # Normalize time
+
         r1 = np.sqrt((x + mu)**2 + y**2 + z**2)
         r2 = np.sqrt((x - (1 - mu))**2 + y**2 + z**2)    
     
@@ -116,6 +129,14 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
         x_ddot = 2 * y_dot + omega_x
         y_ddot = -2 * x_dot + omega_y
         z_ddot = omega_z
+
+        # Rescale the velocity and acceleration back to original units
+        x_dot *= length_factor / time_factor
+        y_dot *= length_factor / time_factor
+        z_dot *= length_factor / time_factor
+        x_ddot *= length_factor / time_factor**2
+        y_ddot *= length_factor / time_factor**2
+        z_ddot *= length_factor / time_factor**2
 
         velocity = np.array([x_dot, y_dot, z_dot])
         acceleration = np.array([x_ddot, y_ddot, z_ddot])

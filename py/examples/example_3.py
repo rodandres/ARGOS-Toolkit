@@ -6,7 +6,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-secondsdt_propagation=5e-4 
+
+MU = 1.215e-2
+TIME_FACTOR_SEC = 27.321661 / (2.0 * np.pi) * 24 * 3600     # time unit unidad -> sideral lunar month (days)
+LENGTH_FACTOR = 384400.0e3
+
+
+secondsdt_propagation=5e-4 * TIME_FACTOR_SEC 
+
 
 # Define the environment
 from py.modules.enviroments.environments import ClassicalEnvironment
@@ -19,7 +26,7 @@ from py.modules.propagators.native_propagator import NativeTranslationalPropagat
 translational_propagator = NativeTranslationalPropagator(dynamics="CR3BP", integration_method="NATIVE_RK45")
 
 from py.modules.new.simulation import Simulation
-sim = Simulation(max_sim_time=0.75952417*2,                 
+sim = Simulation(max_sim_time=0.75952417*2 * TIME_FACTOR_SEC,
                  environment= env,                 
                  verbose = True
 )
@@ -47,8 +54,8 @@ mission_manager = MissionManager(
     initial_phase=phase
 )
 
-initial_position_SC1 = np.array([1.02262383, 0, -0.18250869])  # Initial position in meters
-initial_velocity_SC1 = np.array([0, -0.10456466, 0])
+initial_position_SC1 = np.array([1.02262383, 0, -0.18250869]) * LENGTH_FACTOR # Initial position in meters
+initial_velocity_SC1 = np.array([0, -0.10456466, 0]) * LENGTH_FACTOR / TIME_FACTOR_SEC # Initial velocity in meters per second
 
 sim.add_spacecraft(
     name="SC1",
@@ -60,6 +67,32 @@ sim.add_spacecraft(
 
 # We can now simulate
 result = sim.simulate()
+
+from py.modules.visualization.trajectories import *
+
+plot_trajectory_xy("SC1", result, show=True, body="Moon",
+                       body_position=np.array([(1-MU)*LENGTH_FACTOR, 0.0, 0.0]),)
+plot_trajectory_xz("SC1", result, show=True, body="Moon",body_position=np.array([(1-MU)*LENGTH_FACTOR, 0.0, 0.0]),)
+plot_trajectory_yz("SC1", result, show=True, body="Moon",body_position=np.array([(1-MU)*LENGTH_FACTOR, 0.0, 0.0]),)
+plot_trajectory_3d("SC1", result, show=True, body="Moon",body_position=np.array([(1-MU)*LENGTH_FACTOR, 0.0, 0.0]),)
+plot_trajectory("SC1", result, show=True, body="Moon",body_position=np.array([(1-MU)*LENGTH_FACTOR, 0.0, 0.0]),)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D

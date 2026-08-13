@@ -75,7 +75,7 @@ class RCSThruster(ActuatorBase):
         self.command_time = 0.0
 
     def _check_initialization(self):
-        if self.nominal_thrust <= 0:
+        if self.nominal_thrust < 0:
             raise ValueError("Nominal thrust must be positive.")
 
         if self.modulation_window <= 0:
