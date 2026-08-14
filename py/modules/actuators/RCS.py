@@ -204,3 +204,19 @@ class RCSThruster(ActuatorBase):
 
         if self.override_torque:
             self._actual_torque = self.override_torque_value * self.direction  # Override torque if the flag is set
+
+    def print_information(self):
+        print("RCS Thruster Information:")
+        print(f"Is controllable: {self.controllable}")
+        print(f"Is available: {self.available}")
+        print(f"Has been used: {self.used}")
+        print(f"Nominal Thrust: {self.nominal_thrust} N")
+        print(f"Position: {self.position}")
+        print(f"Direction: {self.direction}")
+        print(f"Command Mode: {self.command_mode}")
+        print(f"Modulation Window: {self.modulation_window} s")
+        print(f"Minimum On Time: {self.minimum_on_time} s")
+        print(f"Activation Threshold: {self.activation_threshold} N")
+        print("Override Torque Enabled: {}".format("Yes" if self.override_torque else "No"))
+        if self.override_torque:            
+            print(f"Override Torque Value: {self.override_torque_value} Nm")        

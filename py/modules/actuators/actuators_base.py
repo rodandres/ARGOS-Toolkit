@@ -14,9 +14,9 @@ class ActuatorBase(ABC):
     """
 
     def __init__(self):        
-        self.is_available = True  # Flag to indicate if the actuator is available for use
-        self.has_been_used = False  # Flag to indicate if the actuator has been used at least once
-        self.is_controlable = True  # Flag to indicate if the actuator can be controlled
+        self.available = True  # Flag to indicate if the actuator is available for use
+        self.used = False  # Flag to indicate if the actuator has been used at least once
+        self.controllable = True  # Flag to indicate if the actuator can be controlled
 
         self.override_torque = False
 
@@ -40,6 +40,31 @@ class ActuatorBase(ABC):
         Return the current output of the actuator.
         """
         pass
+
+    @abstractmethod
+    def print_information(self):
+        """
+        Print actuator information to the console.
+        """
+        pass
+
+    def is_available(self) -> bool:
+        """
+        Check if the actuator is available for use.
+        """
+        return self.available
+
+    def is_controllable(self) -> bool:
+        """
+        Check if the actuator can be controlled.
+        """
+        return self.controllable
+
+    def has_been_used(self) -> bool:
+        """
+        Check if the actuator has been used at least once.
+        """
+        return self.used
 
 
 class RCSThruster_old(ActuatorBase):
