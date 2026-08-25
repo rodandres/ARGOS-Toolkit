@@ -238,7 +238,7 @@ sim.add_spacecraft(
 result = sim.simulate()
 
 from py.modules.visualization.state_variables import plot_attitude_quaternions, plot_angular_velocity, plot_position
-from py.modules.visualization.control import plot_control_result
+from py.modules.visualization.gnc import plot_control_result
 
 
 plot_attitude_quaternions("Spacecraft_1", result)
