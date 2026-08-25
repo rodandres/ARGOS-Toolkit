@@ -2,26 +2,6 @@ import copy
 from dataclasses import is_dataclass
 import numpy as np
 
-
-# def _stack(obj_list):
-#     """
-#     Convierte una lista de dataclasses en un diccionario de numpy arrays
-#     de forma recursiva.
-#     """
-
-#     first = obj_list[0]
-
-#     if is_dataclass(first):
-#         return {
-#             field: _stack([getattr(obj, field) for obj in obj_list])
-#             for field in first.__dataclass_fields__
-#         }
-
-#     if isinstance(first, np.ndarray):
-#         return np.asarray(obj_list)
-
-#     return obj_list
-
 def _stack(obj_list, path="root"):
     """
     Convierte recursivamente dataclasses y arrays en estructuras
@@ -100,6 +80,8 @@ class SpacecraftHistory:
         self.current_force_exerted = []
         self.current_torque_exerted = []
 
+        self.target_name = []
+
     def record(self, data):
 
         self.t.append(data.t)
@@ -113,6 +95,8 @@ class SpacecraftHistory:
 
         self.current_force_exerted.append(data.current_force_exerted.copy())
         self.current_torque_exerted.append(data.current_torque_exerted.copy())
+
+        self.target_name.append(data.target_name)
 
     def finalize(self):
 
@@ -130,6 +114,8 @@ class SpacecraftHistory:
         self.current_force_exerted = np.asarray(self.current_force_exerted)
 
         self.current_torque_exerted = np.asarray(self.current_torque_exerted)
+
+        self.target_name = np.asarray(self.target_name)
 
 
 class SimulationHistory:

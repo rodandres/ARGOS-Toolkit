@@ -4,6 +4,8 @@ import numpy as np
 
 from typing import TYPE_CHECKING
 
+from py.general.data_save import SimulationHistory
+
 if TYPE_CHECKING:
     from py.modules.controllers.controller_base import ControllerBase, ControlAllocatorBase
     from py.modules.guidance.guidance_base import GuidanceBase
@@ -41,6 +43,8 @@ class SimulationData:
     t: float =  field(default=0.0)
     tick: int = field(default=0)
     verbose: bool = False
+
+    simulation_history: "SimulationHistory" = field(default_factory=lambda: SimulationHistory())
 
     DCM_inertial_to_body: np.ndarray = field(default_factory=lambda: np.eye(3))
 

@@ -37,7 +37,7 @@ class Simulation:
 
         self.environment = environment
 
-        self.simulation_history = SimulationHistory()
+        self.simulation_data.simulation_history = SimulationHistory()
 
         self.verbose = verbose
 
@@ -137,6 +137,10 @@ class Simulation:
             print("Initializing simulation...")
         
         self._set_dt_master()
+
+        for spacecraft in self.simulation_data.spacecrafts:
+            self.simulation_data.simulation_history.record_spacecraft(spacecraft)
+
     
         if self.verbose:
             print("Simulation initialized.")
@@ -155,7 +159,6 @@ class Simulation:
         self.simulation_data.tick = np.nan
 
         while t < self.simulation_data.max_sim_time:
-
 
             for spacecraft in self.simulation_data.spacecrafts:
                 if spacecraft.spacecraft_data.t >= self.simulation_data.max_sim_time:                    
@@ -192,12 +195,12 @@ class Simulation:
                 spacecraft.spacecraft_data.tick += 1
                 current_ts.append(t_spacecraft)
 
-                self.simulation_history.record_spacecraft(spacecraft)
+                self.simulation_data.simulation_history.record_spacecraft(spacecraft)
 
 
             try:
                 t = min(current_ts)
-            except ValueError:                
+            except ValueError:
                 break  # Exit the loop if there are no spacecrafts to simulate
 
             current_ts = []  # Reset for the next iteration
@@ -205,9 +208,9 @@ class Simulation:
         
         if self.verbose: print("Simulation completed.")
 
-        self.simulation_history.finalize()  # Finalize the history after the simulation is complete
+        self.simulation_data.simulation_history.finalize()  # Finalize the history after the simulation is complete
 
-        return self.simulation_history
+        return self.simulation_data.simulation_history
 
 
 

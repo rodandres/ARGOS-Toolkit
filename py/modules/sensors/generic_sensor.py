@@ -1,5 +1,6 @@
 import numpy as np
 
+from py.modules.general_tools import get_state_at
 from py.modules.sensors.sensor_base import SensorBase
 
 
@@ -210,24 +211,48 @@ class AbsoluteSensor(SensorBase):
             spacecraft_data.true_state.angular_acceleration
         )
 
-        reference_spacecraft_data_to_return = None
-        reference_spacecraft_name = spacecraft_data.target_name        
+        # reference_spacecraft_data_to_return = None
+        # reference_spacecraft_name = spacecraft_data.target_name        
         
-        if reference_spacecraft_name is not None:
+        # if reference_spacecraft_name is not None:
             
-            for spacecraft in simulation_data.spacecrafts:
-                if spacecraft.name == reference_spacecraft_name:                    
-                    reference_spacecraft_data = spacecraft.spacecraft_data
-                    reference_spacecraft_data_to_return = (
-                        reference_spacecraft_data.true_state.position,
-                        reference_spacecraft_data.true_state.velocity,
-                        reference_spacecraft_data.true_state.acceleration,
-                        reference_spacecraft_data.true_state.attitude,
-                        reference_spacecraft_data.true_state.angular_velocity,
-                        reference_spacecraft_data.true_state.angular_acceleration
-                    )
+        #     for spacecraft in simulation_data.spacecrafts:
+        #         if spacecraft.name == reference_spacecraft_name:
+        #             reference_spacecraft_data = spacecraft.spacecraft_data
+        #             reference_spacecraft_data_to_return = (
+        #                 reference_spacecraft_data.true_state.position,
+        #                 reference_spacecraft_data.true_state.velocity,
+        #                 reference_spacecraft_data.true_state.acceleration,
+        #                 reference_spacecraft_data.true_state.attitude,
+        #                 reference_spacecraft_data.true_state.angular_velocity,
+        #                 reference_spacecraft_data.true_state.angular_acceleration
+        #             )
                     
-                    break
+        #             break
+
+
+        reference_spacecraft_data_to_return = None
+
+        reference_spacecraft_name = spacecraft_data.target_name
+
+        if reference_spacecraft_name is not None:
+
+            reference_state = get_state_at(
+                history=simulation_data.simulation_history,
+                spacecraft_name=reference_spacecraft_name,
+                t=spacecraft_data.t
+            )
+
+            reference_spacecraft_data_to_return = (
+                reference_state.position,
+                reference_state.velocity,
+                reference_state.acceleration,
+                reference_state.attitude,
+                reference_state.angular_velocity,
+                reference_state.angular_acceleration
+    )
+
+
         else:
             reference_spacecraft_data_to_return = (            
                 np.zeros(3),
