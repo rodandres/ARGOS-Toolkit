@@ -1,66 +1,98 @@
+# %% [markdown]
+# # Example 2 — Multi-Spacecraft Translational Simulation
+# 
+# This example demonstrates a simulation containing two spacecraft with independent translational propagators and navigation laws. SC1 is configured with SC2 as its target, illustrating the multi-spacecraft structure and target-state access.
+
+# %% [markdown]
+# ### Notes and repository setup
+# 
+# Initial imports and repository-path configuration used by the example.
+
+# %%
 import numpy as np
 from pathlib import Path
 import sys
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+path = Path.cwd()
+
+REPO_ROOT = path.parents[1]
+
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+# %% [markdown]
+# ## General Simulation Setup
+# 
+# ARGOS can work with multiple spacecrafts at a time, however, before defining any spacecraft, we need to define a common simulation setup
+
+# %% [markdown]
+# ### Environment
+# 
+# The environment object provides the simulation environment in which the spacecraft dynamics are evaluated.
+
+# %%
 # Define the environment
 from py.modules.enviroments.environments import ClassicalEnvironment
 
 env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of the environment class
 
-# Then, define the propagators
-from py.modules.propagators.native_propagator import NativeTranslationalPropagator
+# %% [markdown]
+# ### Simulation setup
+# 
+# The `Simulation` object defines the overall simulation horizon and environment. This works as a central orchestator for each spacecraft that will be added to the sim.
+# 
+# *Note: All the units in the simulations are in the Inertational Metric System*
 
-translational_propagator = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
-translational_propagator2 = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
-
+# %%
 from py.modules.new.simulation import Simulation
-sim = Simulation(max_sim_time=1*60*60,                 
+
+sim = Simulation(max_sim_time=3*60*60,                 
                  environment= env,                 
                  verbose = True
 )
 
-dt1 = 10.0  # Propagation update every 10 seconds
-dt2 = 10.0  # Propagation update every 10 seconds
+# %% [markdown]
+# ## Spacecraft 2 - Creation - SC2
+# 
+# As seen in the first example, several things need to be define depending on the detail wanted. In this case, as we just want a translational (orbital dynamics propagator), no actuators will be defined.
+# 
+# However, we will define an absolute sensor and a mission manager.
+# 
+# As this is a basic case, where there is just translational motion, no other GNC or phases will be defined. This translational motion, could be propagated under different dynamics equations, the most common, the basic two body relative problem, which can be used by setting the parameter `dynamics` to `REL2BP`
 
+# %%
+from py.modules.propagators.native_propagator import NativeTranslationalPropagator
 from py.modules.sensors.generic_sensor import AbsoluteSensor
 
-sensors = [AbsoluteSensor(1/dt1, verbose=False)]  # Sample rate of 100 Hz
-sensors2 = [AbsoluteSensor(1/dt2, verbose=False)]  # Sample rate of 100 Hz
+translational_propagator_SC2 = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
 
+dt_SC2 = 10 # Time step for the Spacecraft 2 in seconds
+
+sensors_SC2 = [AbsoluteSensor(1/dt_SC2, verbose=False)]
+
+# %%
 from py.modules.navigation.basic_laws import IdealNavigation
 from py.general.dataclasses import MissionPhase
 from py.modules.new.mission_manager import MissionManager
 
-nav_law = IdealNavigation()
-nav_law2 = IdealNavigation()
+nav_law_SC2 = IdealNavigation()
 
-phase = MissionPhase(
-    name="Phase 1",
-    navigation=nav_law,
-    dt_nav=dt1,  # Navigation update every 1 second
-    translational_model=translational_propagator,
-    dt_propagation= dt1  # Propagation update every 1 second
-)
-phase2 = MissionPhase(
-    name="Phase 1",
-    navigation=nav_law2,
-    dt_nav=dt2,  # Navigation update every 1 second
-    dt_propagation=dt2,  # Propagation update every 10 seconds
-    translational_model=translational_propagator2
+phase_SC2 = MissionPhase(
+    name="Phase 1 - SC2",
+    navigation=nav_law_SC2,
+    dt_nav=dt_SC2,
+    dt_propagation=dt_SC2,
+    translational_model=translational_propagator_SC2
 )
 
-mission_manager = MissionManager(
-    initial_phase=phase
-)
-
-mission_manager2 = MissionManager(
-    initial_phase=phase2
+mission_manager_SC2 = MissionManager(
+    initial_phase=phase_SC2
 ) 
 
+# %% [markdown]
+# We now define the initial conditions of an spacecraft in LEO, and we add the spacecraft to the simulation
+
+# %%
 initial_position_SC2 = np.array([0, 7000e3, 0])  # Initial position in meters
 initial_velocity_SC2 = np.array([7.5e3, 0, 0])
 
@@ -68,36 +100,61 @@ sim.add_spacecraft(
     name="SC2",
     initial_position=initial_position_SC2,
     initial_velocity=initial_velocity_SC2,
-    sensors=sensors2,
-    mission_manager=mission_manager2,
+    sensors=sensors_SC2,
+    mission_manager=mission_manager_SC2,
 )
+
+# %% [markdown]
+# ## Spacecraft 1 - Creation - SC1
+# 
+# We will create an spacecraft equally to the Spacecraft 2, with the only difference that we will set the target of SC1 to be SC2
+
+# %%
+translational_propagator_SC1 = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
+
+dt_SC1 = 5 # Time step for the Spacecraft 1 in seconds
+
+sensors_SC1 = [AbsoluteSensor(1/dt_SC1, verbose=False)]
+
+nav_law_SC1 = IdealNavigation()
+
+phase_SC1 = MissionPhase(
+    name="Phase 1 - SC1",
+    navigation=nav_law_SC1,
+    dt_nav=dt_SC1,
+    dt_propagation=dt_SC1,
+    translational_model=translational_propagator_SC1
+)
+
+mission_manager_SC1 = MissionManager(
+    initial_phase=phase_SC1
+) 
+
 
 initial_position_SC1 = np.array([7000e3, 0, 3500e3])  # Initial position in meters
 initial_velocity_SC1 = np.array([0, 7.5e3, 0])
-initial_attitude = np.array([0, 0, 0, 1])  # Initial quaternion
-initial_angular_velocity = np.array([0, 0, 0])  # Initial angular velocity in rad/s
 
 sim.add_spacecraft(
     name="SC1",
     initial_position=initial_position_SC1,
     initial_velocity=initial_velocity_SC1,
-    sensors=sensors,
-    mission_manager=mission_manager,
+    sensors=sensors_SC1,
+    mission_manager=mission_manager_SC1,
     target_name="SC2"
 )
 
+# %% [markdown]
+# ## Simulation execution and results
+# 
+# We can now simulate and use some already built-in functions to graph the results.
+# 
+# Note how the ideal navigation corretly identifies the target position
+
+# %%
 # We can now simulate
 result = sim.simulate()
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
-
-from py.modules.visualization.state_variables import plot_attitude_quaternions, plot_position
-
-plot_attitude_quaternions(["SC1", "SC2"], result, show=True)
-plot_position(["SC1", "SC2"], result, show=True)
-
+# %%
 from py.modules.visualization.trajectories import *
 
 plot_trajectory_xy(["SC1", "SC2"], result, show=True, body="Earth",)
@@ -105,3 +162,12 @@ plot_trajectory_xz(["SC1", "SC2"], result, show=True, body="Earth",)
 plot_trajectory_yz(["SC1", "SC2"], result, show=True, body="Earth",)
 plot_trajectory_3d(["SC1", "SC2"], result, show=True, body="Earth",)
 plot_trajectory(["SC1", "SC2"], result, show=True, body="Earth",)
+
+
+from py.modules.visualization.gnc import *
+plot_state_comparison(["SC1", "SC2"], result, show=True)
+
+# %%
+
+
+

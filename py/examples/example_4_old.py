@@ -1,40 +1,17 @@
-# %% [markdown]
-# # Example 4 — Mission Phase Transition and Attitude Control
-# 
-# This example demonstrates a multi-phase mission for SC1. The spacecraft begins in a translational phase and transitions to a phase containing guidance, navigation, attitude control, RCS actuation, and high-rate rotational/translational propagation.
-# 
-# The code below preserves the original example. The surrounding Markdown cells document the purpose and role of each part of the simulation.
-
-# %%
 import numpy as np
 from pathlib import Path
 import sys
 
-path = Path.cwd()
-
-REPO_ROOT = path.parents[1]
-
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-# %% [markdown]
-# ### Environment
-# 
-# The environment object provides the simulation environment in which the spacecraft dynamics are evaluated.
-
-# %%
 # Define the environment
 from py.modules.controllers.basic_laws import BasicRCSAllocator
 from py.modules.enviroments.environments import ClassicalEnvironment
 
 env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of the environment class
 
-# %% [markdown]
-# ### Propagators
-# 
-# The propagator defines the dynamical model and numerical integration method used by the simulation.
-
-# %%
 # Then, define the propagatorss
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator
 translational_propagator2 = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
@@ -253,12 +230,6 @@ sim.add_spacecraft(
     actuators=thrusters,
 )
 
-# %% [markdown]
-# ### Simulation execution and results
-# 
-# The configured simulation is executed and its results are passed to the visualization utilities.
-
-# %%
 # We can now simulate
 result = sim.simulate()
 
@@ -269,7 +240,7 @@ plot_attitude_quaternions(["SC1", "SC2"], result, show=True)
 plot_position(["SC1", "SC2"], result, show=True)
 
 
-from py.modules.visualization.control import plot_control_result
+from py.modules.visualization.gnc import plot_control_result
 plot_control_result("SC1", result)
 
 from py.modules.visualization.trajectories import *
@@ -279,10 +250,3 @@ plot_trajectory_xz(["SC1", "SC2"], result, show=True, body="Earth",)
 plot_trajectory_yz(["SC1", "SC2"], result, show=True, body="Earth",)
 plot_trajectory_3d(["SC1", "SC2"], result, show=True, body="Earth",)
 plot_trajectory(["SC1", "SC2"], result, show=True, body="Earth",)
-
-# %% [markdown]
-# ### Example scope
-# 
-# This notebook documents the example as provided. No simulation logic, parameters, class usage, or numerical values have been changed during conversion.
-
-
