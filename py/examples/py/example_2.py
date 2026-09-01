@@ -1,12 +1,12 @@
 # %% [markdown]
 # # Example 2 — Multi-Spacecraft Translational Simulation
 # 
-# This example demonstrates a simulation containing two spacecraft with independent translational propagators and navigation laws. SC1 is configured with SC2 as its target, illustrating the multi-spacecraft structure and target-state access.
+# This example demonstrates a simulation containing two spacecraft with independent translational propagators and navigation laws. SC1 is configured with SC2 as its target, illustrating the multi-spacecraft structure and access to the target state.
 
 # %% [markdown]
 # ### Notes and repository setup
 # 
-# Initial imports and repository-path configuration used by the example.
+# Initial imports and repository path configuration used by the example.
 
 # %%
 import numpy as np
@@ -23,7 +23,7 @@ if str(REPO_ROOT) not in sys.path:
 # %% [markdown]
 # ## General Simulation Setup
 # 
-# ARGOS can work with multiple spacecrafts at a time, however, before defining any spacecraft, we need to define a common simulation setup
+# ARGOS can work with multiple spacecraft at a time; however, before defining any spacecraft, we need to define a common simulation setup.
 
 # %% [markdown]
 # ### Environment
@@ -39,9 +39,9 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 # %% [markdown]
 # ### Simulation setup
 # 
-# The `Simulation` object defines the overall simulation horizon and environment. This works as a central orchestator for each spacecraft that will be added to the sim.
+# The `Simulation` object defines the overall simulation horizon and environment. This works as a central orchestrator for each spacecraft that will be added to the sim.
 # 
-# *Note: All the units in the simulations are in the Inertational Metric System*
+# *Note: All the units in the simulations are in the International Metric System.*
 
 # %%
 from py.modules.new.simulation import Simulation
@@ -54,11 +54,11 @@ sim = Simulation(max_sim_time=3*60*60,
 # %% [markdown]
 # ## Spacecraft 2 - Creation - SC2
 # 
-# As seen in the first example, several things need to be define depending on the detail wanted. In this case, as we just want a translational (orbital dynamics propagator), no actuators will be defined.
+# As seen in the first example, several things need to be defined depending on the level of detail desired. In this case, as we just want a translational (orbital dynamics) propagator, no actuators will be defined.
 # 
 # However, we will define an absolute sensor and a mission manager.
 # 
-# As this is a basic case, where there is just translational motion, no other GNC or phases will be defined. This translational motion, could be propagated under different dynamics equations, the most common, the basic two body relative problem, which can be used by setting the parameter `dynamics` to `REL2BP`
+# As this is a basic case, where there is just translational motion, no other GNC or phases will be defined. This translational motion could be propagated under different dynamic equations, the most common being the basic two-body relative problem, which can be used by setting the parameter `dynamics` to `REL2BP`.
 
 # %%
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator
@@ -90,7 +90,7 @@ mission_manager_SC2 = MissionManager(
 ) 
 
 # %% [markdown]
-# We now define the initial conditions of an spacecraft in LEO, and we add the spacecraft to the simulation
+# We now define the initial conditions of a spacecraft in LEO, and we add the spacecraft to the simulation.
 
 # %%
 initial_position_SC2 = np.array([0, 7000e3, 0])  # Initial position in meters
@@ -107,7 +107,7 @@ sim.add_spacecraft(
 # %% [markdown]
 # ## Spacecraft 1 - Creation - SC1
 # 
-# We will create an spacecraft equally to the Spacecraft 2, with the only difference that we will set the target of SC1 to be SC2
+# We will create a spacecraft similarly to Spacecraft 2, with the only difference being that we will set SC2 as the target of SC1.
 
 # %%
 translational_propagator_SC1 = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
@@ -146,9 +146,9 @@ sim.add_spacecraft(
 # %% [markdown]
 # ## Simulation execution and results
 # 
-# We can now simulate and use some already built-in functions to graph the results.
+# We can now simulate and use some built-in functions to graph the results.
 # 
-# Note how the ideal navigation corretly identifies the target position
+# Note how the ideal navigation correctly identifies the target position.
 
 # %%
 # We can now simulate

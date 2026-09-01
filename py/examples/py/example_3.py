@@ -19,7 +19,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 # %% [markdown]
-# As we are working with the CR3BP, usually it is in the normalized units. However, as the toolkit uses SI units, we need to define the correspondeant factors to make the respective translations between units
+# As we are working with the CR3BP, it is usually expressed in normalized units. However, as the toolkit uses SI units, we need to define the corresponding factors to make the respective conversions between units.
 
 # %%
 MU = 1.215e-2
@@ -29,7 +29,7 @@ LENGTH_FACTOR = 384400.0e3
 # %% [markdown]
 # ## General Simulation Setup
 # 
-# We start the simulation setup equally to the previous examples
+# We start the simulation setup similarly to the previous examples.
 
 # %% [markdown]
 # ### Environment
@@ -45,9 +45,9 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 # %% [markdown]
 # ### Simulation setup
 # 
-# The `Simulation` object defines the overall simulation horizon and environment. This works as a central orchestator for each spacecraft that will be added to the sim.
+# The `Simulation` object defines the overall simulation horizon and environment. This works as a central orchestrator for each spacecraft that will be added to the sim.
 # 
-# *Note: All the units in the simulations are in the Inertational Metric System*
+# *Note: All the units in the simulations are in the International Metric System.*
 
 # %%
 from py.modules.new.simulation import Simulation
@@ -59,9 +59,10 @@ sim = Simulation(max_sim_time=0.75952417*2 * TIME_FACTOR_SEC * 10,
 
 # %% [markdown]
 # ## Spacecraft Creation
+# 
 # Similar to the second example, we will define an absolute sensor and a mission manager with a single phase.
 # 
-# As this is a basic case, where there is just translational motion, no other GNC or phases will be defined. This translational motion, could be propagated under different dynamics equations, in this case, we will use the `CR3BP` method.
+# As this is a basic case, where there is just translational motion, no other GNC or phases will be defined. This translational motion could be propagated under different dynamic equations. In this case, we will use the `CR3BP` method.
 
 # %%
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator
@@ -93,7 +94,7 @@ mission_manager = MissionManager(
 ) 
 
 # %% [markdown]
-# We now define the initial conditions for an NRHO orbit, and add the spacecraft to the simulation
+# We now define the initial conditions for an NRHO orbit and add the spacecraft to the simulation.
 
 # %%
 initial_position = np.array([1.02262383, 0, -0.18250869]) * LENGTH_FACTOR # Initial position in meters
@@ -110,7 +111,7 @@ sim.add_spacecraft(
 # %% [markdown]
 # ## Simulation execution and results
 # 
-# We can now simulate and use some already built-in functions to graph the results.
+# We can now simulate and use some built-in functions to graph the results.
 
 # %%
 # We can now simulate
@@ -124,8 +125,5 @@ plot_trajectory("SC", result, show=True, body="Moon",body_position=np.array([(1-
 from py.modules.visualization.state_variables import plot_position
 
 plot_position("SC", result)
-
-# %%
-
 
 

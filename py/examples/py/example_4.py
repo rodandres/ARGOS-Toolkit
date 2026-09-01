@@ -6,7 +6,7 @@
 # %% [markdown]
 # ### Notes and repository setup
 # 
-# Initial imports and repository-path configuration used by the example.
+# Initial imports and repository path configuration used by the example.
 
 # %%
 import numpy as np
@@ -23,7 +23,7 @@ if str(REPO_ROOT) not in sys.path:
 # %% [markdown]
 # ## General Simulation Setup
 # 
-# We start the simulation setup equally to the previous examples
+# We start the simulation setup similarly to the previous examples.
 
 # %% [markdown]
 # ### Environment
@@ -39,9 +39,9 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 # %% [markdown]
 # ### Simulation setup
 # 
-# The `Simulation` object defines the overall simulation horizon and environment. This works as a central orchestator for each spacecraft that will be added to the sim.
+# The `Simulation` object defines the overall simulation horizon and environment. This works as a central orchestrator for each spacecraft that will be added to the sim.
 # 
-# *Note: All the units in the simulations are in the Inertational Metric System*
+# *Note: All the units in the simulations are in the International Metric System.*
 
 # %%
 from py.modules.new.simulation import Simulation
@@ -55,7 +55,8 @@ sim = Simulation(max_sim_time=sim_max_time,
 
 # %% [markdown]
 # ## Spacecraft Creation
-# We will begin by creating an spacecraft similar to the first example, with thrusters, but with two absolute sensors, each with a different refresh time, so each phase can use one different.
+# 
+# We will begin by creating a spacecraft similar to the first example, with thrusters, but with two absolute sensors, each with a different refresh time, so each phase can use a different one.
 
 # %%
 from py.modules.sensors.generic_sensor import AbsoluteSensor
@@ -128,7 +129,7 @@ thruster_Z_neg = RCSThruster(
 thrusters = [thruster_X_pos, thruster_X_neg, thruster_Y_pos, thruster_Y_neg, thruster_Z_pos, thruster_Z_neg]
 
 # %% [markdown]
-# We will now begin to model the first phase of the mission, which will be similar to the one in example 2
+# We will now begin to model the first phase of the mission, which will be similar to the one in Example 2.
 
 # %%
 from py.modules.navigation.basic_laws import IdealNavigation
@@ -149,9 +150,9 @@ initial_phase = MissionPhase(
 )
 
 # %% [markdown]
-# Now we will model the second phase, which will join both translational and rotational movement, with an attitude controller.
+# Now we will model the second phase, which will combine both translational and rotational movement, with an attitude controller.
 # 
-# As mention previous, see that we have two absolute sensors, as we want to use the second absolute sensor in this phase, we can pass that to the ideal navigation law.
+# As mentioned previously, note that we have two absolute sensors. As we want to use the second absolute sensor in this phase, we can pass that to the ideal navigation law.
 
 # %%
 translational_propagator_phase_2 = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
@@ -205,7 +206,7 @@ second_phase = MissionPhase(
 # %% [markdown]
 # ### Mission Manager and Transitions
 # 
-# We can now begin to model the mission manager and its transitions, so we begin by setting which is the initial phase, adn then adding the second phase
+# We can now begin to model the mission manager and its transitions, so we begin by setting which is the initial phase and then adding the second phase.
 
 # %%
 from py.modules.new.mission_manager import MissionManager
@@ -218,11 +219,11 @@ mission_manager.add_phases(second_phase)
 
 
 # %% [markdown]
-# For the transition, we can have multiple transitions between the two same phases, as each transition can be triggered by different parameters, for example when passing certain time, or when a certain position / velocity is aquired.
+# For the transition, we can have multiple transitions between the same two phases, as each transition can be triggered by different parameters, for example, when a certain amount of time has passed, or when a certain position/velocity is acquired.
 # 
 # In this case, we will define a single transition between phases.
 # 
-# That transition, needs a function which will be evaluated during the run time seeing if the condition is meet, therefore, any condition needs to return a bool, true if it will trigger the transition or false if not
+# That transition needs a function that will be evaluated during runtime to see if the condition is met. Therefore, any condition needs to return a bool, true if it will trigger the transition or false if not.
 
 # %%
 
@@ -236,7 +237,7 @@ def condition_sc1_time(simulation_data) -> bool:
     return False
 
 # %% [markdown]
-# Then we can just add the transition
+# Then we can just add the transition.
 
 # %%
 
@@ -249,7 +250,7 @@ mission_manager.add_transition(
 # %% [markdown]
 # ### Creation
 # 
-# We can now create the spacecraft
+# We can now create the spacecraft.
 
 # %%
 initial_position = np.array([7000e3, 0, 3500e3])  # Initial position in meters
@@ -281,7 +282,7 @@ sim.add_spacecraft(
 # %% [markdown]
 # ## Simulation execution and results
 # 
-# We can now simulate and use some already built-in functions to graph the results.
+# We can now simulate and use some built-in functions to graph the results.
 
 # %%
 # We can now simulate
