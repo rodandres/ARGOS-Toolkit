@@ -13,7 +13,7 @@ if str(REPO_ROOT) not in sys.path:
 
 import numpy as np
 
-from py.modules.new.spacecraft import Spacecraft
+from py.modules.core.spacecraft import Spacecraft
 from py.general.dataclasses import SimulationData
 from py.general.data_save import SimulationHistory
 

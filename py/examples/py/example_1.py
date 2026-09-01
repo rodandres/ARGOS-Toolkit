@@ -43,7 +43,7 @@ env = ClassicalEnvironment()
 # *Note: All the units in the simulations are in the International Metric System.*
 
 # %%
-from py.modules.new.simulation import Simulation
+from py.modules.core.simulation import Simulation
 
 sim = Simulation(max_sim_time=5*60, # 3 minutes,                 
                  environment= env,                 
@@ -377,7 +377,7 @@ phase = MissionPhase(
 # With that, we can set this phase as the initial phase in the mission manager. In this example, it is not covered how to add phases and transitions; this is covered in Example 4.
 
 # %%
-from py.modules.new.mission_manager import MissionManager
+from py.modules.core.mission_manager import MissionManager
 
 mission_manager = MissionManager(
     initial_phase= phase

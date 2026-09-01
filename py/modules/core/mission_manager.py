@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from py.general.dataclasses import MissionPhase
 
 if TYPE_CHECKING:
-    from py.modules.new.simulation import SimulationData
+    from py.modules.core.simulation import SimulationData
 
 
 class MissionManager: # NOTE add method to print info about the transitions

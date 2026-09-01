@@ -5,7 +5,7 @@ from py.modules.solvers.solvers_base import solve
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.modules.new.spacecraft import Spacecraft
+    from py.modules.core.spacecraft import Spacecraft
     from py.general.dataclasses import SimulationData
     from py.modules.enviroments.environment_base import EnvironmentBase
 

@@ -2,7 +2,7 @@ import warnings
 import numpy as np
 
 from py.general.dataclasses import SpacecraftData
-from py.modules.new.mission_manager import MissionManager
+from py.modules.core.mission_manager import MissionManager
 from py.modules.sensors.sensor_base import SensorBase
 from py.modules.actuators.actuators_base import ActuatorBase
 

@@ -44,7 +44,7 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 # *Note: All the units in the simulations are in the International Metric System.*
 
 # %%
-from py.modules.new.simulation import Simulation
+from py.modules.core.simulation import Simulation
 
 sim_max_time = 60*15
 
@@ -209,7 +209,7 @@ second_phase = MissionPhase(
 # We can now begin to model the mission manager and its transitions, so we begin by setting which is the initial phase and then adding the second phase.
 
 # %%
-from py.modules.new.mission_manager import MissionManager
+from py.modules.core.mission_manager import MissionManager
 
 mission_manager = MissionManager(
     initial_phase=initial_phase

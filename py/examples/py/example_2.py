@@ -44,7 +44,7 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 # *Note: All the units in the simulations are in the International Metric System.*
 
 # %%
-from py.modules.new.simulation import Simulation
+from py.modules.core.simulation import Simulation
 
 sim = Simulation(max_sim_time=3*60*60,                 
                  environment= env,                 
@@ -73,7 +73,7 @@ sensors_SC2 = [AbsoluteSensor(1/dt_SC2, verbose=False)]
 # %%
 from py.modules.navigation.basic_laws import IdealNavigation
 from py.general.dataclasses import MissionPhase
-from py.modules.new.mission_manager import MissionManager
+from py.modules.core.mission_manager import MissionManager
 
 nav_law_SC2 = IdealNavigation()
 
