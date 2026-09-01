@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from py.modules.controllers import PDAttitudeController
+from py.modules.controllers.classic_controllers import PDAttitudeController
 from py.modules.math import euler_from_quaternion, quaternion_error, quaternion_to_DCM
 
 FIGURE_BG = "#0b1020"
