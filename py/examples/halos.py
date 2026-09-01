@@ -11,7 +11,7 @@ if str(REPO_ROOT) not in sys.path:
 from py.modules.solvers.RK45 import rk45
 from py.modules.cislunar_astrodynamics.cr3bp_engine import cr3bp, find_L_points, eigenvalues_on_L_points
 
-from py.modules.cislunar_astrodynamics.new import *
+from py.modules.cislunar_astrodynamics.lyapunov_halo_engine import *
 
 orbits = []
 

@@ -46,7 +46,7 @@ plt.rcParams.update(
     }
 )
 
-from py.modules.cislunar_astrodynamics.lyapunov_halo_engine import (
+from py.modules.cislunar_astrodynamics.cr3bp_engine import (
     effective_potential,
     eigenvalues_on_L_points,
     find_L_points,
