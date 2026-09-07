@@ -56,6 +56,8 @@ class Spacecraft():
 
         self._init_state_variables(initial_state)
         self._check_initialization()
+        self._set_actuators_names()
+        self._set_sensors_names()
 
         self.verbose = verbose
 
@@ -65,6 +67,52 @@ class Spacecraft():
             self.show_spacecraft_gnc_info()
             self.show_spacecraft_state_info()
             print("="*10 + " End of spacecraft information. " + "="*10)
+
+    def _set_sensors_names(self):
+        sensors_count = 0
+        for sensor in self.sensors:
+            if sensor.name is None:
+                sensor.name = f"Sensor_{sensors_count}"
+                sensors_count += 1
+
+    def _set_actuators_names(self):
+        actuators_count = 0
+        for actuator in self.actuators:
+            if actuator.name is None:
+                actuator.name = f"Actuator_{actuators_count}"
+                actuators_count += 1
+
+    def update_sensor_name(self, current_name: str, new_name: str):
+        '''
+        Update the name of a sensor in the spacecraft's sensor list.
+        
+        Parameters:
+        actual_name (str): The current name of the sensor to be updated.
+        new_name (str): The new name to assign to the sensor.                    
+        '''
+        name_changed = False
+        for sensor in self.sensors:
+            if sensor.name == current_name:
+                sensor.name = new_name
+                name_changed = True
+                print(f"Sensor name changed from '{current_name}' to '{new_name}'.")
+                break
+
+        if not name_changed:
+            print(f"No sensor found with the name '{current_name}'. Name change not applied.")
+
+    def update_actuator_name(self, current_name: str, new_name: str):
+        name_changed = False
+        for actuator in self.actuators:
+            if actuator.name == current_name:
+                actuator.name = new_name
+                name_changed = True
+                print(f"Actuator name changed from '{current_name}' to '{new_name}'.")
+                break
+
+        if not name_changed:
+            print(f"No actuator found with the name '{current_name}'. Name change not applied.")
+        
 
     def _init_state_variables(self, initial_state: np.ndarray):
         self.spacecraft_data.true_state.position = initial_state[0:3]
@@ -151,6 +199,15 @@ class Spacecraft():
 
     def show_spacecraft_reference_info(self):
        print("NOT IMPLEMENTED: Spacecraft reference information display is not yet implemented.")
+
+    def show_sensors_info(self):
+        if self.has_sensors is False:
+            print("No sensors available for this spacecraft.")
+            return
+
+        print(f"Spacecraft '{self.name}' Sensors Information:")
+        for sensor in self.sensors:
+            sensor.print_info()
 
     def show_spacecraft_all_info(self):
         self.show_spacecraft_basic_info()

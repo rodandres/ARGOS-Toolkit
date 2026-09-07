@@ -8,7 +8,7 @@ class GaussianStdSensor(SensorBase):
     """
     Sensor model with independent Gaussian noise.
 
-    Each state component is corrupted by zero-mean Gaussian noise with the
+    Each state component is corrupted by zero-mean Gaussian noisse with the
     same standard deviation.
     """
 
@@ -189,7 +189,10 @@ class GaussianCovarianceSensor(SensorBase):
 
 class AbsoluteSensor(SensorBase):
 
-    def __init__(self, sample_rate_freq, verbose=False):
+    def __init__(self,
+                 sample_rate_freq,
+                 name: str = None,
+                 verbose=False):
 
         super().__init__(
             sensor_type="AbsoluteSensor",
@@ -197,6 +200,7 @@ class AbsoluteSensor(SensorBase):
             sensor_rotation=np.zeros(3),
             sample_rate_freq= sample_rate_freq,
             error_models=(),
+            name=name,
             verbose=verbose
         )            
 

@@ -14,14 +14,17 @@ class SensorBase(ABC):
                  sensor_rotation: np.ndarray,
                  sample_rate_freq: float = 100.0,
                  error_models: tuple = (),
-                 verbose: bool = False):
-        
+                 name: str = None,
+                 verbose: bool = False):        
         
         self.type = sensor_type
         self.position = _as_3d_array(sensor_pos, "sensor_pos") # Position of the sensor in the spacecraft body frame (numpy array of shape (3,))
         self.rotation = _as_3d_array(sensor_rotation, "sensor_rotation") # Rotation of the sensor in the spacecraft body frame (numpy array of shape (3,))
         self.sample_rate_sec = 1.0 / sample_rate_freq
         self.error_models = error_models  # Tuple of error models to apply to the sensor measurement
+
+        self.name = name
+
         self.verbose = verbose
 
         sensor_pos = _as_3d_array(sensor_pos, "sensor_pos")
@@ -44,12 +47,13 @@ class SensorBase(ABC):
         Print the sensor information.
         """
         print("="*50)
-        print(f"Sensor Type: {self.type}")
+        print(f"Sensor Name: {self.name}")
+        print(f"Sensor Type: {self.type}")        
         print(f"Sensor Position (Body Frame): {self.position}")
         print(f"Sensor Rotation (Body Frame): {self.rotation}")
         print(f"Sample Rate (Hz): {1.0 / self.sample_rate_sec}")
         print(f"Error Models: {[type(model).__name__ for model in self.error_models]}")
-        print("="*50)
+        print("="*50)    
 
     def get_type(self) -> str:
         """
