@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from py.modules.math import quaternion_from_euler, quaternion_to_DCM
 from py.modules.general_tools import _as_3d_array
+from py.modules.faults.fault_manager import FaultInjector
 
 class SensorBase(ABC):
     """
@@ -38,6 +39,8 @@ class SensorBase(ABC):
         self.last_measurement_time = -self.sample_rate_sec  # Initialize to ensure the first measurement is taken at t=0
 
         self.measurement = np.zeros(3)
+
+        self.fault_injector = FaultInjector()
 
         if self.verbose:
             self.print_info()
@@ -86,7 +89,18 @@ class SensorBase(ABC):
             
             for error_model in self.error_models:
                 measurement = error_model.apply(measurement, dt=spacecraft_data.current_propagation_dt)
-    
+
+
+            context = {
+                "spacecraft_data": spacecraft_data,
+                "simulation_data": simulation_data,
+                "sensor_type": self.type,                
+            }
+
+            measurement = self.fault_injector.apply(measurement,
+                                                    context=context)
+
+
             self.old_measurement = measurement
             self.last_measurement_time = spacecraft_data.t
     

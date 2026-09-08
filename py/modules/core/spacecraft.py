@@ -5,6 +5,7 @@ from py.general.dataclasses import SpacecraftData
 from py.modules.core.mission_manager import MissionManager
 from py.modules.sensors.sensor_base import SensorBase
 from py.modules.actuators.actuators_base import ActuatorBase
+from py.modules.faults.fault_manager import FaultManager
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:    
@@ -28,7 +29,7 @@ class Spacecraft():
         self.sensors = sensors
         self.actuators = actuators        
 
-        self.mission_manager = mission_manager
+        self.mission_manager = mission_manager        
 
         self.spacecraft_data.target_name = None  # Name of the target spacecraft, if any
 
@@ -58,6 +59,8 @@ class Spacecraft():
         self._check_initialization()
         self._set_actuators_names()
         self._set_sensors_names()
+
+        self.fault_manager = FaultManager(self)
 
         self.verbose = verbose
 
@@ -209,11 +212,16 @@ class Spacecraft():
         for sensor in self.sensors:
             sensor.print_info()
 
+    def show_faults_info(self):
+        self.fault_manager.show_faults_info()
+
     def show_spacecraft_all_info(self):
         self.show_spacecraft_basic_info()
         self.show_spacecraft_gnc_info()
         self.show_spacecraft_state_info()
-        self.show_spacecraft_reference_info()    
+        self.show_spacecraft_reference_info()
+        self.show_sensors_info()
+        self.show_faults_info()
         
     def get_dts(self):        
         return self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt
