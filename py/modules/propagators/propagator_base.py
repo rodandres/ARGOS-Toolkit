@@ -1,9 +1,13 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 
 class TranslationalPropagatorBase(ABC):
 
     def __init__(self, integration_method: str = "NATIVE_RK45"):        
         self.integration_method = integration_method
+
+    def copy(self):
+         return deepcopy(self)
 
     @abstractmethod
     def propagate(self, spacecraft_data, simulation_data, environment):
@@ -31,6 +35,9 @@ class RotationalPropagatorBase(ABC):
 
     def __init__(self, integration_method: str = "NATIVE_RK45"):
             self.integration_method = integration_method
+
+    def copy(self):
+         return deepcopy(self)
 
     @abstractmethod
     def propagate(self, spacecraft_data, simulation_data, environment):

@@ -94,3 +94,14 @@ class CustomNavigation(NavigationBase):
             raise TypeError("custom_estimation_function must return an EstimationOutput object.")
 
         return output
+
+class NavigationPlaceholder(NavigationBase):
+    def __init__(self):
+        super().__init__()
+
+    def _check_initialization(self):
+        # No specific initialization checks for NavigationPlaceholder
+        pass
+
+    def estimate(self, sensors: list) -> dict:
+        raise NotImplementedError("NavigationPlaceholder does not implement the estimate method.")

@@ -109,3 +109,22 @@ class CustomGuidanceLaw(GuidanceBase):
             raise TypeError("The custom_reference_function must return a GuidanceReference object.")
         
         return reference
+
+
+class GuidancePlaceholder(GuidanceBase):
+    def _check_initialization(self):
+        pass  # No specific initialization checks for the placeholder
+
+    def compute_reference(self, navigation_estimated_data, simulation_data):
+        """
+        Placeholder method for computing the guidance reference.
+
+        Args:
+            navigation_estimated_data: The estimated state of the spacecraft from the navigation system.
+            simulation_data: The current state of the simulation.
+        Returns:
+            A GuidanceReference object containing the desired position, velocity, acceleration, quaternion, angular velocity, and angular acceleration.
+        """
+        raise NotImplementedError("This is a placeholder method. Please implement your own guidance law.")
+
+    

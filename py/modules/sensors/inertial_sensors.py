@@ -68,7 +68,7 @@ class Gyroscope(SensorBase):
                  random_walk_std: np.ndarray | float = 0.0,
                  sample_rate_freq: float = 100.0,
                  saturation_limit: np.ndarray | float = np.inf,
-                 quantization_bits: int | None = 16,
+                 quantization_bits: int = 16,
                  name: str = None,
                  verbose: bool = False):                
 

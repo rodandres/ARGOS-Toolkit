@@ -91,3 +91,38 @@ class BasicRCSAllocator(ControlAllocatorBase):
             else:
                 # If the actuator cannot contribute, set its command to zero
                 actuator.set_command(0)
+
+
+class ControlAllocatorPlaceholder(ControlAllocatorBase):
+    def __init__(self):
+        super().__init__()
+
+    def _check_initialization(self):
+        # No specific initialization checks for ControlAllocatorPlaceholder
+        pass
+
+    def allocate(self, control_output):
+        """
+        Placeholder method for allocating control output to actuators.        
+        """
+        raise NotImplementedError("ControlAllocatorPlaceholder does not implement the allocate method.")
+
+class ControllerPlaceholder(ControllerBase):
+    def __init__(self):
+        super().__init__()
+
+    def _check_initialization(self):
+        # No specific initialization checks for ControllerPlaceholder
+        pass
+
+    def compute_control(self, estimated_state, reference):
+        """
+        Placeholder method for computing control output.
+        
+        Args:
+            estimated_state (EstimationOutput): The estimated state of the spacecraft.
+            reference (GuidanceReference): The reference guidance data.
+        Returns:
+            ControlOutput: The computed control output.
+        """
+        raise NotImplementedError("ControllerPlaceholder does not implement the compute_control method.")

@@ -72,13 +72,20 @@ class Spacecraft():
             print("="*10 + " End of spacecraft information. " + "="*10)
 
     def _set_sensors_names(self):
+        if not self.has_sensors:
+            return
+        
         sensors_count = 0
+        
         for sensor in self.sensors:
             if sensor.name is None:
                 sensor.name = f"Sensor_{sensors_count}"
                 sensors_count += 1
 
     def _set_actuators_names(self):
+        if not self.has_actuators:
+            return
+
         actuators_count = 0
         for actuator in self.actuators:
             if actuator.name is None:
@@ -227,10 +234,12 @@ class Spacecraft():
         return self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt
 
     def get_min_dt(self):
-        dts = [dt for dt in [self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt] if dt is not None]
-        for sensor in self.sensors:
-            if sensor.sample_rate_sec is not None:
-                dts.append(sensor.sample_rate_sec)
+        dts = [dt for dt in [self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt] if dt is not None]        
+
+        if self.has_sensors:    
+            for sensor in self.sensors:            
+                if sensor.sample_rate_sec is not None:
+                    dts.append(sensor.sample_rate_sec)
 
         return min(dts) if dts else None
 
