@@ -55,7 +55,6 @@ class CustomControlAllocator(ControlAllocatorBase):
         self.allocation_function(control_output, self.actuators)
 
 
-
 class BasicRCSAllocator(ControlAllocatorBase):
     def __init__(self):
         super().__init__()
@@ -91,6 +90,112 @@ class BasicRCSAllocator(ControlAllocatorBase):
             else:
                 # If the actuator cannot contribute, set its command to zero
                 actuator.set_command(0)
+
+class MultiRCSAllocator(ControlAllocatorBase):
+    def __init__(self):
+        super().__init__()
+
+    def _check_initialization(self):
+        pass
+
+    def _allocate_vector(self, command, actuator_type, actuators):
+        command = np.asarray(command, dtype=float)
+
+        # Select actuators of the required type
+        actuators = [
+            actuator
+            for actuator in actuators
+            if actuator.name.startswith(actuator_type)
+        ]
+
+        # Allocate X, Y and Z independently
+        for axis_idx in range(3):
+
+            requested = command[axis_idx]
+
+            if np.isclose(requested, 0.0):
+                continue
+
+            sign = np.sign(requested)
+            magnitude = abs(requested)
+
+            # --------------------------------------------------
+            # Find actuators capable of producing this direction
+            # --------------------------------------------------
+
+            candidates = []
+
+            for actuator in actuators:
+
+                # Check whether actuator produces the requested
+                # direction along this axis
+                if actuator.direction[axis_idx] * sign <= 0:
+                    continue
+
+                # Determine actuator capacity
+                if actuator_type == "translational_thruster":
+                    capacity = actuator.nominal_thrust
+                else:
+                    capacity = actuator.override_torque_value
+
+                candidates.append((capacity, actuator))
+
+            if not candidates:
+                continue
+
+            # --------------------------------------------------
+            # Select the smallest actuator capable of satisfying
+            # the complete demand
+            # --------------------------------------------------
+
+            candidates.sort(key=lambda x: x[0])
+
+            selected_actuator = None
+
+            for capacity, actuator in candidates:
+
+                if capacity >= magnitude:
+                    selected_actuator = actuator
+                    break
+
+            # --------------------------------------------------
+            # If no single actuator is large enough, use the
+            # largest available actuator and let it saturate
+            # --------------------------------------------------
+
+            if selected_actuator is None:
+                _, selected_actuator = candidates[-1]
+
+            # -----------------------------------   ---------------
+            # Send the COMPLETE requested command to the actuator
+            # --------------------------------------------------
+
+            selected_actuator.set_command(
+                magnitude
+            )    
+
+    def allocate(self, control_output):
+        force_to_allocate = np.asarray(control_output.force,dtype=float)
+        torque_to_allocate = np.asarray(control_output.torque,dtype=float)
+    
+        # Reset all actuators
+        for actuator in self.actuators:
+            actuator.set_command(0.0)
+    
+        # Allocate translation
+        self._allocate_vector(
+            command=force_to_allocate,
+            actuator_type="translational_thruster",
+            actuators=self.actuators
+        )
+    
+        # Allocate rotation
+        self._allocate_vector(
+            command=torque_to_allocate,
+            actuator_type="rotational_thruster",
+            actuators=self.actuators
+        )
+            
 
 
 class ControlAllocatorPlaceholder(ControlAllocatorBase):
