@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 import numpy as np
 from py.general.data_classes_declaration import SimSharedData
 from py.modules.math import quaternion_error as quat_error
@@ -24,7 +25,9 @@ class ControllerBase(ABC):
     """
     Abstract interface for spacecraft control laws.
     """
-    
+    def copy(self):
+         return deepcopy(self)
+
     def compute_control_old(
         self,
         shared_data: SimSharedData,
@@ -64,6 +67,10 @@ class ControllerBase(ABC):
 class ControlAllocatorBase(ABC):
     def __init__(self):
         self._check_initialization()
+
+    def copy(self):
+         return deepcopy(self)
+
 
     @abstractmethod
     def _check_initialization(self):
