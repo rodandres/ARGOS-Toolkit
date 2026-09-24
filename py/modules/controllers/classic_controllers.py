@@ -5,6 +5,161 @@ from py.modules.math import quaternion_error as quat_error
 
 from py.general.dataclasses import ControlOutput
 
+class PDController(ControllerBase):
+    def __init__(self,
+                 attitude_proportional_gain,
+                 attitude_derivative_gain,
+                 translational_proportional_gain,
+                 translational_derivative_gain,
+                 minimum_torque=None,
+                 maximum_torque=None):
+        
+        self.attitude_proportional_gain = attitude_proportional_gain
+        self.attitude_derivative_gain = attitude_derivative_gain
+        self.translational_proportional_gain = translational_proportional_gain
+        self.translational_derivative_gain = translational_derivative_gain
+        self.minimum_torque = minimum_torque
+        self.maximum_torque = maximum_torque
+
+        super().__init__()
+
+    def _check_initialization(self):
+        if not isinstance(self.attitude_proportional_gain, (int, float)):
+            raise TypeError("attitude_proportional_gain must be a numeric value.")
+
+        if not isinstance(self.attitude_derivative_gain, (int, float)):
+            raise TypeError("attitude_derivative_gain must be a numeric value.")
+
+        if not isinstance(self.translational_proportional_gain, (int, float)):
+            raise TypeError("translational_proportional_gain must be a numeric value.")
+
+        if not isinstance(self.translational_derivative_gain, (int, float)):
+            raise TypeError("translational_derivative_gain must be a numeric value.")
+
+        if self.minimum_torque is not None and not isinstance(
+            self.minimum_torque, (int, float)
+        ):
+            raise TypeError("minimum_torque must be a numeric value or None.")
+
+        if self.maximum_torque is not None and not isinstance(
+            self.maximum_torque, (int, float)
+        ):
+            raise TypeError("maximum_torque must be a numeric value or None.")
+
+        if (
+            self.minimum_torque is not None
+            and self.maximum_torque is not None
+            and self.minimum_torque > self.maximum_torque
+        ):
+            raise ValueError(
+                "minimum_torque cannot be greater than maximum_torque."
+            )
+
+    def compute_control(self, estimated_state, reference):
+        # ==========================================================
+        # State retrieval
+        # ==========================================================
+    
+        actual_quaternion = estimated_state.spacecraft_state.attitude.astype(float).copy()
+        actual_angular_velocity = estimated_state.spacecraft_state.angular_velocity.astype(float).copy()    
+    
+        reference_quaternion = reference.state.attitude.astype(float).copy()    
+    
+        # ==========================================================
+        # Quaternion attitude error
+        # ==========================================================
+    
+        actual_quaternion /= np.linalg.norm(actual_quaternion)
+    
+        quaternion_error = quat_error(
+            reference_quaternion,
+            actual_quaternion,
+        )
+    
+        quaternion_vector = quaternion_error[:3]
+        quaternion_scalar = quaternion_error[3]
+    
+        # Always follow the shortest rotation.
+        if quaternion_scalar < 0.0:
+    
+            quaternion_vector *= -1.0
+    
+        # ==========================================================
+        # PD control law
+        # ==========================================================
+    
+        commanded_torque = (
+            -self.attitude_proportional_gain * quaternion_vector
+            -self.attitude_derivative_gain * actual_angular_velocity
+        )
+    
+        # ==========================================================
+        # Torque saturation
+        # ==========================================================
+    
+        if (
+            self.minimum_torque is not None
+            and self.maximum_torque is not None
+        ):
+            commanded_torque = np.clip(
+                commanded_torque,
+                self.minimum_torque,
+                self.maximum_torque,
+            )
+    
+    
+        actual_position = (
+            estimated_state.spacecraft_state.position
+            .astype(float)
+            .copy()
+        )
+    
+        actual_velocity = (
+            estimated_state.spacecraft_state.velocity
+            .astype(float)
+            .copy()
+        )
+    
+        reference_position = (
+            reference.state.position
+            .astype(float)
+            .copy()
+        )
+    
+        reference_velocity = (
+            reference.state.velocity
+            .astype(float)
+            .copy()
+        )
+    
+        # ==========================================================
+        # Position and velocity errors
+        # ==========================================================
+    
+        position_error = (
+            reference_position
+            - actual_position
+        )
+    
+        velocity_error = (
+            reference_velocity
+            - actual_velocity
+        )
+    
+        # ==========================================================
+        # PD control law
+        # ==========================================================
+    
+        commanded_force = (
+            self.translational_proportional_gain * position_error
+            + self.translational_derivative_gain * velocity_error
+        )
+    
+        return ControlOutput(
+            force=commanded_force,
+            torque=commanded_torque,
+        )
+
 
 class PDAttitudeController(ControllerBase):
     """
