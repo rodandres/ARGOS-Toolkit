@@ -13,10 +13,8 @@ import sys
 
 path = Path.cwd()
 
-REPO_ROOT = path.parents[1]
-
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO_ROOT))
 
 # %% [markdown]
 # As we are working with the CR3BP, it is usually expressed in normalized units. However, as the toolkit uses SI units, we need to define the corresponding factors to make the respective conversions between units.
