@@ -144,3 +144,23 @@ def quaternion_error(
     )
 
     return error_rotation.as_quat()
+
+
+def DCM_to_quaternion(
+    DCM: np.ndarray,
+) -> np.ndarray:
+    """
+    Convert a Direction Cosine Matrix into quaternion representation.
+
+    Parameters
+    ----------
+    DCM : np.ndarray
+        Direction Cosine Matrix.
+
+    Returns
+    -------
+    np.ndarray
+        Quaternion in (x, y, z, w) convention.
+    """
+
+    return Rotation.from_matrix(DCM).as_quat()
