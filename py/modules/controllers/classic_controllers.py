@@ -5,6 +5,11 @@ from py.modules.math import quaternion_error as quat_error
 
 from py.general.dataclasses import ControlOutput
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from py.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
+    from py.modules.actuators.actuators_base import ActuatorBase
+
 class PDController(ControllerBase):
     def __init__(self,
                  attitude_proportional_gain,
@@ -55,15 +60,15 @@ class PDController(ControllerBase):
                 "minimum_torque cannot be greater than maximum_torque."
             )
 
-    def compute_control(self, estimated_state, reference):
+    def compute_control(self, navigation_output: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
         # ==========================================================
         # State retrieval
         # ==========================================================
     
-        actual_quaternion = estimated_state.spacecraft_state.attitude.astype(float).copy()
-        actual_angular_velocity = estimated_state.spacecraft_state.angular_velocity.astype(float).copy()    
+        actual_quaternion = navigation_output.spacecraft_state.attitude.astype(float).copy()
+        actual_angular_velocity = navigation_output.spacecraft_state.angular_velocity.astype(float).copy()    
     
-        reference_quaternion = reference.state.attitude.astype(float).copy()    
+        guidance_output_quaternion = guidance_output.state.attitude.astype(float).copy()    
     
         # ==========================================================
         # Quaternion attitude error
@@ -72,7 +77,7 @@ class PDController(ControllerBase):
         actual_quaternion /= np.linalg.norm(actual_quaternion)
     
         quaternion_error = quat_error(
-            reference_quaternion,
+            guidance_output_quaternion,
             actual_quaternion,
         )
     
@@ -109,25 +114,25 @@ class PDController(ControllerBase):
     
     
         actual_position = (
-            estimated_state.spacecraft_state.position
+            navigation_output.spacecraft_state.position
             .astype(float)
             .copy()
         )
     
         actual_velocity = (
-            estimated_state.spacecraft_state.velocity
+            navigation_output.spacecraft_state.velocity
             .astype(float)
             .copy()
         )
     
-        reference_position = (
-            reference.state.position
+        guidance_output_position = (
+            guidance_output.state.position
             .astype(float)
             .copy()
         )
     
-        reference_velocity = (
-            reference.state.velocity
+        guidance_output_velocity = (
+            guidance_output.state.velocity
             .astype(float)
             .copy()
         )
@@ -137,12 +142,12 @@ class PDController(ControllerBase):
         # ==========================================================
     
         position_error = (
-            reference_position
+            guidance_output_position
             - actual_position
         )
     
         velocity_error = (
-            reference_velocity
+            guidance_output_velocity
             - actual_velocity
         )
     
@@ -213,7 +218,7 @@ class PDAttitudeController(ControllerBase):
         shared_data: SimSharedData,
     ) -> np.ndarray:
         """
-        Compute the control torque required to track the reference attitude.
+        Compute the control torque required to track the guidance_output attitude.
         """
 
         # ==========================================================
@@ -227,7 +232,7 @@ class PDAttitudeController(ControllerBase):
         # Replace the true spacecraft state by the estimated state once
         # the navigation filter is integrated.
 
-        reference_quaternion = shared_data.reference_q
+        guidance_output_quaternion = shared_data.guidance_output_q
 
         # ==========================================================
         # Quaternion attitude error
@@ -236,7 +241,7 @@ class PDAttitudeController(ControllerBase):
         actual_quaternion /= np.linalg.norm(actual_quaternion)
 
         quaternion_error = quat_error(
-            reference_quaternion,
+            guidance_output_quaternion,
             actual_quaternion,
         )
 
@@ -273,23 +278,23 @@ class PDAttitudeController(ControllerBase):
 
         return commanded_torque
 
-    def compute_control(self, estimated_state, reference):
+    def compute_control(self, navigation_output: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
         """
-        Compute the control torque required to track the reference attitude.
+        Compute the control torque required to track the guidance_output attitude.
         """
 
         # ==========================================================
         # State retrieval
         # ==========================================================
 
-        actual_quaternion = estimated_state.spacecraft_state.attitude.astype(float).copy()
-        actual_angular_velocity = estimated_state.spacecraft_state.angular_velocity.astype(float).copy()     
+        actual_quaternion = navigation_output.spacecraft_state.attitude.astype(float).copy()
+        actual_angular_velocity = navigation_output.spacecraft_state.angular_velocity.astype(float).copy()     
 
         # TODO:
         # Replace the true spacecraft state by the estimated state once
         # the navigation filter is integrated.
 
-        reference_quaternion = reference.state.attitude.astype(float).copy()
+        guidance_output_quaternion = guidance_output.state.attitude.astype(float).copy()
 
         # ==========================================================
         # Quaternion attitude error
@@ -298,7 +303,7 @@ class PDAttitudeController(ControllerBase):
         actual_quaternion /= np.linalg.norm(actual_quaternion)
 
         quaternion_error = quat_error(
-            reference_quaternion,
+            guidance_output_quaternion,
             actual_quaternion,
         )
 

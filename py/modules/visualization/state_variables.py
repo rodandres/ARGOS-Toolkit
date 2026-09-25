@@ -102,11 +102,11 @@ def plot_attitude_quaternions(
         )
 
         navigation_q = np.asarray(
-            history.estimated_data["spacecraft_state"]["attitude"]
+            history.navigation_data["spacecraft_state"]["attitude"]
         )
 
         guidance_q = np.asarray(
-            history.reference_data["state"]["attitude"]
+            history.guidance_data["state"]["attitude"]
         )
 
         ax_true = axes[0, column]
@@ -296,11 +296,11 @@ def plot_position(
         )
 
         navigation_position = np.asarray(
-            history.estimated_data["spacecraft_state"]["position"]
+            history.navigation_data["spacecraft_state"]["position"]
         )
 
         guidance_position = np.asarray(
-            history.reference_data["state"]["position"]
+            history.guidance_data["state"]["position"]
         )
 
         for i, label in enumerate(labels):
@@ -445,11 +445,11 @@ def plot_velocity(
         )
 
         navigation_velocity = np.asarray(
-            history.estimated_data["spacecraft_state"]["velocity"]
+            history.navigation_data["spacecraft_state"]["velocity"]
         )
 
         guidance_velocity = np.asarray(
-            history.reference_data["state"]["velocity"]
+            history.guidance_data["state"]["velocity"]
         )
 
         for i, label in enumerate(labels):
@@ -594,11 +594,11 @@ def plot_angular_velocity(
         )
 
         navigation_angular_velocity = np.asarray(
-            history.estimated_data["spacecraft_state"]["angular_velocity"]
+            history.navigation_data["spacecraft_state"]["angular_velocity"]
         )
 
         guidance_angular_velocity = np.asarray(
-            history.reference_data["state"]["angular_velocity"]
+            history.guidance_data["state"]["angular_velocity"]
         )
 
         for i, label in enumerate(labels):

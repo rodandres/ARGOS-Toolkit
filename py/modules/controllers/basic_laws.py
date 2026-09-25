@@ -2,6 +2,11 @@ import numpy as np
 from py.modules.controllers.controller_base import ControllerBase, ControlAllocatorBase
 from py.general.dataclasses import ControlOutput
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from py.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
+    from py.modules.actuators.actuators_base import ActuatorBase
+
 class CustomController(ControllerBase):
     def __init__(self, control_function):
         self.control_function = control_function
@@ -13,18 +18,18 @@ class CustomController(ControllerBase):
         if not callable(self.control_function):
             raise ValueError("control_function must be a callable function.")
 
-    def compute_control(self, estimated_state, reference):
+    def compute_control(self, estimated_state: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
         """
-        Compute the control output based on the estimated state and reference.
+        Compute the control output based on the estimated state and guidance_output.
 
         Args:
             estimated_state (EstimationOutput): The estimated state of the spacecraft.
-            reference (GuidanceReference): The reference guidance data.
+            guidance_output (GuidanceReference): The guidance_output guidance data.
         Returns:
             ControlOutput: The computed control output.
         """
 
-        output = self.control_function(estimated_state, reference)
+        output = self.control_function(estimated_state, guidance_output)
 
         if not isinstance(output, ControlOutput):
             raise TypeError("The control_function must return a ControlOutput object.")        
@@ -42,7 +47,7 @@ class CustomControlAllocator(ControlAllocatorBase):
         if not callable(self.allocation_function):
             raise ValueError("allocation_function must be a callable function.")
 
-    def allocate(self, control_output):
+    def allocate(self, control_output: ControlOutput):
         """
         Allocate the control output to actuators.
 
@@ -62,7 +67,7 @@ class BasicRCSAllocator(ControlAllocatorBase):
     def _check_initialization(self):
         pass
 
-    def allocate(self, control_output):
+    def allocate(self, control_output: ControlOutput):
         """
         Allocate the control output to RCS actuators.
 
@@ -220,13 +225,13 @@ class ControllerPlaceholder(ControllerBase):
         # No specific initialization checks for ControllerPlaceholder
         pass
 
-    def compute_control(self, estimated_state, reference):
+    def compute_control(self, estimated_state: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
         """
         Placeholder method for computing control output.
         
         Args:
             estimated_state (EstimationOutput): The estimated state of the spacecraft.
-            reference (GuidanceReference): The reference guidance data.
+            guidance_output (GuidanceReference): The guidance_output guidance data.
         Returns:
             ControlOutput: The computed control output.
         """

@@ -1,6 +1,6 @@
 import numpy as np
 from py.modules.guidance.guidance_base import GuidanceBase
-from py.general.dataclasses import GuidanceReference, StateVariables
+from py.general.dataclasses import GuidanceOutput, StateVariables
 
 class ConstantReferenceGuidance(GuidanceBase):
     def __init__(self,
@@ -60,15 +60,15 @@ class ConstantReferenceGuidance(GuidanceBase):
                     f"desired_quat must have shape (4,), but got {self.desired_quat.shape}."
                 )
 
-    def compute_reference(self, navigation_estimated_data, simulation_data):
+    def compute_reference(self, navigation_data, simulation_data):
         """
         Compute the guidance reference based on navigation estimated data and simulation data.
 
         Args:
-            navigation_estimated_data: The estimated state of the spacecraft from the navigation system.
+            navigation_data: The estimated state of the spacecraft from the navigation system.
             simulation_data: The current state of the simulation.
         Returns:
-            A GuidanceReference object containing the desired position, velocity, acceleration, quaternion, angular velocity, and angular acceleration.
+            A GuidanceOutput object containing the desired position, velocity, acceleration, quaternion, angular velocity, and angular acceleration.
         """
 
         state = StateVariables(
@@ -80,7 +80,7 @@ class ConstantReferenceGuidance(GuidanceBase):
             angular_acceleration = self.desired_ang_accel
         )
 
-        return GuidanceReference(
+        return GuidanceOutput(
             state=state   
         )
 
@@ -93,20 +93,20 @@ class CustomGuidanceLaw(GuidanceBase):
         if not callable(self.custom_reference_function):
             raise ValueError("custom_reference_function must be callable.")
 
-    def compute_reference(self, navigation_estimated_data, simulation_data):
+    def compute_reference(self, navigation_data, simulation_data):
         """
         Compute the guidance reference using a custom function.
 
         Args:
-            navigation_estimated_data: The estimated state of the spacecraft from the navigation system.
+            navigation_data: The estimated state of the spacecraft from the navigation system.
             simulation_data: The current state of the simulation.
         Returns:
-            A GuidanceReference object containing the desired position, velocity, acceleration, quaternion, angular velocity, and angular acceleration.
+            A GuidanceOutput object containing the desired position, velocity, acceleration, quaternion, angular velocity, and angular acceleration.
         """
-        reference = self.custom_reference_function(navigation_estimated_data, simulation_data)
+        reference = self.custom_reference_function(navigation_data, simulation_data)
 
-        if not isinstance(reference, GuidanceReference):
-            raise TypeError("The custom_reference_function must return a GuidanceReference object.")
+        if not isinstance(reference, GuidanceOutput):
+            raise TypeError("The custom_reference_function must return a GuidanceOutput object.")
         
         return reference
 
@@ -115,15 +115,15 @@ class GuidancePlaceholder(GuidanceBase):
     def _check_initialization(self):
         pass  # No specific initialization checks for the placeholder
 
-    def compute_reference(self, navigation_estimated_data, simulation_data):
+    def compute_reference(self, navigation_data, simulation_data):
         """
         Placeholder method for computing the guidance reference.
 
         Args:
-            navigation_estimated_data: The estimated state of the spacecraft from the navigation system.
+            navigation_data: The estimated state of the spacecraft from the navigation system.
             simulation_data: The current state of the simulation.
         Returns:
-            A GuidanceReference object containing the desired position, velocity, acceleration, quaternion, angular velocity, and angular acceleration.
+            A GuidanceOutput object containing the desired position, velocity, acceleration, quaternion, angular velocity, and angular acceleration.
         """
         raise NotImplementedError("This is a placeholder method. Please implement your own guidance law.")
 

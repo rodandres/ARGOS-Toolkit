@@ -275,15 +275,15 @@ class Spacecraft():
         if self._should_compute(simulation_data, self.current_navigation_dt):
             estimation = self.current_navigation_law.estimate(self.sensors)
 
-            self.spacecraft_data.estimated_data = estimation
+            self.spacecraft_data.navigation_data = estimation
             
     def update_guidance(self, simulation_data):
         if self.has_guidance_law is False:
             return
 
         if self._should_compute(simulation_data, self.current_guidance_dt):            
-            self.spacecraft_data.reference_data = self.current_guidance_law.compute_reference(
-                self.spacecraft_data.estimated_data, simulation_data
+            self.spacecraft_data.guidance_data = self.current_guidance_law.compute_reference(
+                self.spacecraft_data.navigation_data, simulation_data
             )
 
     def update_control(self, simulation_data):
@@ -291,12 +291,12 @@ class Spacecraft():
             return
 
         if self._should_compute(simulation_data, self.current_control_dt):
-            self.spacecraft_data.control_output_data = self.current_control_law.compute_control(
-                self.spacecraft_data.estimated_data,
-                self.spacecraft_data.reference_data
+            self.spacecraft_data.control_data = self.current_control_law.compute_control(
+                self.spacecraft_data.navigation_data,
+                self.spacecraft_data.guidance_data
             )
 
-            self.current_allocator.allocate(self.spacecraft_data.control_output_data)
+            self.current_allocator.allocate(self.spacecraft_data.control_data)
 
     def compute_actuation(self, simulation_data):
         if self.has_actuators is False:

@@ -73,9 +73,9 @@ class SpacecraftHistory:
 
         self.true_state = []
 
-        self.estimated_data = []
-        self.reference_data = []
-        self.control_output_data = []
+        self.navigation_data = []
+        self.guidance_data = []
+        self.control_data = []
 
         self.current_force_exerted = []
         self.current_torque_exerted = []
@@ -89,9 +89,9 @@ class SpacecraftHistory:
 
         self.true_state.append(copy.deepcopy(data.true_state))
 
-        self.estimated_data.append(copy.deepcopy(data.estimated_data))
-        self.reference_data.append(copy.deepcopy(data.reference_data))
-        self.control_output_data.append(copy.deepcopy(data.control_output_data))
+        self.navigation_data.append(copy.deepcopy(data.navigation_data))
+        self.guidance_data.append(copy.deepcopy(data.guidance_data))
+        self.control_data.append(copy.deepcopy(data.control_data))
 
         self.current_force_exerted.append(data.current_force_exerted.copy())
         self.current_torque_exerted.append(data.current_torque_exerted.copy())
@@ -100,16 +100,30 @@ class SpacecraftHistory:
 
     def finalize(self):
 
+        # Remove initial sample (t = 0)
+        self.t = self.t[1:]
+        self.tick = self.tick[1:]
+
+        self.true_state = self.true_state[1:]
+        self.navigation_data = self.navigation_data[1:]
+        self.guidance_data = self.guidance_data[1:]
+        self.control_data = self.control_data[1:]
+
+        self.current_force_exerted = self.current_force_exerted[1:]
+        self.current_torque_exerted = self.current_torque_exerted[1:]
+
+        self.target_name = self.target_name[1:]
+
         self.t = np.asarray(self.t)
         self.tick = np.asarray(self.tick)
 
         self.true_state = _stack(self.true_state)
 
-        self.estimated_data = _stack(self.estimated_data)
+        self.navigation_data = _stack(self.navigation_data)
 
-        self.reference_data = _stack(self.reference_data)
+        self.guidance_data = _stack(self.guidance_data)
 
-        self.control_output_data = _stack(self.control_output_data)
+        self.control_data = _stack(self.control_data)
 
         self.current_force_exerted = np.asarray(self.current_force_exerted)
 
@@ -150,7 +164,7 @@ class SimulationHistory:
 
     def finalize(self):
 
-        self.time = np.asarray(self.time)
+        self.time = np.asarray(self.time)[1:]
 
         for history in self.spacecrafts_history.values():
             history.finalize()

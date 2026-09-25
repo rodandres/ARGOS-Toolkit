@@ -18,7 +18,7 @@ from py.modules.controllers.basic_laws import MultiRCSAllocator
 from py.modules.controllers.classic_controllers import PDController
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator, NativeRotationalPropagator
 from py.modules.core.mission_manager import MissionPhase, MissionManager
-from py.general.dataclasses import StateVariables, GuidanceReference
+from py.general.dataclasses import StateVariables, GuidanceOutput
 from py.modules.general_tools import get_state_at
 from py.general.general_data import CM_mass, SM_mass, Ix_total, Iy_total, Iz_total
 
@@ -222,7 +222,7 @@ def acquisition_of_docking_axis_guidance_function(navigation_estimated_data, sim
         desired_chaser_dcm
     )
 
-    return GuidanceReference(
+    return GuidanceOutput(
         state= StateVariables(
             position=interception_point_wrt_inertial_frame,
             velocity=target_state.velocity.copy(),
@@ -304,7 +304,7 @@ def final_approach_guidance_function(navigation_estimated_data, simulation_data)
     # Calculate the interception point in the inertial frame and the relative distance to it
     interception_point_wrt_inertial_frame = target_current_position_wrt_inertal_frame
     
-    return GuidanceReference(
+    return GuidanceOutput(
         state= StateVariables(
             position=interception_point_wrt_inertial_frame,
             velocity=target_state.velocity.copy(),
