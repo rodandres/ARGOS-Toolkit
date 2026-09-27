@@ -2,6 +2,7 @@
 # Se debe añadir una verificacion antes de correr la sim garantizando que se tengan spacecrafts
 # Se debe añadir una verificacion o manejo de los propagadores en caso de ser None
 
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 import sys
@@ -25,19 +26,35 @@ if TYPE_CHECKING:
 
 class Simulation:
     def __init__(self, max_sim_time: float,
-                 environment: EnvironmentBase,                 
+                 environment: EnvironmentBase,
+                 history_chunk_size: int = 4096,
+                 history_data_file_path: str = "tmp",
+                 auto_save_csv: bool = True,
+                 csv_folder_path: str = None,
                  verbose: bool = False):        
 
         simulation_data = SimulationData(
-            max_sim_time=max_sim_time,                    
+            max_sim_time=max_sim_time,
             spacecrafts=[],            
-            )
+            )        
 
-        self.simulation_data = simulation_data        
+        self.simulation_data = simulation_data
 
         self.environment = environment
+        self.history_chunk_size = history_chunk_size
+        self.history_data_file_path = history_data_file_path
+        self.auto_save_csv = auto_save_csv
+        self.csv_folder_path = csv_folder_path
 
-        self.simulation_data.simulation_history = SimulationHistory()
+        if self.csv_folder_path is None:
+            self.csv_folder_path = "sim_data"
+
+        self.simulation_data.simulation_history = SimulationHistory(
+                                                    chunk_size=self.history_chunk_size,
+                                                    data_file_path=self.history_data_file_path,
+                                                    auto_convert_to_csv=self.auto_save_csv,
+                                                    csv_folder_path=self.csv_folder_path
+                                                )        
 
         self.verbose = verbose
 
@@ -86,6 +103,8 @@ class Simulation:
 
         if name is None:
             name = f"Spacecraft_{len(self.simulation_data.spacecrafts)+1}"        
+        
+        self.simulation_data.simulation_history.add_spacecraft_history(name)
 
         initial_state = np.concatenate((initial_position, initial_velocity, initial_attitude, initial_angular_velocity))
 
@@ -96,11 +115,13 @@ class Simulation:
             inertia_tensor=inertia_tensor,
             actuators=actuators,
             sensors=sensors,            
-            mission_manager=mission_manager,            
+            mission_manager=mission_manager, 
+            parent=self,
             verbose=verbose
         )
 
         self.simulation_data.spacecrafts.append(spacecraft)
+
 
         if target_name is not None:
             self.add_spacecraft_target(spacecraft_name=name, target_name=target_name)            
@@ -132,21 +153,23 @@ class Simulation:
 
         self.simulation_data.dt_master = min(dts)
 
+    def record_transition(self, spacecraft_name, event_info):
+        self.simulation_data.simulation_history.record_event(spacecraft_name, event_info)
+
     def _init_simulation(self):
         if self.verbose:
             print("Initializing simulation...")
         
         self._set_dt_master()
 
+        # Record initial states of all spacecrafts in the simulation history
         for spacecraft in self.simulation_data.spacecrafts:
-            self.simulation_data.simulation_history.record_spacecraft(spacecraft)
+            self.simulation_data.simulation_history.record_spacecraft(spacecraft.name, spacecraft.spacecraft_data)
 
-    
         if self.verbose:
             print("Simulation initialized.")
 
-
-    def simulate(self):
+    def simulate(self):        
         self._init_simulation()
 
         if self.verbose:
@@ -165,11 +188,7 @@ class Simulation:
                     continue  # Skip this spacecraft if its time exceeds the max simulation time
 
                 # Update Mission Manager
-                has_mission_changed = spacecraft.update_mission_manager(self.simulation_data)
-
-                # Check for updates in dts due to possible changes in the mission phase
-                if has_mission_changed:
-                    self._set_dt_master()  # Update the master time step if any spacecraft's mission phase changed
+                spacecraft.update_mission_manager(self.simulation_data)                
 
                 # Update sensors
                 spacecraft.update_sensors(self.simulation_data)
@@ -194,8 +213,8 @@ class Simulation:
                 spacecraft.spacecraft_data.t += spacecraft.spacecraft_data.current_master_dt
                 spacecraft.spacecraft_data.tick += 1
                 current_ts.append(t_spacecraft)
-
-                self.simulation_data.simulation_history.record_spacecraft(spacecraft)
+                
+                self.simulation_data.simulation_history.record_spacecraft(spacecraft.name, spacecraft.spacecraft_data)
 
 
             try:
@@ -207,51 +226,8 @@ class Simulation:
             
         
         if self.verbose: print("Simulation completed.")
+        timer_end = time.perf_counter()        
+        
+        metadata = self.simulation_data.simulation_history.finalize()  # Finalize the history after the simulation is complete
 
-        self.simulation_data.simulation_history.finalize()  # Finalize the history after the simulation is complete
-
-        return self.simulation_data.simulation_history
-
-
-
-
-        # while self.simulation_data.t < self.simulation_data.max_sim_time:
-            
-        #     self.simulation_data.t = self.simulation_data.tick * self.simulation_data.dt_master
-
-        #     for spacecraft in self.simulation_data.spacecrafts:
-
-        #         # Update Mission Manager
-        #         has_mission_changed = spacecraft.update_mission_manager(self.simulation_data)
-
-        #         # Check for updates in dts due to possible changes in the mission phase
-        #         if has_mission_changed:
-        #             self._set_dt_master()  # Update the master time step if any spacecraft's mission phase changed
-
-        #         # Update sensors
-        #         spacecraft.update_sensors(self.simulation_data)
-
-        #         # Update Navigation
-        #         spacecraft.update_navigation(self.simulation_data)
-
-        #         # Update Guidance
-        #         spacecraft.update_guidance(self.simulation_data)
-
-        #         # Update Control
-        #         spacecraft.update_control(self.simulation_data)
-
-        #         # Compute Actuation
-        #         spacecraft.compute_actuation(self.simulation_data)  
-
-        #         # Propagate Translational and Rotational Dynamics
-        #         spacecraft.propagate_translational(self.simulation_data, self.environment)
-        #         spacecraft.propagate_rotational(self.simulation_data, self.environment)
-
-
-        #     #if self.simulation_data.tick % int(self.simulation_data.dt_propagation / self.simulation_data.dt_master) == 0:
-        #     #    if self.translational_propagator_engine is not None:
-        #     #        self.translational_propagator_engine.propagate(self.simulation_data, self.environment)  # Assuming environment is not needed for translational propagation
-        #     #    if self.rotational_propagator_engine is not None:                    
-        #     #        self.rotational_propagator_engine.propagate(self.simulation_data, self.environment)  # Assuming environment is not needed for rotational propagation
-
-            # Save the current state to history
+        return metadata

@@ -111,13 +111,19 @@ class MissionManager: # NOTE add method to print info about the transitions
         current_phase = self.current_phase.name
 
         if current_phase not in self.transitions:
-            return False
+            return False, None
 
         for transition_name, transition in self.transitions[current_phase].items():
 
             if transition["condition"](simulation_data):
 
                 self.current_phase = transition["target_phase"]
+
+                info = {
+                    "from_phase": current_phase,
+                    "to_phase": self.current_phase.name,
+                    "via": transition_name,                    
+                }
 
                 if self.verbose:
                     print(
@@ -126,6 +132,6 @@ class MissionManager: # NOTE add method to print info about the transitions
                         f"via '{transition_name}'."
                     )
 
-                return True
+                return True, info
 
-        return False
+        return False, None

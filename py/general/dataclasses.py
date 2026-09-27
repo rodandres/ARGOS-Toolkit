@@ -43,8 +43,8 @@ class SimulationData:
     t: float =  field(default=0.0)
     tick: int = field(default=0)
     verbose: bool = False
-
-    simulation_history: "SimulationHistory" = field(default_factory=lambda: SimulationHistory())
+    
+    simulation_history: SimulationHistory = None
 
     DCM_inertial_to_body: np.ndarray = field(default_factory=lambda: np.eye(3))
 

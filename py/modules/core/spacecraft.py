@@ -6,16 +6,19 @@ from py.modules.core.mission_manager import MissionManager
 from py.modules.sensors.sensor_base import SensorBase
 from py.modules.actuators.actuators_base import ActuatorBase
 from py.modules.faults.fault_manager import FaultManager
+from py.general.data_save import TransitionEventInfo
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:    
     from py.general.dataclasses import MissionPhase
+    from py.modules.core.simulation import Simulation
 
 class Spacecraft():
 
     def __init__(self, name: str, mass: float, initial_state: np.ndarray, inertia_tensor: np.ndarray, 
                  actuators: list | None = None, sensors: list[SensorBase] | None = None,
                  mission_manager: MissionManager | None = None,
+                 parent: Simulation | None = None,
                  verbose: bool = False):                        
 
         # --- ATRIBUTES DECLARATION ---        
@@ -29,7 +32,8 @@ class Spacecraft():
         self.sensors = sensors
         self.actuators = actuators        
 
-        self.mission_manager = mission_manager        
+        self.mission_manager = mission_manager
+        self.parent = parent
 
         self.spacecraft_data.target_name = None  # Name of the target spacecraft, if any
 
@@ -144,7 +148,7 @@ class Spacecraft():
         if self.has_mission_manager:
             self._check_and_update_phase_info(self.mission_manager.current_phase)
     
-    def _check_and_update_phase_info(self, phase: MissionPhase):
+    def _check_and_update_phase_info(self, phase: MissionPhase, update_info: dict | None = None):
         self.current_phase = phase
 
         if phase.guidance is None:
@@ -195,6 +199,27 @@ class Spacecraft():
         self.spacecraft_data.current_propagation_dt = phase.dt_propagation
         
         self.spacecraft_data.current_master_dt = self.get_min_dt()
+
+        if update_info is None:
+            update_info = {}
+            update_info["from_phase"] = "Initial State"
+            update_info["to_phase"] = self.current_phase.name
+            update_info["via"] = "Initial Setup"
+
+        event_info = TransitionEventInfo(
+                                        time=self.spacecraft_data.t,
+                                        tick=self.spacecraft_data.tick,
+                                        from_phase=update_info["from_phase"],
+                                        to_phase=update_info["to_phase"],
+                                        transition_name=update_info["via"],
+                                        dt_navigation=self.current_navigation_dt,
+                                        dt_guidance=self.current_guidance_dt,
+                                        dt_control=self.current_control_dt,
+                                        dt_propagation=self.spacecraft_data.current_propagation_dt,
+                                        dt_master=self.spacecraft_data.current_master_dt
+                                    )
+        
+        self.parent.record_transition(self.name, event_info)
 
     def show_spacecraft_basic_info(self):
         print(f"Spacecraft Name: {self.name}")
@@ -252,14 +277,14 @@ class Spacecraft():
 
     def update_mission_manager(self, simulation_data):
         if self.has_mission_manager is False:
-            return False
+            return
 
-        phase_changed = self.mission_manager.update(simulation_data)
-
+        phase_changed, update_info = self.mission_manager.update(simulation_data)
+        
         if phase_changed:
-            self._check_and_update_phase_info(self.mission_manager.current_phase)
+            self._check_and_update_phase_info(self.mission_manager.current_phase, update_info)            
 
-        return phase_changed
+        return
     
     def update_sensors(self, simulation_data):        
         if self.has_sensors is False:            

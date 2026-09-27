@@ -15,10 +15,8 @@ import sys
 
 path = Path.cwd()
 
-REPO_ROOT = path.parents[1]
-
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO_ROOT))
 
 # %% [markdown]
 # ## General Simulation Setup
@@ -210,11 +208,11 @@ rot_propagator = NativeRotationalPropagator(integration_method="NATIVE_RK45")
 # 
 # If any control is desired, a guidance law is needed, as this will set the reference variables that the controller will follow.
 # 
-# A custom guidance law can be defined using the `CustomGuidanceLaw` class. This class will have access to the `navigation_estimated` data (which will be covered in the next step) and the information of the simulation, and it is required to return a `GuidanceReference` dataclass.
+# A custom guidance law can be defined using the `CustomGuidanceLaw` class. This class will have access to the `navigation_estimated` data (which will be covered in the next step) and the information of the simulation, and it is required to return a `GuidanceOutput` dataclass.
 
 # %%
 # Next step is define the guidance law
-from py.general.dataclasses import GuidanceReference, StateVariables
+from py.general.dataclasses import GuidanceOutput, StateVariables
 from py.modules.guidance.basic_laws import CustomGuidanceLaw
 from py.modules.math import quaternion_from_euler
 
@@ -223,7 +221,7 @@ objective_orientation = [0, 0, 0]  # Desired orientation in Euler angles (degree
 
 def compute_reference(navigation_estimated_data, simulation_data):
 
-    ref = GuidanceReference(
+    ref = GuidanceOutput(
         state=StateVariables(
             attitude=quaternion_from_euler(
                 np.deg2rad(objective_orientation[0]),
@@ -256,7 +254,7 @@ guidance_law = ConstantReferenceGuidance(
 # Similar to the guidance law, it is possible to define custom navigation laws using the `CustomNavigation` class. For this, the input will be only the sensors that the spacecraft has; therefore, you will not have access to the real/true states (unless you define an Absolute Sensor).
 
 # %%
-from py.general.dataclasses import EstimationOutput
+from py.general.dataclasses import NavigationOutput
 from py.modules.navigation.basic_laws import CustomNavigation
 
 def estimate(sensors):
@@ -268,7 +266,7 @@ def estimate(sensors):
             estimated_attitude = sensor_data[0][3]
             estimated_angular_velocity = sensor_data[0][4]            
 
-            return EstimationOutput(
+            return NavigationOutput(
                 spacecraft_attitude=estimated_attitude,
                 spacecraft_angular_velocity=estimated_angular_velocity
             )                
