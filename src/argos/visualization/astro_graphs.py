@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -6,10 +5,6 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.figure import Figure
 import numpy as np
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
 DEFAULT_OUTPUT_DIR = Path(
     "/run/media/afra/F4C64AC9C64A8C34/repos/RPOD_NRHO/outputs"
@@ -46,7 +41,7 @@ plt.rcParams.update(
     }
 )
 
-from py.modules.cislunar_astrodynamics.cr3bp_engine import (
+from argos.cislunar_astrodynamics.cr3bp_engine import (
     effective_potential,
     eigenvalues_on_L_points,
     find_L_points,

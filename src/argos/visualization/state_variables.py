@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from py.modules.visualization.style import *
+from argos.visualization.style import *
 
 
 def plot_attitude_quaternions(

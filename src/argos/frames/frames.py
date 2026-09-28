@@ -1,4 +1,4 @@
-from py.modules.frames.frames_base import FrameBase
+from argos.frames.frames_base import FrameBase
 
 ECI = FrameBase(name="ECI",
                 inertial=True,

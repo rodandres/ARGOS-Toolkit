@@ -1,6 +1,4 @@
-from pathlib import Path
 from typing import Any
-import sys
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -8,12 +6,9 @@ from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 import numpy as np
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
-from py.modules.controllers.classic_controllers import PDAttitudeController
-from py.modules.math import euler_from_quaternion, quaternion_error, quaternion_to_DCM
+from argos.controllers.classic_controllers import PDAttitudeController
+from argos.math import euler_from_quaternion, quaternion_error, quaternion_to_DCM
 
 FIGURE_BG = "#0b1020"
 AXES_BG = "#111a33"

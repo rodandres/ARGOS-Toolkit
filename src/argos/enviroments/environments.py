@@ -1,5 +1,5 @@
 import numpy as np
-from py.modules.enviroments.environment_base import EnvironmentBase
+from argos.enviroments.environment_base import EnvironmentBase
 
 class ClassicalEnvironment(EnvironmentBase):
     def __init__(self):

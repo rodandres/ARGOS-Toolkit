@@ -1,7 +1,7 @@
 import numpy as np
 
-from py.modules.general_tools import get_state_at
-from py.modules.sensors.sensor_base import SensorBase
+from argos.general_tools import get_state_at
+from argos.sensors.sensor_base import SensorBase
 
 
 class GaussianStdSensor(SensorBase):

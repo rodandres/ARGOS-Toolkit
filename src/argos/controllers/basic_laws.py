@@ -1,11 +1,11 @@
 import numpy as np
-from py.modules.controllers.controller_base import ControllerBase, ControlAllocatorBase
-from py.modules.general.dataclasses import ControlOutput
+from argos.controllers.controller_base import ControllerBase, ControlAllocatorBase
+from argos.general.dataclasses import ControlOutput
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.modules.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
-    from py.modules.actuators.actuators_base import ActuatorBase
+    from argos.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
+    from argos.actuators.actuators_base import ActuatorBase
 
 class CustomController(ControllerBase):
     def __init__(self, control_function):

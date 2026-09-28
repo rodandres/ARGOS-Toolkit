@@ -3,11 +3,11 @@ import os
 
 import numpy as np
 
-from py.modules.general.dataclasses import StateVariables
+from argos.general.dataclasses import StateVariables
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.modules.general.data_save import SimulationHistory
+    from argos.general.data_save import SimulationHistory
 
 
 def _as_3d_array(value: float | np.ndarray, name: str) -> np.ndarray:

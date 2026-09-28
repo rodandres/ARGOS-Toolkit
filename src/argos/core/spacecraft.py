@@ -1,17 +1,17 @@
 import warnings
 import numpy as np
 
-from py.modules.general.dataclasses import SpacecraftData
-from py.modules.core.mission_manager import MissionManager
-from py.modules.sensors.sensor_base import SensorBase
-from py.modules.actuators.actuators_base import ActuatorBase
-from py.modules.faults.fault_manager import FaultManager
-from py.modules.general.data_save import TransitionEventInfo
+from argos.general.dataclasses import SpacecraftData
+from argos.core.mission_manager import MissionManager
+from argos.sensors.sensor_base import SensorBase
+from argos.actuators.actuators_base import ActuatorBase
+from argos.faults.fault_manager import FaultManager
+from argos.general.data_save import TransitionEventInfo
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:    
-    from py.modules.general.dataclasses import MissionPhase
-    from py.modules.core.simulation import Simulation
+    from argos.general.dataclasses import MissionPhase
+    from argos.core.simulation import Simulation
 
 class Spacecraft():
 

@@ -1,6 +1,6 @@
 from scipy.integrate import solve_ivp
 
-from py.modules.solvers.RK45 import rk45
+from argos.solvers.RK45 import rk45
 
 def native_rk45(f, t_span, y0, **kwargs):
     return rk45(f, t_span, y0, **kwargs)

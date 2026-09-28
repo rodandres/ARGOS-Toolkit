@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 import numpy as np
-from py.modules.general.data_classes_declaration import SimSharedData
-from py.modules.math import quaternion_error as quat_error
+from argos.math import quaternion_error as quat_error
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.modules.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
-    from py.modules.actuators.actuators_base import ActuatorBase
+    from argos.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
+    from argos.actuators.actuators_base import ActuatorBase
 
 
 class ControllerBase(ABC):
@@ -28,25 +27,7 @@ class ControllerBase(ABC):
     def copy(self):
          return deepcopy(self)
 
-    def compute_control_old(
-        self,
-        shared_data: SimSharedData,
-    ) -> np.ndarray:
-        """
-        Compute the commanded control torque.
-
-        Parameters
-        ----------
-        shared_data : SimSharedData
-            Shared simulation data.
-
-        Returns
-        -------
-        np.ndarray
-            Commanded control torque expressed in the body frame.
-        """
-        pass
-
+   
     @abstractmethod
     def compute_control(self, navigation_output: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
         """

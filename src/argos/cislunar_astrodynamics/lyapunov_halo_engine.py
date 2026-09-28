@@ -8,7 +8,7 @@ from scipy.integrate import solve_ivp
 from scipy.integrate._ivp.ivp import OdeResult
 
 
-from py.modules.cislunar_astrodynamics.cr3bp_engine import *
+from argos.cislunar_astrodynamics.cr3bp_engine import *
 
 # Normalized constants for the Earth-Moon system
 MU = 1.215e-2

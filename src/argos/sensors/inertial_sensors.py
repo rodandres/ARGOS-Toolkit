@@ -1,8 +1,8 @@
 import numpy as np
-from py.modules.sensors.sensor_base import SensorBase
-from py.modules.general_tools import _as_3d_array
+from argos.sensors.sensor_base import SensorBase
+from argos.general_tools import _as_3d_array
 
-from py.modules.sensors.error_models import *
+from argos.sensors.error_models import *
 
 class Accelerometer(SensorBase):
 

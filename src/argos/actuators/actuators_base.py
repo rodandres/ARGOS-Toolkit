@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.modules.general.dataclasses import ActuatorOutput
+    from argos.general.dataclasses import ActuatorOutput
 
 class ActuatorBase(ABC):
     """

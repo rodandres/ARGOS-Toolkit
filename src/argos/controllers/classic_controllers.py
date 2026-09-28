@@ -1,14 +1,13 @@
-from py.modules.controllers.controller_base import ControllerBase
+from argos.controllers.controller_base import ControllerBase
 import numpy as np
-from py.modules.general.data_classes_declaration import SimSharedData
-from py.modules.math import quaternion_error as quat_error
+from argos.math import quaternion_error as quat_error
 
-from py.modules.general.dataclasses import ControlOutput
+from argos.general.dataclasses import ControlOutput
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.modules.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
-    from py.modules.actuators.actuators_base import ActuatorBase
+    from argos.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
+    from argos.actuators.actuators_base import ActuatorBase
 
 class PDController(ControllerBase):
     def __init__(self,
@@ -211,72 +210,7 @@ class PDAttitudeController(ControllerBase):
         ):
             raise ValueError(
                 "minimum_torque cannot be greater than maximum_torque."
-            )
-
-    def compute_control_old(
-        self,
-        shared_data: SimSharedData,
-    ) -> np.ndarray:
-        """
-        Compute the control torque required to track the guidance_output attitude.
-        """
-
-        # ==========================================================
-        # State retrieval
-        # ==========================================================
-
-        actual_quaternion = shared_data.actual_q
-        actual_angular_velocity = shared_data.actual_omega
-
-        # TODO:
-        # Replace the true spacecraft state by the estimated state once
-        # the navigation filter is integrated.
-
-        guidance_output_quaternion = shared_data.guidance_output_q
-
-        # ==========================================================
-        # Quaternion attitude error
-        # ==========================================================
-
-        actual_quaternion /= np.linalg.norm(actual_quaternion)
-
-        quaternion_error = quat_error(
-            guidance_output_quaternion,
-            actual_quaternion,
-        )
-
-        quaternion_vector = quaternion_error[:3]
-        quaternion_scalar = quaternion_error[3]
-
-        # Always follow the shortest rotation.
-        if quaternion_scalar < 0.0:
-
-            quaternion_vector *= -1.0
-
-        # ==========================================================
-        # PD control law
-        # ==========================================================
-
-        commanded_torque = (
-            -self.proportional_gain * quaternion_vector
-            -self.derivative_gain * actual_angular_velocity
-        )
-
-        # ==========================================================
-        # Torque saturation
-        # ==========================================================
-
-        if (
-            self.minimum_torque is not None
-            and self.maximum_torque is not None
-        ):
-            commanded_torque = np.clip(
-                commanded_torque,
-                self.minimum_torque,
-                self.maximum_torque,
-            )
-
-        return commanded_torque
+            )    
 
     def compute_control(self, navigation_output: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
         """

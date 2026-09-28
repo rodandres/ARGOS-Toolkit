@@ -2,10 +2,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from typing import TYPE_CHECKING
-from py.modules.general.dataclasses import MissionPhase
+from argos.general.dataclasses import MissionPhase
 
 if TYPE_CHECKING:
-    from py.modules.core.simulation import SimulationData
+    from argos.core.simulation import SimulationData
 
 
 class MissionManager: # NOTE add method to print info about the transitions

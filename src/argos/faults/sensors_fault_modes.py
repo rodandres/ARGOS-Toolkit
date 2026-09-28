@@ -1,5 +1,5 @@
 import numpy as np
-from py.modules.faults.fault_manager import FaultMode
+from argos.faults.fault_manager import FaultMode
 
 class SensorStuck(FaultMode):
 

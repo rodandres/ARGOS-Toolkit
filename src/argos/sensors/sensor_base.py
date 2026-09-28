@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-from py.modules.math import quaternion_from_euler, quaternion_to_DCM
-from py.modules.general_tools import _as_3d_array
-from py.modules.faults.fault_manager import FaultInjector
+from argos.math import quaternion_from_euler, quaternion_to_DCM
+from argos.general_tools import _as_3d_array
+from argos.faults.fault_manager import FaultInjector
 
 class SensorBase(ABC):
     """

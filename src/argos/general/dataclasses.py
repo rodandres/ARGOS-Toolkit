@@ -4,13 +4,13 @@ import numpy as np
 
 from typing import TYPE_CHECKING
 
-from py.modules.general.data_save import SimulationHistory
+from argos.general.data_save import SimulationHistory
 
 if TYPE_CHECKING:
-    from py.modules.controllers.controller_base import ControllerBase, ControlAllocatorBase
-    from py.modules.guidance.guidance_base import GuidanceBase
-    from py.modules.navigation.navigation_base import NavigationBase
-    from py.modules.propagators.propagator_base import TranslationalPropagatorBase, RotationalPropagatorBase
+    from argos.controllers.controller_base import ControllerBase, ControlAllocatorBase
+    from argos.guidance.guidance_base import GuidanceBase
+    from argos.navigation.navigation_base import NavigationBase
+    from argos.propagators.propagator_base import TranslationalPropagatorBase, RotationalPropagatorBase
 
 @dataclass(slots=True)
 class MissionPhase:

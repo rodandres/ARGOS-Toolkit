@@ -1,13 +1,13 @@
-from py.modules.propagators.propagator_base import TranslationalPropagatorBase, RotationalPropagatorBase
+from argos.propagators.propagator_base import TranslationalPropagatorBase, RotationalPropagatorBase
 import numpy as np
 
-from py.modules.solvers.solvers_base import solve
+from argos.solvers.solvers_base import solve
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.modules.core.spacecraft import Spacecraft
-    from py.modules.general.dataclasses import SimulationData
-    from py.modules.enviroments.environment_base import EnvironmentBase
+    from argos.core.spacecraft import Spacecraft
+    from argos.general.dataclasses import SimulationData
+    from argos.enviroments.environment_base import EnvironmentBase
 
 class NativeRotationalPropagator(RotationalPropagatorBase):
 

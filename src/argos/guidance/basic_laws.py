@@ -1,6 +1,6 @@
 import numpy as np
-from py.modules.guidance.guidance_base import GuidanceBase
-from py.modules.general.dataclasses import GuidanceOutput, StateVariables
+from argos.guidance.guidance_base import GuidanceBase
+from argos.general.dataclasses import GuidanceOutput, StateVariables
 
 class ConstantReferenceGuidance(GuidanceBase):
     def __init__(self,

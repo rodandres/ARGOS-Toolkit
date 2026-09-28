@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import json
 
-from py.modules.visualization.style import *
+from argos.visualization.style import *
 
 def plot_control_result(
     spacecraft_name: str,
