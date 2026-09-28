@@ -1,16 +1,16 @@
-from argos.frames.frames_base import FrameBase
+from argos.frames.frames_base import Frame
 
-ECI = FrameBase(name="ECI",
+ECI = Frame(name="ECI",
                 inertial=True,
                 origin="Earth"
                 )
 
-BODY = FrameBase(name="BODY",
+BODY = Frame(name="BODY",
                  inertial=False,
                  origin="Spacecraft CG"
                  )
 
-SENSOR = FrameBase(name="SENSOR",
+SENSOR = Frame(name="SENSOR",
                    inertial=False,
                    origin="Local Sensor Position"
                    )
