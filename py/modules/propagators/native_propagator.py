@@ -6,7 +6,7 @@ from py.modules.solvers.solvers_base import solve
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from py.modules.core.spacecraft import Spacecraft
-    from py.general.dataclasses import SimulationData
+    from py.modules.general.dataclasses import SimulationData
     from py.modules.enviroments.environment_base import EnvironmentBase
 
 class NativeRotationalPropagator(RotationalPropagatorBase):
@@ -157,18 +157,18 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
     def dynamics(self, t, state, mass, applied_force, disturbance_force):            
 
         if self.dynamics_function is not None:
-            v_model, a_model = self.dynamics_function(t, state, *self.arguments )
-        else:
-            v_model = np.zeros(3)
+            _, a_model = self.dynamics_function(t, state, *self.arguments )
+        else:            
             a_model = np.zeros(3)
         
         if mass <= 0:
             a_external = np.zeros(3)
         else:
             a_external = (applied_force + disturbance_force) / mass
-
+        
         a_total = a_model + a_external
-        v_total = v_model
+        
+        v_total = state[3:6]
 
         acceleration = a_total
         velocity = v_total

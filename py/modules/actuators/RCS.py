@@ -1,7 +1,7 @@
 import warnings
 import numpy as np
 from py.modules.actuators.actuators_base import ActuatorBase
-from py.general.dataclasses import ActuatorOutput
+from py.modules.general.dataclasses import ActuatorOutput
 
 
 class RCSThruster(ActuatorBase):
@@ -17,10 +17,12 @@ class RCSThruster(ActuatorBase):
         minimum_on_time: float = 0.01,
         activation_threshold: float = 0.0,
 
-        override_torque_value: np.ndarray | None = None
+        override_torque_value: np.ndarray | None = None,
+
+        name: str = None
     ):
         
-        super().__init__()
+        super().__init__(name=name)
 
         self.nominal_thrust = nominal_thrust
         self.position = position

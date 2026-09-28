@@ -4,7 +4,7 @@ import numpy as np
 
 from typing import TYPE_CHECKING
 
-from py.general.data_save import SimulationHistory
+from py.modules.general.data_save import SimulationHistory
 
 if TYPE_CHECKING:
     from py.modules.controllers.controller_base import ControllerBase, ControlAllocatorBase
@@ -43,8 +43,8 @@ class SimulationData:
     t: float =  field(default=0.0)
     tick: int = field(default=0)
     verbose: bool = False
-
-    simulation_history: "SimulationHistory" = field(default_factory=lambda: SimulationHistory())
+    
+    simulation_history: SimulationHistory = None
 
     DCM_inertial_to_body: np.ndarray = field(default_factory=lambda: np.eye(3))
 
@@ -60,12 +60,12 @@ class StateVariables:
     frame_type: None = None  # 'inertial' or 'body', to be defined later
 
 @dataclass(slots=True)
-class EstimationOutput:
+class NavigationOutput:
     spacecraft_state: StateVariables = field(default_factory=StateVariables)
-    reference_state: StateVariables = field(default_factory=StateVariables)
+    target_state: StateVariables = field(default_factory=StateVariables)
 
 @dataclass(slots=True)
-class GuidanceReference:
+class GuidanceOutput:
     state: StateVariables = field(default_factory=StateVariables)    
 
 @dataclass(slots=True)
@@ -86,9 +86,9 @@ class SpacecraftData():
     # Spacraft state variables in inertial frame (same as the inertial frame of the simulation)
     true_state: StateVariables = field(default_factory=StateVariables)    
     
-    estimated_data: EstimationOutput = field(default_factory=EstimationOutput)
-    reference_data: GuidanceReference = field(default_factory=GuidanceReference)
-    control_output_data: ControlOutput = field(default_factory=ControlOutput)
+    navigation_data: NavigationOutput = field(default_factory=NavigationOutput)
+    guidance_data: GuidanceOutput = field(default_factory=GuidanceOutput)
+    control_data: ControlOutput = field(default_factory=ControlOutput)
 
     current_force_exerted: np.ndarray = field(default_factory=lambda: np.zeros(3))
     current_torque_exerted: np.ndarray = field(default_factory=lambda: np.zeros(3))

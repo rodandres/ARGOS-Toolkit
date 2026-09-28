@@ -2,13 +2,16 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import json
 
 from py.modules.visualization.style import *
 
 def plot_control_result(
     spacecraft_name: str,
-    result,
+    metadata,
     save: bool = False,
+    show: bool = True,
     output_dir: Path | str = DEFAULT_OUTPUT_DIR,
     filename: str = "control_result.png",
     dpi: int = 300,
@@ -20,14 +23,23 @@ def plot_control_result(
     ----------
     spacecraft_name : str
         Name of the spacecraft to plot.
-    result : SimulationHistory
-        General simulation result containing spacecraft histories.
+
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either a ``SimulationHistoryMetadata``
+        instance or a path to ``simulation_history_metadata.json``.
+
     save : bool, optional
         Save the generated figure to disk. Default is False.
+
+    show : bool, optional
+        Display the generated figure. Default is True.
+
     output_dir : Path | str, optional
         Directory where the figure will be saved.
+
     filename : str, optional
         Output filename.
+
     dpi : int, optional
         Figure resolution in dots per inch.
 
@@ -38,37 +50,152 @@ def plot_control_result(
     """
 
     # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+
+    # ------------------------------------------------------------------
     # Validate spacecraft
     # ------------------------------------------------------------------
 
-    if spacecraft_name not in result.spacecrafts_history:
+    if spacecraft_name not in available_spacecrafts:
         raise KeyError(
-            f"Spacecraft '{spacecraft_name}' not found in simulation history."
+            f"Spacecraft '{spacecraft_name}' not found in simulation "
+            f"metadata. Available spacecrafts: "
+            f"{available_spacecrafts}"
         )
 
-    history = result.spacecrafts_history[spacecraft_name]
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    csv_file = (
+        csv_directory
+        / f"{spacecraft_name}.csv"
+    )
+
+    if not csv_file.exists():
+        raise FileNotFoundError(
+            f"CSV file for spacecraft '{spacecraft_name}' "
+            f"not found: '{csv_file}'"
+        )
+
+    # ------------------------------------------------------------------
+    # Load CSV
+    # ------------------------------------------------------------------
+
+    data = pd.read_csv(csv_file)
+
+    required_columns = [
+        "t",
+
+        "control_force_0",
+        "control_force_1",
+        "control_force_2",
+
+        "current_force_exerted_0",
+        "current_force_exerted_1",
+        "current_force_exerted_2",
+
+        "control_torque_0",
+        "control_torque_1",
+        "control_torque_2",
+
+        "current_torque_exerted_0",
+        "current_torque_exerted_1",
+        "current_torque_exerted_2",
+    ]
+
+    missing_columns = [
+        column_name
+        for column_name in required_columns
+        if column_name not in data.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"CSV file '{csv_file}' is missing required "
+            f"columns: {missing_columns}"
+        )
 
     # ------------------------------------------------------------------
     # Retrieve data
     # ------------------------------------------------------------------
 
-    t = np.asarray(history.t)
+    t = data["t"].to_numpy()
 
-    commanded_force = np.asarray(
-        history.control_output_data["force"]
-    )
+    commanded_force = data[
+        [
+            "control_force_0",
+            "control_force_1",
+            "control_force_2",
+        ]
+    ].to_numpy()
 
-    applied_force = np.asarray(
-        history.current_force_exerted
-    )
+    applied_force = data[
+        [
+            "current_force_exerted_0",
+            "current_force_exerted_1",
+            "current_force_exerted_2",
+        ]
+    ].to_numpy()
 
-    commanded_torque = np.asarray(
-        history.control_output_data["torque"]
-    )
+    commanded_torque = data[
+        [
+            "control_torque_0",
+            "control_torque_1",
+            "control_torque_2",
+        ]
+    ].to_numpy()
 
-    applied_torque = np.asarray(
-        history.current_torque_exerted
-    )
+    applied_torque = data[
+        [
+            "current_torque_exerted_0",
+            "current_torque_exerted_1",
+            "current_torque_exerted_2",
+        ]
+    ].to_numpy()
 
     labels = ("X", "Y", "Z")
 
@@ -118,7 +245,7 @@ def plot_control_result(
         style_axes(
             ax_force,
             title=f"Force {label}",
-            ylabel=r"$F_{" + label.lower() + r"}$ [N]",
+            ylabel=rf"$F_{{{label.lower()}}}$ [N]",
         )
 
         ax_force.legend(
@@ -155,7 +282,7 @@ def plot_control_result(
         style_axes(
             ax_torque,
             title=f"Torque {label}",
-            ylabel=r"$\tau_{" + label.lower() + r"}$ [N·m]",
+            ylabel=rf"$\tau_{{{label.lower()}}}$ [N·m]",
         )
 
         ax_torque.legend(
@@ -182,7 +309,9 @@ def plot_control_result(
         y=0.99,
     )
 
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.tight_layout(
+        rect=[0, 0, 1, 0.96]
+    )
 
     # ------------------------------------------------------------------
     # Finalize
@@ -190,20 +319,12 @@ def plot_control_result(
 
     return finalize_figure(
         fig,
-        show=True,
+        show=show,
         save=save,
         output_dir=output_dir,
         filename=filename,
         dpi=dpi,
     )
-
-import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
-
-# ============================================================================
-# Helpers
-# ============================================================================
 
 def _normalize_spacecraft_names(
     spacecraft_names: str | list[str],
@@ -413,10 +534,9 @@ def _disable_axis(
 # ============================================================================
 # State comparison
 # ============================================================================
-
 def plot_state_comparison(
     spacecraft_names: str | list[str],
-    result,
+    metadata,
     save: bool = False,
     show: bool = True,
     output_dir: Path | str = DEFAULT_OUTPUT_DIR,
@@ -469,14 +589,74 @@ def plot_state_comparison(
     )
 
     # =========================================================================
+    # Load metadata
+    # =========================================================================
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+        targets_info = metadata.get(
+            "targets_info",
+            {},
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+        targets_info = getattr(
+            metadata,
+            "targets_info",
+            {},
+        )
+
+    # =========================================================================
+    # Determine CSV directory
+    # =========================================================================
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    # =========================================================================
     # Validate spacecrafts
     # =========================================================================
 
     for name in spacecraft_names:
 
-        if name not in result.spacecrafts_history:
+        if name not in available_spacecrafts:
             raise KeyError(
-                f"Spacecraft '{name}' not found in simulation history."
+                f"Spacecraft '{name}' not found in simulation metadata. "
+                f"Available spacecrafts: {available_spacecrafts}"
             )
 
     # =========================================================================
@@ -552,60 +732,155 @@ def plot_state_comparison(
         spacecraft_names
     ):
 
-        history = result.spacecrafts_history[
-            spacecraft_name
+        # =====================================================================
+        # Load spacecraft CSV
+        # =====================================================================
+
+        csv_file = (
+            csv_directory
+            / f"{spacecraft_name}.csv"
+        )
+
+        if not csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for spacecraft '{spacecraft_name}' "
+                f"not found: '{csv_file}'"
+            )
+
+        data = pd.read_csv(
+            csv_file
+        )
+
+        # =====================================================================
+        # Required own-state columns
+        # =====================================================================
+
+        required_columns = [
+            "t",
+
+            "true_position_0",
+            "true_position_1",
+            "true_position_2",
+
+            "estimated_sc_position_0",
+            "estimated_sc_position_1",
+            "estimated_sc_position_2",
+
+            "true_velocity_0",
+            "true_velocity_1",
+            "true_velocity_2",
+
+            "estimated_sc_velocity_0",
+            "estimated_sc_velocity_1",
+            "estimated_sc_velocity_2",
+
+            "true_attitude_0",
+            "true_attitude_1",
+            "true_attitude_2",
+            "true_attitude_3",
+
+            "estimated_sc_attitude_0",
+            "estimated_sc_attitude_1",
+            "estimated_sc_attitude_2",
+            "estimated_sc_attitude_3",
+
+            "true_angular_velocity_0",
+            "true_angular_velocity_1",
+            "true_angular_velocity_2",
+
+            "estimated_sc_angular_velocity_0",
+            "estimated_sc_angular_velocity_1",
+            "estimated_sc_angular_velocity_2",
         ]
+
+        missing_columns = [
+            column_name
+            for column_name in required_columns
+            if column_name not in data.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required "
+                f"columns: {missing_columns}"
+            )
 
         # =====================================================================
         # Time
         # =====================================================================
 
-        t = np.asarray(
-            history.t
-        )
+        t = data[
+            "t"
+        ].to_numpy()
 
         # =====================================================================
         # Own spacecraft state
         # =====================================================================
 
-        true_position = np.asarray(
-            history.true_state["position"]
+        true_position = np.column_stack(
+            [
+                data["true_position_0"].to_numpy(),
+                data["true_position_1"].to_numpy(),
+                data["true_position_2"].to_numpy(),
+            ]
         )
 
-        navigation_position = np.asarray(
-            history.estimated_data[
-                "spacecraft_state"
-            ]["position"]
+        navigation_position = np.column_stack(
+            [
+                data["estimated_sc_position_0"].to_numpy(),
+                data["estimated_sc_position_1"].to_numpy(),
+                data["estimated_sc_position_2"].to_numpy(),
+            ]
         )
 
-        true_velocity = np.asarray(
-            history.true_state["velocity"]
+        true_velocity = np.column_stack(
+            [
+                data["true_velocity_0"].to_numpy(),
+                data["true_velocity_1"].to_numpy(),
+                data["true_velocity_2"].to_numpy(),
+            ]
         )
 
-        navigation_velocity = np.asarray(
-            history.estimated_data[
-                "spacecraft_state"
-            ]["velocity"]
+        navigation_velocity = np.column_stack(
+            [
+                data["estimated_sc_velocity_0"].to_numpy(),
+                data["estimated_sc_velocity_1"].to_numpy(),
+                data["estimated_sc_velocity_2"].to_numpy(),
+            ]
         )
 
-        true_attitude = np.asarray(
-            history.true_state["attitude"]
+        true_attitude = np.column_stack(
+            [
+                data["true_attitude_0"].to_numpy(),
+                data["true_attitude_1"].to_numpy(),
+                data["true_attitude_2"].to_numpy(),
+                data["true_attitude_3"].to_numpy(),
+            ]
         )
 
-        navigation_attitude = np.asarray(
-            history.estimated_data[
-                "spacecraft_state"
-            ]["attitude"]
+        navigation_attitude = np.column_stack(
+            [
+                data["estimated_sc_attitude_0"].to_numpy(),
+                data["estimated_sc_attitude_1"].to_numpy(),
+                data["estimated_sc_attitude_2"].to_numpy(),
+                data["estimated_sc_attitude_3"].to_numpy(),
+            ]
         )
 
-        true_angular_velocity = np.asarray(
-            history.true_state["angular_velocity"]
+        true_angular_velocity = np.column_stack(
+            [
+                data["true_angular_velocity_0"].to_numpy(),
+                data["true_angular_velocity_1"].to_numpy(),
+                data["true_angular_velocity_2"].to_numpy(),
+            ]
         )
 
-        navigation_angular_velocity = np.asarray(
-            history.estimated_data[
-                "spacecraft_state"
-            ]["angular_velocity"]
+        navigation_angular_velocity = np.column_stack(
+            [
+                data["estimated_sc_angular_velocity_0"].to_numpy(),
+                data["estimated_sc_angular_velocity_1"].to_numpy(),
+                data["estimated_sc_angular_velocity_2"].to_numpy(),
+            ]
         )
 
         # =====================================================================
@@ -676,16 +951,16 @@ def plot_state_comparison(
         # Target
         # =====================================================================
 
-        target_name = _get_target_name(
-            history,
+        spacecraft_targets = targets_info.get(
             spacecraft_name,
+            [],
         )
 
         # ---------------------------------------------------------------------
         # No target
         # ---------------------------------------------------------------------
 
-        if target_name is None:
+        if not spacecraft_targets:
 
             _disable_axis(
                 axes[1, column],
@@ -714,70 +989,185 @@ def plot_state_comparison(
             continue
 
         # ---------------------------------------------------------------------
+        # Target
+        # ---------------------------------------------------------------------
+
+        target_name = spacecraft_targets[0]
+
+        # ---------------------------------------------------------------------
         # Validate target
         # ---------------------------------------------------------------------
 
-        if target_name not in result.spacecrafts_history:
+        if target_name not in available_spacecrafts:
 
             raise KeyError(
                 f"Target spacecraft '{target_name}' referenced by "
-                f"'{spacecraft_name}' was not found in simulation history."
+                f"'{spacecraft_name}' was not found in simulation metadata."
             )
 
-        target_history = result.spacecrafts_history[
-            target_name
+        target_csv_file = (
+            csv_directory
+            / f"{target_name}.csv"
+        )
+
+        if not target_csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for target spacecraft '{target_name}' "
+                f"not found: '{target_csv_file}'"
+            )
+
+        target_data = pd.read_csv(
+            target_csv_file
+        )
+
+        # =====================================================================
+        # Required target truth columns
+        # =====================================================================
+
+        target_required_columns = [
+            "t",
+
+            "true_position_0",
+            "true_position_1",
+            "true_position_2",
+
+            "true_velocity_0",
+            "true_velocity_1",
+            "true_velocity_2",
+
+            "true_attitude_0",
+            "true_attitude_1",
+            "true_attitude_2",
+            "true_attitude_3",
+
+            "true_angular_velocity_0",
+            "true_angular_velocity_1",
+            "true_angular_velocity_2",
         ]
 
-        target_t = np.asarray(
-            target_history.t
-        )
+        missing_target_columns = [
+            column_name
+            for column_name in target_required_columns
+            if column_name not in target_data.columns
+        ]
+
+        if missing_target_columns:
+            raise ValueError(
+                f"CSV file '{target_csv_file}' is missing required "
+                f"columns: {missing_target_columns}"
+            )
+
+        # =====================================================================
+        # Target time
+        # =====================================================================
+
+        target_t = target_data[
+            "t"
+        ].to_numpy()
 
         # =====================================================================
         # Target true state
         # =====================================================================
 
-        target_true_position = np.asarray(
-            target_history.true_state["position"]
+        target_true_position = np.column_stack(
+            [
+                target_data["true_position_0"].to_numpy(),
+                target_data["true_position_1"].to_numpy(),
+                target_data["true_position_2"].to_numpy(),
+            ]
         )
 
-        target_true_velocity = np.asarray(
-            target_history.true_state["velocity"]
+        target_true_velocity = np.column_stack(
+            [
+                target_data["true_velocity_0"].to_numpy(),
+                target_data["true_velocity_1"].to_numpy(),
+                target_data["true_velocity_2"].to_numpy(),
+            ]
         )
 
-        target_true_attitude = np.asarray(
-            target_history.true_state["attitude"]
+        target_true_attitude = np.column_stack(
+            [
+                target_data["true_attitude_0"].to_numpy(),
+                target_data["true_attitude_1"].to_numpy(),
+                target_data["true_attitude_2"].to_numpy(),
+                target_data["true_attitude_3"].to_numpy(),
+            ]
         )
 
-        target_true_angular_velocity = np.asarray(
-            target_history.true_state["angular_velocity"]
+        target_true_angular_velocity = np.column_stack(
+            [
+                target_data["true_angular_velocity_0"].to_numpy(),
+                target_data["true_angular_velocity_1"].to_numpy(),
+                target_data["true_angular_velocity_2"].to_numpy(),
+            ]
         )
 
         # =====================================================================
         # Target estimated state
         # =====================================================================
 
-        target_estimated_position = np.asarray(
-            history.estimated_data[
-                "reference_state"
-            ]["position"]
+        target_estimated_columns = [
+            "estimated_target_position_0",
+            "estimated_target_position_1",
+            "estimated_target_position_2",
+
+            "estimated_target_velocity_0",
+            "estimated_target_velocity_1",
+            "estimated_target_velocity_2",
+
+            "estimated_target_attitude_0",
+            "estimated_target_attitude_1",
+            "estimated_target_attitude_2",
+            "estimated_target_attitude_3",
+
+            "estimated_target_angular_velocity_0",
+            "estimated_target_angular_velocity_1",
+            "estimated_target_angular_velocity_2",
+        ]
+
+        missing_estimated_columns = [
+            column_name
+            for column_name in target_estimated_columns
+            if column_name not in data.columns
+        ]
+
+        if missing_estimated_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required target "
+                f"estimation columns: {missing_estimated_columns}"
+            )
+
+        target_estimated_position = np.column_stack(
+            [
+                data["estimated_target_position_0"].to_numpy(),
+                data["estimated_target_position_1"].to_numpy(),
+                data["estimated_target_position_2"].to_numpy(),
+            ]
         )
 
-        target_estimated_velocity = np.asarray(
-            history.estimated_data[
-                "reference_state"
-            ]["velocity"]
+        target_estimated_velocity = np.column_stack(
+            [
+                data["estimated_target_velocity_0"].to_numpy(),
+                data["estimated_target_velocity_1"].to_numpy(),
+                data["estimated_target_velocity_2"].to_numpy(),
+            ]
         )
 
-        target_estimated_attitude = np.asarray(
-            history.estimated_data[
-                "reference_state"
-            ]["attitude"]
+        target_estimated_attitude = np.column_stack(
+            [
+                data["estimated_target_attitude_0"].to_numpy(),
+                data["estimated_target_attitude_1"].to_numpy(),
+                data["estimated_target_attitude_2"].to_numpy(),
+                data["estimated_target_attitude_3"].to_numpy(),
+            ]
         )
 
-        target_estimated_angular_velocity = np.asarray(
-            history.estimated_data[
-                "reference_state"
-            ]["angular_velocity"]
+        target_estimated_angular_velocity = np.column_stack(
+            [
+                data["estimated_target_angular_velocity_0"].to_numpy(),
+                data["estimated_target_angular_velocity_1"].to_numpy(),
+                data["estimated_target_angular_velocity_2"].to_numpy(),
+            ]
         )
 
         # =====================================================================

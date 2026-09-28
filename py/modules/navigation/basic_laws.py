@@ -1,6 +1,6 @@
 import numpy as np
 from py.modules.navigation.navigation_base import NavigationBase
-from py.general.dataclasses import EstimationOutput, StateVariables
+from py.modules.general.dataclasses import NavigationOutput, StateVariables
 
 class IdealNavigation(NavigationBase):
     def __init__(self, sensor_to_be_use=1):
@@ -46,7 +46,7 @@ class IdealNavigation(NavigationBase):
             angular_acceleration=spacecraft_sensor_data[5]
         )
 
-        reference_state = StateVariables(
+        target_state = StateVariables(
             position=reference_sensor_data[0],
             velocity=reference_sensor_data[1],
             acceleration=reference_sensor_data[2],
@@ -55,9 +55,9 @@ class IdealNavigation(NavigationBase):
             angular_acceleration=reference_sensor_data[5]
         )
 
-        return EstimationOutput(
+        return NavigationOutput(
             spacecraft_state=spacecraft_state,
-            reference_state=reference_state
+            target_state=target_state
         )
 
 class CustomNavigation(NavigationBase):
@@ -85,12 +85,23 @@ class CustomNavigation(NavigationBase):
         Args:
             sensors (list): A list of sensor objects providing data for estimation.
         Returns:
-            An EstimationOutput object containing the estimated state of the spacecraft.
+            An NavigationOutput object containing the estimated state of the spacecraft.
         """
 
         output = self.custom_estimation_function(sensors)
 
-        if not isinstance(output, EstimationOutput):
-            raise TypeError("custom_estimation_function must return an EstimationOutput object.")
+        if not isinstance(output, NavigationOutput):
+            raise TypeError("custom_estimation_function must return an NavigationOutput object.")
 
         return output
+
+class NavigationPlaceholder(NavigationBase):
+    def __init__(self):
+        super().__init__()
+
+    def _check_initialization(self):
+        # No specific initialization checks for NavigationPlaceholder
+        pass
+
+    def estimate(self, sensors: list) -> dict:
+        raise NotImplementedError("NavigationPlaceholder does not implement the estimate method.")

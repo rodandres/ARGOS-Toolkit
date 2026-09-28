@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 import numpy as np
-from py.general.data_classes_declaration import SimSharedData
+from py.modules.general.data_classes_declaration import SimSharedData
 from py.modules.math import quaternion_error as quat_error
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.general.dataclasses import SimulationData, ControlOutput, GuidanceReference, EstimationOutput
+    from py.modules.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
     from py.modules.actuators.actuators_base import ActuatorBase
 
 
@@ -24,7 +25,9 @@ class ControllerBase(ABC):
     """
     Abstract interface for spacecraft control laws.
     """
-    
+    def copy(self):
+         return deepcopy(self)
+
     def compute_control_old(
         self,
         shared_data: SimSharedData,
@@ -45,7 +48,7 @@ class ControllerBase(ABC):
         pass
 
     @abstractmethod
-    def compute_control(self, estimated_state: EstimationOutput, reference: GuidanceReference) -> ControlOutput:
+    def compute_control(self, navigation_output: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
         """
         Compute the commanded control torque.
 
@@ -64,6 +67,10 @@ class ControllerBase(ABC):
 class ControlAllocatorBase(ABC):
     def __init__(self):
         self._check_initialization()
+
+    def copy(self):
+         return deepcopy(self)
+
 
     @abstractmethod
     def _check_initialization(self):

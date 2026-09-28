@@ -15,10 +15,8 @@ import sys
 
 path = Path.cwd()
 
-REPO_ROOT = path.parents[1]
-
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO_ROOT))
 
 # %% [markdown]
 # ## General Simulation Setup
@@ -139,7 +137,7 @@ nav_law = IdealNavigation()
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator
 translational_propagator = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
 
-from py.general.dataclasses import MissionPhase
+from py.modules.general.dataclasses import MissionPhase
 
 initial_phase = MissionPhase(
     name="Initial Phase",
@@ -259,7 +257,7 @@ initial_orientation = initial_orientation = [45, -30, -10]  # Initial orientatio
 initial_orientation_quat = quaternion_from_euler(np.deg2rad(initial_orientation[0]), np.deg2rad(initial_orientation[1]), np.deg2rad(initial_orientation[2]))
 initial_angular_velocity = np.array([-0.08, 0.05, 0.1])  # Initial angular velocity in rad/s
 
-from py.general.general_data import Ix_total, Iy_total, Iz_total
+from py.modules.general.general_data import Ix_total, Iy_total, Iz_total
 
 inertia_tensor=np.diag([
     Ix_total,
@@ -286,24 +284,24 @@ sim.add_spacecraft(
 
 # %%
 # We can now simulate
-result = sim.simulate()
+metada = sim.simulate()
 
 # %%
 from py.modules.visualization.state_variables import plot_attitude_quaternions, plot_position
 
-plot_attitude_quaternions(["SC1"], result, show=True)
-plot_position(["SC1"], result, show=True)
+plot_attitude_quaternions(["SC1"], metada, show=True)
+plot_position(["SC1"], metada, show=True)
 
 
 from py.modules.visualization.gnc import plot_control_result
-plot_control_result("SC1", result)
+plot_control_result("SC1", metada)
 
 from py.modules.visualization.trajectories import *
 
-plot_trajectory_xy(["SC1"], result, show=True, body="Earth",)
-plot_trajectory_xz(["SC1"], result, show=True, body="Earth",)
-plot_trajectory_yz(["SC1"], result, show=True, body="Earth",)
-plot_trajectory_3d(["SC1"], result, show=True, body="Earth",)
-plot_trajectory(["SC1"], result, show=True, body="Earth",)
+plot_trajectory_xy(["SC1"], metada, show=True, body="Earth",)
+plot_trajectory_xz(["SC1"], metada, show=True, body="Earth",)
+plot_trajectory_yz(["SC1"], metada, show=True, body="Earth",)
+plot_trajectory_3d(["SC1"], metada, show=True, body="Earth",)
+plot_trajectory(["SC1"], metada, show=True, body="Earth",)
 
 

@@ -15,6 +15,7 @@ class Accelerometer(SensorBase):
                  sample_rate_freq: float = 100.0,
                  saturation_limit: np.ndarray | float = np.inf,
                  quantization_bits: int | None = 16,
+                 name: str = None,
                  verbose: bool = False):
                 
         error_models = (
@@ -31,6 +32,7 @@ class Accelerometer(SensorBase):
             sensor_rotation=sensor_rotation,
             sample_rate_freq=sample_rate_freq,
             error_models=error_models,
+            name=name,
             verbose=verbose)        
 
     def compute_specific_accel(self, spacecraft_data, simulation_data) -> np.ndarray:
@@ -66,7 +68,8 @@ class Gyroscope(SensorBase):
                  random_walk_std: np.ndarray | float = 0.0,
                  sample_rate_freq: float = 100.0,
                  saturation_limit: np.ndarray | float = np.inf,
-                 quantization_bits: int | None = 16,
+                 quantization_bits: int = 16,
+                 name: str = None,
                  verbose: bool = False):                
 
         error_models = (
@@ -83,6 +86,7 @@ class Gyroscope(SensorBase):
             sensor_rotation=sensor_rotation,
             sample_rate_freq=sample_rate_freq,
             error_models=error_models,
+            name=name,
             verbose=verbose)
 
     def transform_to_sensor_frame(self, gyro, simulation_data) -> np.ndarray:

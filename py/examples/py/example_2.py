@@ -15,10 +15,9 @@ import sys
 
 path = Path.cwd()
 
-REPO_ROOT = path.parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO_ROOT))
 
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
 # %% [markdown]
 # ## General Simulation Setup
@@ -72,7 +71,7 @@ sensors_SC2 = [AbsoluteSensor(1/dt_SC2, verbose=False)]
 
 # %%
 from py.modules.navigation.basic_laws import IdealNavigation
-from py.general.dataclasses import MissionPhase
+from py.modules.general.dataclasses import MissionPhase
 from py.modules.core.mission_manager import MissionManager
 
 nav_law_SC2 = IdealNavigation()
@@ -152,20 +151,20 @@ sim.add_spacecraft(
 
 # %%
 # We can now simulate
-result = sim.simulate()
+metada = sim.simulate()
 
 # %%
 from py.modules.visualization.trajectories import *
 
-plot_trajectory_xy(["SC1", "SC2"], result, show=True, body="Earth",)
-plot_trajectory_xz(["SC1", "SC2"], result, show=True, body="Earth",)
-plot_trajectory_yz(["SC1", "SC2"], result, show=True, body="Earth",)
-plot_trajectory_3d(["SC1", "SC2"], result, show=True, body="Earth",)
-plot_trajectory(["SC1", "SC2"], result, show=True, body="Earth",)
+plot_trajectory_xy(["SC1", "SC2"], metada, show=True, body="Earth",)
+plot_trajectory_xz(["SC1", "SC2"], metada, show=True, body="Earth",)
+plot_trajectory_yz(["SC1", "SC2"], metada, show=True, body="Earth",)
+plot_trajectory_3d(["SC1", "SC2"], metada, show=True, body="Earth",)
+plot_trajectory(["SC1", "SC2"], metada, show=True, body="Earth",)
 
 
 from py.modules.visualization.gnc import *
-plot_state_comparison(["SC1", "SC2"], result, show=True)
+plot_state_comparison(["SC1", "SC2"], metada, show=True)
 
 # %%
 

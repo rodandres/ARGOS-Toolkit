@@ -2,6 +2,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import json
 
 from py.modules.visualization.style import *
 
@@ -491,7 +493,7 @@ def _plot_body_3d(
 
 def plot_trajectory_xy(
     spacecraft_names: str | list[str],
-    result,
+    metadata,
     body: str | None = None,
     body_position: np.ndarray | None = None,
     body_radius: float | None = None,
@@ -502,14 +504,133 @@ def plot_trajectory_xy(
     filename: str = "trajectory_xy.png",
     dpi: int = 300,
 ):
+    """
+    Plot spacecraft trajectories in the XY plane.
+
+    Parameters
+    ----------
+    spacecraft_names : str | list[str]
+        Spacecraft name or list of spacecraft names to plot.
+
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either a ``SimulationHistoryMetadata``
+        instance or a path to ``simulation_history_metadata.json``.
+
+    body : str | None, optional
+        Name of the central body to plot.
+
+    body_position : np.ndarray | None, optional
+        Position of the body.
+
+    body_radius : float | None, optional
+        Radius of the body.
+
+    body_scale : float, optional
+        Scale factor applied to the body radius.
+
+    save : bool, optional
+        Save the generated figure to disk.
+
+    show : bool, optional
+        Display the generated figure.
+
+    output_dir : Path | str, optional
+        Directory where the figure will be saved.
+
+    filename : str, optional
+        Output filename.
+
+    dpi : int, optional
+        Figure resolution in dots per inch.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Generated figure.
+    """
+
+    # ------------------------------------------------------------------
+    # Normalize input
+    # ------------------------------------------------------------------
 
     spacecraft_names = _normalize_spacecraft_names(
         spacecraft_names
     )
 
+    # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    # ------------------------------------------------------------------
+    # Validate spacecrafts
+    # ------------------------------------------------------------------
+
+    for spacecraft_name in spacecraft_names:
+
+        if spacecraft_name not in available_spacecrafts:
+            raise KeyError(
+                f"Spacecraft '{spacecraft_name}' not found in "
+                f"simulation metadata. Available spacecrafts: "
+                f"{available_spacecrafts}"
+            )
+
+    # ------------------------------------------------------------------
+    # Colors
+    # ------------------------------------------------------------------
+
     colors = _trajectory_colors(
         len(spacecraft_names)
     )
+
+    # ------------------------------------------------------------------
+    # Figure
+    # ------------------------------------------------------------------
 
     fig, ax = plt.subplots(
         figsize=(8, 7)
@@ -519,9 +640,9 @@ def plot_trajectory_xy(
         fig
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Body
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     if body is not None:
 
@@ -538,19 +659,55 @@ def plot_trajectory_xy(
             plane="xy",
         )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Spacecraft
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     for spacecraft_name, color in zip(
         spacecraft_names,
         colors,
     ):
 
-        _, x, y, _ = _get_spacecraft_position(
-            result,
-            spacecraft_name,
+        csv_file = (
+            csv_directory
+            / f"{spacecraft_name}.csv"
         )
+
+        if not csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for spacecraft '{spacecraft_name}' "
+                f"not found: '{csv_file}'"
+            )
+
+        data = pd.read_csv(
+            csv_file
+        )
+
+        required_columns = [
+            "true_position_0",
+            "true_position_1",
+            "true_position_2",
+        ]
+
+        missing_columns = [
+            column
+            for column in required_columns
+            if column not in data.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required "
+                f"columns: {missing_columns}"
+            )
+
+        x = data[
+            "true_position_0"
+        ].to_numpy()
+
+        y = data[
+            "true_position_1"
+        ].to_numpy()
 
         ax.plot(
             x,
@@ -560,9 +717,9 @@ def plot_trajectory_xy(
             label=spacecraft_name,
         )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Style
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     style_axes(
         ax,
@@ -578,6 +735,10 @@ def plot_trajectory_xy(
 
     fig.tight_layout()
 
+    # ------------------------------------------------------------------
+    # Finalize
+    # ------------------------------------------------------------------
+
     return finalize_figure(
         fig,
         show=show,
@@ -587,14 +748,13 @@ def plot_trajectory_xy(
         dpi=dpi,
     )
 
-
 # ============================================================================
 # XZ Plane
 # ============================================================================
 
 def plot_trajectory_xz(
     spacecraft_names: str | list[str],
-    result,
+    metadata,
     body: str | None = None,
     body_position: np.ndarray | None = None,
     body_radius: float | None = None,
@@ -605,14 +765,133 @@ def plot_trajectory_xz(
     filename: str = "trajectory_xz.png",
     dpi: int = 300,
 ):
+    """
+    Plot spacecraft trajectories in the XZ plane.
+
+    Parameters
+    ----------
+    spacecraft_names : str | list[str]
+        Spacecraft name or list of spacecraft names to plot.
+
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either a ``SimulationHistoryMetadata``
+        instance or a path to ``simulation_history_metadata.json``.
+
+    body : str | None, optional
+        Name of the central body to plot.
+
+    body_position : np.ndarray | None, optional
+        Position of the body.
+
+    body_radius : float | None, optional
+        Radius of the body.
+
+    body_scale : float, optional
+        Scale factor applied to the body radius.
+
+    save : bool, optional
+        Save the generated figure to disk.
+
+    show : bool, optional
+        Display the generated figure.
+
+    output_dir : Path | str, optional
+        Directory where the figure will be saved.
+
+    filename : str, optional
+        Output filename.
+
+    dpi : int, optional
+        Figure resolution in dots per inch.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Generated figure.
+    """
+
+    # ------------------------------------------------------------------
+    # Normalize input
+    # ------------------------------------------------------------------
 
     spacecraft_names = _normalize_spacecraft_names(
         spacecraft_names
     )
 
+    # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    # ------------------------------------------------------------------
+    # Validate spacecrafts
+    # ------------------------------------------------------------------
+
+    for spacecraft_name in spacecraft_names:
+
+        if spacecraft_name not in available_spacecrafts:
+            raise KeyError(
+                f"Spacecraft '{spacecraft_name}' not found in "
+                f"simulation metadata. Available spacecrafts: "
+                f"{available_spacecrafts}"
+            )
+
+    # ------------------------------------------------------------------
+    # Colors
+    # ------------------------------------------------------------------
+
     colors = _trajectory_colors(
         len(spacecraft_names)
     )
+
+    # ------------------------------------------------------------------
+    # Figure
+    # ------------------------------------------------------------------
 
     fig, ax = plt.subplots(
         figsize=(8, 7)
@@ -622,9 +901,9 @@ def plot_trajectory_xz(
         fig
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Body
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     if body is not None:
 
@@ -641,19 +920,54 @@ def plot_trajectory_xz(
             plane="xz",
         )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Spacecraft
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     for spacecraft_name, color in zip(
         spacecraft_names,
         colors,
     ):
 
-        _, x, _, z = _get_spacecraft_position(
-            result,
-            spacecraft_name,
+        csv_file = (
+            csv_directory
+            / f"{spacecraft_name}.csv"
         )
+
+        if not csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for spacecraft '{spacecraft_name}' "
+                f"not found: '{csv_file}'"
+            )
+
+        data = pd.read_csv(
+            csv_file
+        )
+
+        required_columns = [
+            "true_position_0",
+            "true_position_2",
+        ]
+
+        missing_columns = [
+            column
+            for column in required_columns
+            if column not in data.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required "
+                f"columns: {missing_columns}"
+            )
+
+        x = data[
+            "true_position_0"
+        ].to_numpy()
+
+        z = data[
+            "true_position_2"
+        ].to_numpy()
 
         ax.plot(
             x,
@@ -663,9 +977,9 @@ def plot_trajectory_xz(
             label=spacecraft_name,
         )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Style
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     style_axes(
         ax,
@@ -681,6 +995,10 @@ def plot_trajectory_xz(
 
     fig.tight_layout()
 
+    # ------------------------------------------------------------------
+    # Finalize
+    # ------------------------------------------------------------------
+
     return finalize_figure(
         fig,
         show=show,
@@ -690,14 +1008,13 @@ def plot_trajectory_xz(
         dpi=dpi,
     )
 
-
 # ============================================================================
 # YZ Plane
 # ============================================================================
 
 def plot_trajectory_yz(
     spacecraft_names: str | list[str],
-    result,
+    metadata,
     body: str | None = None,
     body_position: np.ndarray | None = None,
     body_radius: float | None = None,
@@ -708,14 +1025,133 @@ def plot_trajectory_yz(
     filename: str = "trajectory_yz.png",
     dpi: int = 300,
 ):
+    """
+    Plot spacecraft trajectories in the YZ plane.
+
+    Parameters
+    ----------
+    spacecraft_names : str | list[str]
+        Spacecraft name or list of spacecraft names to plot.
+
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either a ``SimulationHistoryMetadata``
+        instance or a path to ``simulation_history_metadata.json``.
+
+    body : str | None, optional
+        Name of the central body to plot.
+
+    body_position : np.ndarray | None, optional
+        Position of the body.
+
+    body_radius : float | None, optional
+        Radius of the body.
+
+    body_scale : float, optional
+        Scale factor applied to the body radius.
+
+    save : bool, optional
+        Save the generated figure to disk.
+
+    show : bool, optional
+        Display the generated figure.
+
+    output_dir : Path | str, optional
+        Directory where the figure will be saved.
+
+    filename : str, optional
+        Output filename.
+
+    dpi : int, optional
+        Figure resolution in dots per inch.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Generated figure.
+    """
+
+    # ------------------------------------------------------------------
+    # Normalize input
+    # ------------------------------------------------------------------
 
     spacecraft_names = _normalize_spacecraft_names(
         spacecraft_names
     )
 
+    # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    # ------------------------------------------------------------------
+    # Validate spacecrafts
+    # ------------------------------------------------------------------
+
+    for spacecraft_name in spacecraft_names:
+
+        if spacecraft_name not in available_spacecrafts:
+            raise KeyError(
+                f"Spacecraft '{spacecraft_name}' not found in "
+                f"simulation metadata. Available spacecrafts: "
+                f"{available_spacecrafts}"
+            )
+
+    # ------------------------------------------------------------------
+    # Colors
+    # ------------------------------------------------------------------
+
     colors = _trajectory_colors(
         len(spacecraft_names)
     )
+
+    # ------------------------------------------------------------------
+    # Figure
+    # ------------------------------------------------------------------
 
     fig, ax = plt.subplots(
         figsize=(8, 7)
@@ -725,9 +1161,9 @@ def plot_trajectory_yz(
         fig
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Body
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     if body is not None:
 
@@ -744,19 +1180,54 @@ def plot_trajectory_yz(
             plane="yz",
         )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Spacecraft
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     for spacecraft_name, color in zip(
         spacecraft_names,
         colors,
     ):
 
-        _, _, y, z = _get_spacecraft_position(
-            result,
-            spacecraft_name,
+        csv_file = (
+            csv_directory
+            / f"{spacecraft_name}.csv"
         )
+
+        if not csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for spacecraft '{spacecraft_name}' "
+                f"not found: '{csv_file}'"
+            )
+
+        data = pd.read_csv(
+            csv_file
+        )
+
+        required_columns = [
+            "true_position_1",
+            "true_position_2",
+        ]
+
+        missing_columns = [
+            column
+            for column in required_columns
+            if column not in data.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required "
+                f"columns: {missing_columns}"
+            )
+
+        y = data[
+            "true_position_1"
+        ].to_numpy()
+
+        z = data[
+            "true_position_2"
+        ].to_numpy()
 
         ax.plot(
             y,
@@ -766,9 +1237,9 @@ def plot_trajectory_yz(
             label=spacecraft_name,
         )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Style
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     style_axes(
         ax,
@@ -784,6 +1255,10 @@ def plot_trajectory_yz(
 
     fig.tight_layout()
 
+    # ------------------------------------------------------------------
+    # Finalize
+    # ------------------------------------------------------------------
+
     return finalize_figure(
         fig,
         show=show,
@@ -793,14 +1268,13 @@ def plot_trajectory_yz(
         dpi=dpi,
     )
 
-
 # ============================================================================
 # 3D XYZ
 # ============================================================================
 
 def plot_trajectory_3d(
     spacecraft_names: str | list[str],
-    result,
+    metadata,
     body: str | None = None,
     body_position: np.ndarray | None = None,
     body_radius: float | None = None,
@@ -811,14 +1285,133 @@ def plot_trajectory_3d(
     filename: str = "trajectory_3d.png",
     dpi: int = 300,
 ):
+    """
+    Plot spacecraft trajectories in 3D.
+
+    Parameters
+    ----------
+    spacecraft_names : str | list[str]
+        Spacecraft name or list of spacecraft names to plot.
+
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either a ``SimulationHistoryMetadata``
+        instance or a path to ``simulation_history_metadata.json``.
+
+    body : str | None, optional
+        Name of the central body to plot.
+
+    body_position : np.ndarray | None, optional
+        Position of the body.
+
+    body_radius : float | None, optional
+        Radius of the body.
+
+    body_scale : float, optional
+        Scale factor applied to the body radius.
+
+    save : bool, optional
+        Save the generated figure to disk.
+
+    show : bool, optional
+        Display the generated figure.
+
+    output_dir : Path | str, optional
+        Directory where the figure will be saved.
+
+    filename : str, optional
+        Output filename.
+
+    dpi : int, optional
+        Figure resolution in dots per inch.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Generated figure.
+    """
+
+    # ------------------------------------------------------------------
+    # Normalize input
+    # ------------------------------------------------------------------
 
     spacecraft_names = _normalize_spacecraft_names(
         spacecraft_names
     )
 
+    # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    # ------------------------------------------------------------------
+    # Validate spacecrafts
+    # ------------------------------------------------------------------
+
+    for spacecraft_name in spacecraft_names:
+
+        if spacecraft_name not in available_spacecrafts:
+            raise KeyError(
+                f"Spacecraft '{spacecraft_name}' not found in "
+                f"simulation metadata. Available spacecrafts: "
+                f"{available_spacecrafts}"
+            )
+
+    # ------------------------------------------------------------------
+    # Colors
+    # ------------------------------------------------------------------
+
     colors = _trajectory_colors(
         len(spacecraft_names)
     )
+
+    # ------------------------------------------------------------------
+    # Figure
+    # ------------------------------------------------------------------
 
     fig = plt.figure(
         figsize=(9, 8)
@@ -833,15 +1426,15 @@ def plot_trajectory_3d(
         projection="3d",
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Storage for equal scaling
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     positions = []
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Body
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     body_data = None
 
@@ -880,19 +1473,59 @@ def plot_trajectory_3d(
             )
         )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Spacecraft trajectories
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     for spacecraft_name, color in zip(
         spacecraft_names,
         colors,
     ):
 
-        _, x, y, z = _get_spacecraft_position(
-            result,
-            spacecraft_name,
+        csv_file = (
+            csv_directory
+            / f"{spacecraft_name}.csv"
         )
+
+        if not csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for spacecraft '{spacecraft_name}' "
+                f"not found: '{csv_file}'"
+            )
+
+        data = pd.read_csv(
+            csv_file
+        )
+
+        required_columns = [
+            "true_position_0",
+            "true_position_1",
+            "true_position_2",
+        ]
+
+        missing_columns = [
+            column
+            for column in required_columns
+            if column not in data.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required "
+                f"columns: {missing_columns}"
+            )
+
+        x = data[
+            "true_position_0"
+        ].to_numpy()
+
+        y = data[
+            "true_position_1"
+        ].to_numpy()
+
+        z = data[
+            "true_position_2"
+        ].to_numpy()
 
         position = np.column_stack(
             (
@@ -915,18 +1548,18 @@ def plot_trajectory_3d(
             label=spacecraft_name,
         )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Equal 3D scaling
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     _set_equal_3d_limits(
         ax,
         positions,
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Style
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     style_3d_axes(
         ax,
@@ -942,6 +1575,10 @@ def plot_trajectory_3d(
 
     fig.tight_layout()
 
+    # ------------------------------------------------------------------
+    # Finalize
+    # ------------------------------------------------------------------
+
     return finalize_figure(
         fig,
         show=show,
@@ -951,14 +1588,13 @@ def plot_trajectory_3d(
         dpi=dpi,
     )
 
-
 # ============================================================================
 # Combined trajectory figure
 # ============================================================================
 
 def plot_trajectory(
     spacecraft_names: str | list[str],
-    result,
+    metadata,
     body: str | None = None,
     body_position: np.ndarray | None = None,
     body_radius: float | None = None,
@@ -980,8 +1616,9 @@ def plot_trajectory(
     spacecraft_names : str | list[str]
         Spacecraft name or list of spacecraft names.
 
-    result : SimulationHistory
-        General simulation result containing spacecraft histories.
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either a ``SimulationHistoryMetadata``
+        instance or a path to ``simulation_history_metadata.json``.
 
     body : str, optional
         Celestial body to display.
@@ -1017,17 +1654,88 @@ def plot_trajectory(
         Generated figure.
     """
 
+    # ------------------------------------------------------------------
+    # Normalize input
+    # ------------------------------------------------------------------
+
     spacecraft_names = _normalize_spacecraft_names(
         spacecraft_names
     )
+
+    # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    # ------------------------------------------------------------------
+    # Validate spacecrafts
+    # ------------------------------------------------------------------
+
+    for spacecraft_name in spacecraft_names:
+
+        if spacecraft_name not in available_spacecrafts:
+            raise KeyError(
+                f"Spacecraft '{spacecraft_name}' not found in "
+                f"simulation metadata. Available spacecrafts: "
+                f"{available_spacecrafts}"
+            )
+
+    # ------------------------------------------------------------------
+    # Colors
+    # ------------------------------------------------------------------
 
     colors = _trajectory_colors(
         len(spacecraft_names)
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Figure
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     fig = plt.figure(
         figsize=(14, 10)
@@ -1065,15 +1773,15 @@ def plot_trajectory(
         projection="3d",
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Storage for 3D equal scaling
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     positions_3d = []
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Body
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     body_data = None
 
@@ -1132,23 +1840,63 @@ def plot_trajectory(
             )
         )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Spacecraft trajectories
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     for spacecraft_name, color in zip(
         spacecraft_names,
         colors,
     ):
 
-        _, x, y, z = _get_spacecraft_position(
-            result,
-            spacecraft_name,
+        csv_file = (
+            csv_directory
+            / f"{spacecraft_name}.csv"
         )
 
-        # ----------------------------------------------------------
+        if not csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for spacecraft '{spacecraft_name}' "
+                f"not found: '{csv_file}'"
+            )
+
+        data = pd.read_csv(
+            csv_file
+        )
+
+        required_columns = [
+            "true_position_0",
+            "true_position_1",
+            "true_position_2",
+        ]
+
+        missing_columns = [
+            column
+            for column in required_columns
+            if column not in data.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required "
+                f"columns: {missing_columns}"
+            )
+
+        x = data[
+            "true_position_0"
+        ].to_numpy()
+
+        y = data[
+            "true_position_1"
+        ].to_numpy()
+
+        z = data[
+            "true_position_2"
+        ].to_numpy()
+
+        # --------------------------------------------------------------
         # Save 3D position data
-        # ----------------------------------------------------------
+        # --------------------------------------------------------------
 
         position = np.column_stack(
             (
@@ -1162,9 +1910,9 @@ def plot_trajectory(
             position
         )
 
-        # ----------------------------------------------------------
+        # --------------------------------------------------------------
         # XY
-        # ----------------------------------------------------------
+        # --------------------------------------------------------------
 
         ax_xy.plot(
             x,
@@ -1174,9 +1922,9 @@ def plot_trajectory(
             label=spacecraft_name,
         )
 
-        # ----------------------------------------------------------
+        # --------------------------------------------------------------
         # XZ
-        # ----------------------------------------------------------
+        # --------------------------------------------------------------
 
         ax_xz.plot(
             x,
@@ -1185,9 +1933,9 @@ def plot_trajectory(
             linewidth=1.3,
         )
 
-        # ----------------------------------------------------------
+        # --------------------------------------------------------------
         # YZ
-        # ----------------------------------------------------------
+        # --------------------------------------------------------------
 
         ax_yz.plot(
             y,
@@ -1196,9 +1944,9 @@ def plot_trajectory(
             linewidth=1.3,
         )
 
-        # ----------------------------------------------------------
+        # --------------------------------------------------------------
         # 3D
-        # ----------------------------------------------------------
+        # --------------------------------------------------------------
 
         ax_3d.plot(
             x,
@@ -1209,9 +1957,9 @@ def plot_trajectory(
             label=spacecraft_name,
         )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Planar styles
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     style_axes(
         ax_xy,
@@ -1237,18 +1985,18 @@ def plot_trajectory(
         equal_aspect=True,
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # 3D equal scaling
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     _set_equal_3d_limits(
         ax_3d,
         positions_3d,
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # 3D style
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     style_3d_axes(
         ax_3d,
@@ -1258,17 +2006,17 @@ def plot_trajectory(
         zlabel="Z",
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Legend
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     _add_trajectory_legend(
         ax_xy
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Figure title
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     if len(spacecraft_names) == 1:
 
@@ -1298,9 +2046,9 @@ def plot_trajectory(
         ]
     )
 
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Finalize
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     return finalize_figure(
         fig,

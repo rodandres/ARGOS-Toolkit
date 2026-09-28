@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from py.modules.sensors.sensor_base import SensorBase
-from py.general.dataclasses import EstimationOutput
+from py.modules.general.dataclasses import NavigationOutput
 
 class NavigationBase(ABC):
 
@@ -17,7 +17,7 @@ class NavigationBase(ABC):
         pass
 
     @abstractmethod
-    def estimate(self, sensors: list[SensorBase]) -> EstimationOutput:
+    def estimate(self, sensors: list[SensorBase]) -> NavigationOutput:
 
         """
         Abstract method to estimate the spacecraft's state based on sensor data.

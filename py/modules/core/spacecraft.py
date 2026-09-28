@@ -1,20 +1,24 @@
 import warnings
 import numpy as np
 
-from py.general.dataclasses import SpacecraftData
+from py.modules.general.dataclasses import SpacecraftData
 from py.modules.core.mission_manager import MissionManager
 from py.modules.sensors.sensor_base import SensorBase
 from py.modules.actuators.actuators_base import ActuatorBase
+from py.modules.faults.fault_manager import FaultManager
+from py.modules.general.data_save import TransitionEventInfo
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:    
-    from py.general.dataclasses import MissionPhase
+    from py.modules.general.dataclasses import MissionPhase
+    from py.modules.core.simulation import Simulation
 
 class Spacecraft():
 
     def __init__(self, name: str, mass: float, initial_state: np.ndarray, inertia_tensor: np.ndarray, 
                  actuators: list | None = None, sensors: list[SensorBase] | None = None,
                  mission_manager: MissionManager | None = None,
+                 parent: Simulation | None = None,
                  verbose: bool = False):                        
 
         # --- ATRIBUTES DECLARATION ---        
@@ -29,6 +33,7 @@ class Spacecraft():
         self.actuators = actuators        
 
         self.mission_manager = mission_manager
+        self.parent = parent
 
         self.spacecraft_data.target_name = None  # Name of the target spacecraft, if any
 
@@ -56,6 +61,10 @@ class Spacecraft():
 
         self._init_state_variables(initial_state)
         self._check_initialization()
+        self._set_actuators_names()
+        self._set_sensors_names()
+
+        self.fault_manager = FaultManager(self)
 
         self.verbose = verbose
 
@@ -65,6 +74,59 @@ class Spacecraft():
             self.show_spacecraft_gnc_info()
             self.show_spacecraft_state_info()
             print("="*10 + " End of spacecraft information. " + "="*10)
+
+    def _set_sensors_names(self):
+        if not self.has_sensors:
+            return
+        
+        sensors_count = 0
+        
+        for sensor in self.sensors:
+            if sensor.name is None:
+                sensor.name = f"Sensor_{sensors_count}"
+                sensors_count += 1
+
+    def _set_actuators_names(self):
+        if not self.has_actuators:
+            return
+
+        actuators_count = 0
+        for actuator in self.actuators:
+            if actuator.name is None:
+                actuator.name = f"Actuator_{actuators_count}"
+                actuators_count += 1
+
+    def update_sensor_name(self, current_name: str, new_name: str):
+        '''
+        Update the name of a sensor in the spacecraft's sensor list.
+        
+        Parameters:
+        actual_name (str): The current name of the sensor to be updated.
+        new_name (str): The new name to assign to the sensor.                    
+        '''
+        name_changed = False
+        for sensor in self.sensors:
+            if sensor.name == current_name:
+                sensor.name = new_name
+                name_changed = True
+                print(f"Sensor name changed from '{current_name}' to '{new_name}'.")
+                break
+
+        if not name_changed:
+            print(f"No sensor found with the name '{current_name}'. Name change not applied.")
+
+    def update_actuator_name(self, current_name: str, new_name: str):
+        name_changed = False
+        for actuator in self.actuators:
+            if actuator.name == current_name:
+                actuator.name = new_name
+                name_changed = True
+                print(f"Actuator name changed from '{current_name}' to '{new_name}'.")
+                break
+
+        if not name_changed:
+            print(f"No actuator found with the name '{current_name}'. Name change not applied.")
+        
 
     def _init_state_variables(self, initial_state: np.ndarray):
         self.spacecraft_data.true_state.position = initial_state[0:3]
@@ -86,7 +148,7 @@ class Spacecraft():
         if self.has_mission_manager:
             self._check_and_update_phase_info(self.mission_manager.current_phase)
     
-    def _check_and_update_phase_info(self, phase: MissionPhase):
+    def _check_and_update_phase_info(self, phase: MissionPhase, update_info: dict | None = None):
         self.current_phase = phase
 
         if phase.guidance is None:
@@ -138,6 +200,27 @@ class Spacecraft():
         
         self.spacecraft_data.current_master_dt = self.get_min_dt()
 
+        if update_info is None:
+            update_info = {}
+            update_info["from_phase"] = "Initial State"
+            update_info["to_phase"] = self.current_phase.name
+            update_info["via"] = "Initial Setup"
+
+        event_info = TransitionEventInfo(
+                                        time=self.spacecraft_data.t,
+                                        tick=self.spacecraft_data.tick,
+                                        from_phase=update_info["from_phase"],
+                                        to_phase=update_info["to_phase"],
+                                        transition_name=update_info["via"],
+                                        dt_navigation=self.current_navigation_dt,
+                                        dt_guidance=self.current_guidance_dt,
+                                        dt_control=self.current_control_dt,
+                                        dt_propagation=self.spacecraft_data.current_propagation_dt,
+                                        dt_master=self.spacecraft_data.current_master_dt
+                                    )
+        
+        self.parent.record_transition(self.name, event_info)
+
     def show_spacecraft_basic_info(self):
         print(f"Spacecraft Name: {self.name}")
         print(f"Mass: {self.mass} kg")
@@ -152,20 +235,36 @@ class Spacecraft():
     def show_spacecraft_reference_info(self):
        print("NOT IMPLEMENTED: Spacecraft reference information display is not yet implemented.")
 
+    def show_sensors_info(self):
+        if self.has_sensors is False:
+            print("No sensors available for this spacecraft.")
+            return
+
+        print(f"Spacecraft '{self.name}' Sensors Information:")
+        for sensor in self.sensors:
+            sensor.print_info()
+
+    def show_faults_info(self):
+        self.fault_manager.show_faults_info()
+
     def show_spacecraft_all_info(self):
         self.show_spacecraft_basic_info()
         self.show_spacecraft_gnc_info()
         self.show_spacecraft_state_info()
-        self.show_spacecraft_reference_info()    
+        self.show_spacecraft_reference_info()
+        self.show_sensors_info()
+        self.show_faults_info()
         
     def get_dts(self):        
         return self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt
 
     def get_min_dt(self):
-        dts = [dt for dt in [self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt] if dt is not None]
-        for sensor in self.sensors:
-            if sensor.sample_rate_sec is not None:
-                dts.append(sensor.sample_rate_sec)
+        dts = [dt for dt in [self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt] if dt is not None]        
+
+        if self.has_sensors:    
+            for sensor in self.sensors:            
+                if sensor.sample_rate_sec is not None:
+                    dts.append(sensor.sample_rate_sec)
 
         return min(dts) if dts else None
 
@@ -178,14 +277,14 @@ class Spacecraft():
 
     def update_mission_manager(self, simulation_data):
         if self.has_mission_manager is False:
-            return False
+            return
 
-        phase_changed = self.mission_manager.update(simulation_data)
-
+        phase_changed, update_info = self.mission_manager.update(simulation_data)
+        
         if phase_changed:
-            self._check_and_update_phase_info(self.mission_manager.current_phase)
+            self._check_and_update_phase_info(self.mission_manager.current_phase, update_info)            
 
-        return phase_changed
+        return
     
     def update_sensors(self, simulation_data):        
         if self.has_sensors is False:            
@@ -201,15 +300,15 @@ class Spacecraft():
         if self._should_compute(simulation_data, self.current_navigation_dt):
             estimation = self.current_navigation_law.estimate(self.sensors)
 
-            self.spacecraft_data.estimated_data = estimation
+            self.spacecraft_data.navigation_data = estimation
             
     def update_guidance(self, simulation_data):
         if self.has_guidance_law is False:
             return
 
         if self._should_compute(simulation_data, self.current_guidance_dt):            
-            self.spacecraft_data.reference_data = self.current_guidance_law.compute_reference(
-                self.spacecraft_data.estimated_data, simulation_data
+            self.spacecraft_data.guidance_data = self.current_guidance_law.compute_reference(
+                self.spacecraft_data.navigation_data, simulation_data
             )
 
     def update_control(self, simulation_data):
@@ -217,12 +316,12 @@ class Spacecraft():
             return
 
         if self._should_compute(simulation_data, self.current_control_dt):
-            self.spacecraft_data.control_output_data = self.current_control_law.compute_control(
-                self.spacecraft_data.estimated_data,
-                self.spacecraft_data.reference_data
+            self.spacecraft_data.control_data = self.current_control_law.compute_control(
+                self.spacecraft_data.navigation_data,
+                self.spacecraft_data.guidance_data
             )
 
-            self.current_allocator.allocate(self.spacecraft_data.control_output_data)
+            self.current_allocator.allocate(self.spacecraft_data.control_data)
 
     def compute_actuation(self, simulation_data):
         if self.has_actuators is False:

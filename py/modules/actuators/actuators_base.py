@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.general.dataclasses import ActuatorOutput
+    from py.modules.general.dataclasses import ActuatorOutput
 
 class ActuatorBase(ABC):
     """
@@ -13,10 +13,11 @@ class ActuatorBase(ABC):
     execution stage.    
     """
 
-    def __init__(self):        
+    def __init__(self, name: str):        
         self.available = True  # Flag to indicate if the actuator is available for use
         self.used = False  # Flag to indicate if the actuator has been used at least once
         self.controllable = True  # Flag to indicate if the actuator can be controlled
+        self.name = name
 
         self.override_torque = False
 

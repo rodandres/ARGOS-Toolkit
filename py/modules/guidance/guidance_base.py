@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from py.general.dataclasses import EstimationOutput, SimulationData, GuidanceReference
+from py.modules.general.dataclasses import NavigationOutput, SimulationData, GuidanceOutput
 
 class GuidanceBase(ABC):
 
@@ -15,7 +15,7 @@ class GuidanceBase(ABC):
         """        
 
     @abstractmethod
-    def compute_reference(self, navigation_estimated_data: EstimationOutput, simulation_data: SimulationData)->GuidanceReference:
+    def compute_reference(self, navigationdata: NavigationOutput, simulation_data: SimulationData)->GuidanceOutput:
         """
         Abstract method to compute the guidance reference based on navigation estimated data and simulation data.
 

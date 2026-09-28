@@ -1,13 +1,16 @@
 from pathlib import Path
+import json
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from py.modules.visualization.style import *
 
+
 def plot_attitude_quaternions(
     spacecraft_names: str | list[str],
-    result,
+    metadata,
     save: bool = False,
     show: bool = True,
     output_dir: Path | str = DEFAULT_OUTPUT_DIR,
@@ -15,21 +18,32 @@ def plot_attitude_quaternions(
     dpi: int = 300,
 ):
     """
-    Plot true, navigation, and guidance attitude quaternions.
+    Plot true, navigation, and guidance attitude quaternions
+    directly from the simulation CSV files.
 
     Parameters
     ----------
     spacecraft_names : str | list[str]
         Spacecraft name or list of spacecraft names to plot.
-        Each spacecraft is displayed in its own column.
-    result : SimulationHistory
-        General simulation result containing spacecraft histories.
+
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either:
+
+        - A SimulationHistoryMetadata instance.
+        - A path to ``simulation_history_metadata.json``.
+
     save : bool, optional
         Save the generated figure to disk. Default is False.
+
+    show : bool, optional
+        Display the generated figure. Default is True.
+
     output_dir : Path | str, optional
         Directory where the figure will be saved.
+
     filename : str, optional
         Output filename.
+
     dpi : int, optional
         Figure resolution in dots per inch.
 
@@ -47,23 +61,89 @@ def plot_attitude_quaternions(
         spacecraft_names = [spacecraft_names]
 
     if not spacecraft_names:
-        raise ValueError("At least one spacecraft name must be provided.")
+        raise ValueError(
+            "At least one spacecraft name must be provided."
+        )
+
+    # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        data_file_path = metadata["data_file_path"]
+        available_spacecrafts = metadata["spacecraft_names"]
+
+        # If the simulation was converted to CSV, use the metadata
+        # information when available.
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+        unique_id = metadata["unique_id"]
+
+    else:
+
+        # SimulationHistoryMetadata instance
+        data_file_path = metadata.data_file_path
+        available_spacecrafts = metadata.spacecraft_names
+        csv_folder_path = metadata.csv_folder_path
+        unique_id = metadata.unique_id
+
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        # Fallback:
+        # data_file_path is something like:
+        #
+        # sim_data/simulation_1790547517069
+        #
+        # Therefore use it directly if no CSV directory was specified.
+        csv_directory = Path(data_file_path)
 
     # ------------------------------------------------------------------
     # Validate spacecrafts
     # ------------------------------------------------------------------
 
-    for name in spacecraft_names:
-        if name not in result.spacecrafts_history:
-            raise KeyError(
-                f"Spacecraft '{name}' not found in simulation history."
-            )
+    for spacecraft_name in spacecraft_names:
 
-    n_spacecrafts = len(spacecraft_names)
+        if spacecraft_name not in available_spacecrafts:
+            raise KeyError(
+                f"Spacecraft '{spacecraft_name}' not found in "
+                "simulation metadata. "
+                f"Available spacecrafts: {available_spacecrafts}"
+            )
 
     # ------------------------------------------------------------------
     # Figure
     # ------------------------------------------------------------------
+
+    n_spacecrafts = len(spacecraft_names)
 
     fig, axes = plt.subplots(
         2,
@@ -75,9 +155,13 @@ def plot_attitude_quaternions(
 
     style_figure(fig)
 
-    quaternion_labels = ("qx", "qy", "qz", "qw")
+    quaternion_labels = (
+        "qx",
+        "qy",
+        "qz",
+        "qw",
+    )
 
-    # Use the shared palette consistently
     true_colors = [
         LINE_COLOR,
         SECONDARY_COLOR,
@@ -93,21 +177,94 @@ def plot_attitude_quaternions(
 
     for column, spacecraft_name in enumerate(spacecraft_names):
 
-        history = result.spacecrafts_history[spacecraft_name]
+        # --------------------------------------------------------------
+        # Load CSV
+        # --------------------------------------------------------------
 
-        t = np.asarray(history.t)
-
-        true_q = np.asarray(
-            history.true_state["attitude"]
+        csv_file = (
+            csv_directory
+            / f"{spacecraft_name}.csv"
         )
 
-        navigation_q = np.asarray(
-            history.estimated_data["spacecraft_state"]["attitude"]
-        )
+        if not csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for spacecraft '{spacecraft_name}' "
+                f"not found: '{csv_file}'"
+            )
 
-        guidance_q = np.asarray(
-            history.reference_data["state"]["attitude"]
-        )
+        data = pd.read_csv(csv_file)
+
+        # --------------------------------------------------------------
+        # Required columns
+        # --------------------------------------------------------------
+
+        required_columns = [
+            "t",
+
+            "true_attitude_0",
+            "true_attitude_1",
+            "true_attitude_2",
+            "true_attitude_3",
+
+            "estimated_sc_attitude_0",
+            "estimated_sc_attitude_1",
+            "estimated_sc_attitude_2",
+            "estimated_sc_attitude_3",
+
+            "guidance_attitude_0",
+            "guidance_attitude_1",
+            "guidance_attitude_2",
+            "guidance_attitude_3",
+        ]
+
+        missing_columns = [
+            column_name
+            for column_name in required_columns
+            if column_name not in data.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required "
+                f"columns: {missing_columns}"
+            )
+
+        # --------------------------------------------------------------
+        # Extract data
+        # --------------------------------------------------------------
+
+        t = data["t"].to_numpy()
+
+        true_q = data[
+            [
+                "true_attitude_0",
+                "true_attitude_1",
+                "true_attitude_2",
+                "true_attitude_3",
+            ]
+        ].to_numpy()
+
+        navigation_q = data[
+            [
+                "estimated_sc_attitude_0",
+                "estimated_sc_attitude_1",
+                "estimated_sc_attitude_2",
+                "estimated_sc_attitude_3",
+            ]
+        ].to_numpy()
+
+        guidance_q = data[
+            [
+                "guidance_attitude_0",
+                "guidance_attitude_1",
+                "guidance_attitude_2",
+                "guidance_attitude_3",
+            ]
+        ].to_numpy()
+
+        # --------------------------------------------------------------
+        # Axes
+        # --------------------------------------------------------------
 
         ax_true = axes[0, column]
         ax_navigation = axes[1, column]
@@ -142,7 +299,10 @@ def plot_attitude_quaternions(
             ylabel="Quaternion",
         )
 
-        ax_true.set_ylim(-1.05, 1.05)
+        ax_true.set_ylim(
+            -1.05,
+            1.05,
+        )
 
         ax_true.legend(
             fontsize=7,
@@ -183,7 +343,10 @@ def plot_attitude_quaternions(
             ylabel="Quaternion",
         )
 
-        ax_navigation.set_ylim(-1.05, 1.05)
+        ax_navigation.set_ylim(
+            -1.05,
+            1.05,
+        )
 
         ax_navigation.legend(
             fontsize=7,
@@ -203,7 +366,9 @@ def plot_attitude_quaternions(
         y=0.99,
     )
 
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.tight_layout(
+        rect=[0, 0, 1, 0.96]
+    )
 
     # ------------------------------------------------------------------
     # Finalize
@@ -220,7 +385,7 @@ def plot_attitude_quaternions(
 
 def plot_position(
     spacecraft_names: str | list[str],
-    result,
+    metadata,
     save: bool = False,
     show: bool = True,
     output_dir: Path | str = DEFAULT_OUTPUT_DIR,
@@ -228,23 +393,33 @@ def plot_position(
     dpi: int = 300,
 ):
     """
-    Plot true, navigation, and guidance position.
+    Plot true, navigation, and guidance position directly from
+    simulation CSV files.
 
     Parameters
     ----------
     spacecraft_names : str | list[str]
         Spacecraft name or list of spacecraft names to plot.
         Each spacecraft is displayed in its own column.
-    result : SimulationHistory
-        General simulation result containing spacecraft histories.
+
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either:
+
+        - A ``SimulationHistoryMetadata`` instance.
+        - A path to ``simulation_history_metadata.json``.
+
     save : bool, optional
         Save the generated figure to disk. Default is False.
+
     show : bool, optional
         Display the generated figure. Default is True.
+
     output_dir : Path | str, optional
         Directory where the figure will be saved.
+
     filename : str, optional
         Output filename.
+
     dpi : int, optional
         Figure resolution in dots per inch.
 
@@ -254,17 +429,84 @@ def plot_position(
         Generated figure.
     """
 
+    # ------------------------------------------------------------------
+    # Normalize spacecraft input
+    # ------------------------------------------------------------------
+
     if isinstance(spacecraft_names, str):
         spacecraft_names = [spacecraft_names]
 
     if not spacecraft_names:
-        raise ValueError("At least one spacecraft name must be provided.")
+        raise ValueError(
+            "At least one spacecraft name must be provided."
+        )
+
+    # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    # ------------------------------------------------------------------
+    # Validate spacecrafts
+    # ------------------------------------------------------------------
 
     for name in spacecraft_names:
-        if name not in result.spacecrafts_history:
+
+        if name not in available_spacecrafts:
             raise KeyError(
-                f"Spacecraft '{name}' not found in simulation history."
+                f"Spacecraft '{name}' not found in simulation "
+                f"metadata. Available spacecrafts: "
+                f"{available_spacecrafts}"
             )
+
+    # ------------------------------------------------------------------
+    # Figure
+    # ------------------------------------------------------------------
 
     n_spacecrafts = len(spacecraft_names)
 
@@ -278,30 +520,106 @@ def plot_position(
 
     style_figure(fig)
 
-    labels = ("X", "Y", "Z")
+    labels = (
+        "X",
+        "Y",
+        "Z",
+    )
+
     line_colors = (
         LINE_COLOR,
         SECONDARY_COLOR,
         ACCENT_COLOR,
     )
 
+    # ------------------------------------------------------------------
+    # Plot each spacecraft
+    # ------------------------------------------------------------------
+
     for column, spacecraft_name in enumerate(spacecraft_names):
 
-        history = result.spacecrafts_history[spacecraft_name]
+        # --------------------------------------------------------------
+        # Load CSV
+        # --------------------------------------------------------------
 
-        t = np.asarray(history.t)
-
-        true_position = np.asarray(
-            history.true_state["position"]
+        csv_file = (
+            csv_directory
+            / f"{spacecraft_name}.csv"
         )
 
-        navigation_position = np.asarray(
-            history.estimated_data["spacecraft_state"]["position"]
-        )
+        if not csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for spacecraft '{spacecraft_name}' "
+                f"not found: '{csv_file}'"
+            )
 
-        guidance_position = np.asarray(
-            history.reference_data["state"]["position"]
-        )
+        data = pd.read_csv(csv_file)
+
+        # --------------------------------------------------------------
+        # Required columns
+        # --------------------------------------------------------------
+
+        required_columns = [
+            "t",
+
+            "true_position_0",
+            "true_position_1",
+            "true_position_2",
+
+            "estimated_sc_position_0",
+            "estimated_sc_position_1",
+            "estimated_sc_position_2",
+
+            "guidance_position_0",
+            "guidance_position_1",
+            "guidance_position_2",
+        ]
+
+        missing_columns = [
+            column_name
+            for column_name in required_columns
+            if column_name not in data.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required "
+                f"columns: {missing_columns}"
+            )
+
+        # --------------------------------------------------------------
+        # Extract data
+        # --------------------------------------------------------------
+
+        t = data["t"].to_numpy()
+
+        true_position = data[
+            [
+                "true_position_0",
+                "true_position_1",
+                "true_position_2",
+            ]
+        ].to_numpy()
+
+        navigation_position = data[
+            [
+                "estimated_sc_position_0",
+                "estimated_sc_position_1",
+                "estimated_sc_position_2",
+            ]
+        ].to_numpy()
+
+        guidance_position = data[
+            [
+                "guidance_position_0",
+                "guidance_position_1",
+                "guidance_position_2",
+            ]
+        ].to_numpy()
+
+        # --------------------------------------------------------------
+        # Plot components
+        # --------------------------------------------------------------
 
         for i, label in enumerate(labels):
 
@@ -347,7 +665,13 @@ def plot_position(
                 facecolor=AXES_BG,
             )
 
-        axes[-1, column].set_xlabel("Time [s]")
+        axes[-1, column].set_xlabel(
+            "Time [s]"
+        )
+
+    # ------------------------------------------------------------------
+    # Figure title
+    # ------------------------------------------------------------------
 
     fig.suptitle(
         "Position",
@@ -355,7 +679,13 @@ def plot_position(
         y=0.99,
     )
 
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.tight_layout(
+        rect=[0, 0, 1, 0.96]
+    )
+
+    # ------------------------------------------------------------------
+    # Finalize
+    # ------------------------------------------------------------------
 
     return finalize_figure(
         fig,
@@ -366,10 +696,9 @@ def plot_position(
         dpi=dpi,
     )
 
-
 def plot_velocity(
     spacecraft_names: str | list[str],
-    result,
+    metadata,
     save: bool = False,
     show: bool = True,
     output_dir: Path | str = DEFAULT_OUTPUT_DIR,
@@ -377,23 +706,33 @@ def plot_velocity(
     dpi: int = 300,
 ):
     """
-    Plot true, navigation, and guidance velocity.
+    Plot true, navigation, and guidance velocity directly from
+    simulation CSV files.
 
     Parameters
     ----------
     spacecraft_names : str | list[str]
         Spacecraft name or list of spacecraft names to plot.
         Each spacecraft is displayed in its own column.
-    result : SimulationHistory
-        General simulation result containing spacecraft histories.
+
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either:
+
+        - A ``SimulationHistoryMetadata`` instance.
+        - A path to ``simulation_history_metadata.json``.
+
     save : bool, optional
         Save the generated figure to disk. Default is False.
+
     show : bool, optional
         Display the generated figure. Default is True.
+
     output_dir : Path | str, optional
         Directory where the figure will be saved.
+
     filename : str, optional
         Output filename.
+
     dpi : int, optional
         Figure resolution in dots per inch.
 
@@ -403,17 +742,84 @@ def plot_velocity(
         Generated figure.
     """
 
+    # ------------------------------------------------------------------
+    # Normalize spacecraft input
+    # ------------------------------------------------------------------
+
     if isinstance(spacecraft_names, str):
         spacecraft_names = [spacecraft_names]
 
     if not spacecraft_names:
-        raise ValueError("At least one spacecraft name must be provided.")
+        raise ValueError(
+            "At least one spacecraft name must be provided."
+        )
+
+    # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    # ------------------------------------------------------------------
+    # Validate spacecrafts
+    # ------------------------------------------------------------------
 
     for name in spacecraft_names:
-        if name not in result.spacecrafts_history:
+
+        if name not in available_spacecrafts:
             raise KeyError(
-                f"Spacecraft '{name}' not found in simulation history."
+                f"Spacecraft '{name}' not found in simulation "
+                f"metadata. Available spacecrafts: "
+                f"{available_spacecrafts}"
             )
+
+    # ------------------------------------------------------------------
+    # Figure
+    # ------------------------------------------------------------------
 
     n_spacecrafts = len(spacecraft_names)
 
@@ -427,30 +833,106 @@ def plot_velocity(
 
     style_figure(fig)
 
-    labels = ("X", "Y", "Z")
+    labels = (
+        "X",
+        "Y",
+        "Z",
+    )
+
     line_colors = (
         LINE_COLOR,
         SECONDARY_COLOR,
         ACCENT_COLOR,
     )
 
+    # ------------------------------------------------------------------
+    # Plot each spacecraft
+    # ------------------------------------------------------------------
+
     for column, spacecraft_name in enumerate(spacecraft_names):
 
-        history = result.spacecrafts_history[spacecraft_name]
+        # --------------------------------------------------------------
+        # Load CSV
+        # --------------------------------------------------------------
 
-        t = np.asarray(history.t)
-
-        true_velocity = np.asarray(
-            history.true_state["velocity"]
+        csv_file = (
+            csv_directory
+            / f"{spacecraft_name}.csv"
         )
 
-        navigation_velocity = np.asarray(
-            history.estimated_data["spacecraft_state"]["velocity"]
-        )
+        if not csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for spacecraft '{spacecraft_name}' "
+                f"not found: '{csv_file}'"
+            )
 
-        guidance_velocity = np.asarray(
-            history.reference_data["state"]["velocity"]
-        )
+        data = pd.read_csv(csv_file)
+
+        # --------------------------------------------------------------
+        # Required columns
+        # --------------------------------------------------------------
+
+        required_columns = [
+            "t",
+
+            "true_velocity_0",
+            "true_velocity_1",
+            "true_velocity_2",
+
+            "estimated_sc_velocity_0",
+            "estimated_sc_velocity_1",
+            "estimated_sc_velocity_2",
+
+            "guidance_velocity_0",
+            "guidance_velocity_1",
+            "guidance_velocity_2",
+        ]
+
+        missing_columns = [
+            column_name
+            for column_name in required_columns
+            if column_name not in data.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required "
+                f"columns: {missing_columns}"
+            )
+
+        # --------------------------------------------------------------
+        # Extract data
+        # --------------------------------------------------------------
+
+        t = data["t"].to_numpy()
+
+        true_velocity = data[
+            [
+                "true_velocity_0",
+                "true_velocity_1",
+                "true_velocity_2",
+            ]
+        ].to_numpy()
+
+        navigation_velocity = data[
+            [
+                "estimated_sc_velocity_0",
+                "estimated_sc_velocity_1",
+                "estimated_sc_velocity_2",
+            ]
+        ].to_numpy()
+
+        guidance_velocity = data[
+            [
+                "guidance_velocity_0",
+                "guidance_velocity_1",
+                "guidance_velocity_2",
+            ]
+        ].to_numpy()
+
+        # --------------------------------------------------------------
+        # Plot components
+        # --------------------------------------------------------------
 
         for i, label in enumerate(labels):
 
@@ -496,7 +978,13 @@ def plot_velocity(
                 facecolor=AXES_BG,
             )
 
-        axes[-1, column].set_xlabel("Time [s]")
+        axes[-1, column].set_xlabel(
+            "Time [s]"
+        )
+
+    # ------------------------------------------------------------------
+    # Figure title
+    # ------------------------------------------------------------------
 
     fig.suptitle(
         "Velocity",
@@ -504,7 +992,13 @@ def plot_velocity(
         y=0.99,
     )
 
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.tight_layout(
+        rect=[0, 0, 1, 0.96]
+    )
+
+    # ------------------------------------------------------------------
+    # Finalize
+    # ------------------------------------------------------------------
 
     return finalize_figure(
         fig,
@@ -515,10 +1009,9 @@ def plot_velocity(
         dpi=dpi,
     )
 
-
 def plot_angular_velocity(
     spacecraft_names: str | list[str],
-    result,
+    metadata,
     save: bool = False,
     show: bool = True,
     output_dir: Path | str = DEFAULT_OUTPUT_DIR,
@@ -526,23 +1019,33 @@ def plot_angular_velocity(
     dpi: int = 300,
 ):
     """
-    Plot true, navigation, and guidance angular velocity.
+    Plot true, navigation, and guidance angular velocity directly
+    from simulation CSV files.
 
     Parameters
     ----------
     spacecraft_names : str | list[str]
         Spacecraft name or list of spacecraft names to plot.
         Each spacecraft is displayed in its own column.
-    result : SimulationHistory
-        General simulation result containing spacecraft histories.
+
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either:
+
+        - A ``SimulationHistoryMetadata`` instance.
+        - A path to ``simulation_history_metadata.json``.
+
     save : bool, optional
         Save the generated figure to disk. Default is False.
+
     show : bool, optional
         Display the generated figure. Default is True.
+
     output_dir : Path | str, optional
         Directory where the figure will be saved.
+
     filename : str, optional
         Output filename.
+
     dpi : int, optional
         Figure resolution in dots per inch.
 
@@ -552,17 +1055,84 @@ def plot_angular_velocity(
         Generated figure.
     """
 
+    # ------------------------------------------------------------------
+    # Normalize spacecraft input
+    # ------------------------------------------------------------------
+
     if isinstance(spacecraft_names, str):
         spacecraft_names = [spacecraft_names]
 
     if not spacecraft_names:
-        raise ValueError("At least one spacecraft name must be provided.")
+        raise ValueError(
+            "At least one spacecraft name must be provided."
+        )
+
+    # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    # ------------------------------------------------------------------
+    # Validate spacecrafts
+    # ------------------------------------------------------------------
 
     for name in spacecraft_names:
-        if name not in result.spacecrafts_history:
+
+        if name not in available_spacecrafts:
             raise KeyError(
-                f"Spacecraft '{name}' not found in simulation history."
+                f"Spacecraft '{name}' not found in simulation "
+                f"metadata. Available spacecrafts: "
+                f"{available_spacecrafts}"
             )
+
+    # ------------------------------------------------------------------
+    # Figure
+    # ------------------------------------------------------------------
 
     n_spacecrafts = len(spacecraft_names)
 
@@ -576,30 +1146,106 @@ def plot_angular_velocity(
 
     style_figure(fig)
 
-    labels = ("X", "Y", "Z")
+    labels = (
+        "X",
+        "Y",
+        "Z",
+    )
+
     line_colors = (
         LINE_COLOR,
         SECONDARY_COLOR,
         ACCENT_COLOR,
     )
 
+    # ------------------------------------------------------------------
+    # Plot each spacecraft
+    # ------------------------------------------------------------------
+
     for column, spacecraft_name in enumerate(spacecraft_names):
 
-        history = result.spacecrafts_history[spacecraft_name]
+        # --------------------------------------------------------------
+        # Load CSV
+        # --------------------------------------------------------------
 
-        t = np.asarray(history.t)
-
-        true_angular_velocity = np.asarray(
-            history.true_state["angular_velocity"]
+        csv_file = (
+            csv_directory
+            / f"{spacecraft_name}.csv"
         )
 
-        navigation_angular_velocity = np.asarray(
-            history.estimated_data["spacecraft_state"]["angular_velocity"]
-        )
+        if not csv_file.exists():
+            raise FileNotFoundError(
+                f"CSV file for spacecraft '{spacecraft_name}' "
+                f"not found: '{csv_file}'"
+            )
 
-        guidance_angular_velocity = np.asarray(
-            history.reference_data["state"]["angular_velocity"]
-        )
+        data = pd.read_csv(csv_file)
+
+        # --------------------------------------------------------------
+        # Required columns
+        # --------------------------------------------------------------
+
+        required_columns = [
+            "t",
+
+            "true_angular_velocity_0",
+            "true_angular_velocity_1",
+            "true_angular_velocity_2",
+
+            "estimated_sc_angular_velocity_0",
+            "estimated_sc_angular_velocity_1",
+            "estimated_sc_angular_velocity_2",
+
+            "guidance_angular_velocity_0",
+            "guidance_angular_velocity_1",
+            "guidance_angular_velocity_2",
+        ]
+
+        missing_columns = [
+            column_name
+            for column_name in required_columns
+            if column_name not in data.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"CSV file '{csv_file}' is missing required "
+                f"columns: {missing_columns}"
+            )
+
+        # --------------------------------------------------------------
+        # Extract data
+        # --------------------------------------------------------------
+
+        t = data["t"].to_numpy()
+
+        true_angular_velocity = data[
+            [
+                "true_angular_velocity_0",
+                "true_angular_velocity_1",
+                "true_angular_velocity_2",
+            ]
+        ].to_numpy()
+
+        navigation_angular_velocity = data[
+            [
+                "estimated_sc_angular_velocity_0",
+                "estimated_sc_angular_velocity_1",
+                "estimated_sc_angular_velocity_2",
+            ]
+        ].to_numpy()
+
+        guidance_angular_velocity = data[
+            [
+                "guidance_angular_velocity_0",
+                "guidance_angular_velocity_1",
+                "guidance_angular_velocity_2",
+            ]
+        ].to_numpy()
+
+        # --------------------------------------------------------------
+        # Plot components
+        # --------------------------------------------------------------
 
         for i, label in enumerate(labels):
 
@@ -634,7 +1280,7 @@ def plot_angular_velocity(
             style_axes(
                 ax,
                 title=f"Angular Velocity {label}",
-                ylabel=rf"$\omega_{label.lower()}$",
+                ylabel=f"$\\omega_{label.lower()}$",
             )
 
             ax.legend(
@@ -645,7 +1291,13 @@ def plot_angular_velocity(
                 facecolor=AXES_BG,
             )
 
-        axes[-1, column].set_xlabel("Time [s]")
+        axes[-1, column].set_xlabel(
+            "Time [s]"
+        )
+
+    # ------------------------------------------------------------------
+    # Figure title
+    # ------------------------------------------------------------------
 
     fig.suptitle(
         "Angular Velocity",
@@ -653,7 +1305,13 @@ def plot_angular_velocity(
         y=0.99,
     )
 
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.tight_layout(
+        rect=[0, 0, 1, 0.96]
+    )
+
+    # ------------------------------------------------------------------
+    # Finalize
+    # ------------------------------------------------------------------
 
     return finalize_figure(
         fig,

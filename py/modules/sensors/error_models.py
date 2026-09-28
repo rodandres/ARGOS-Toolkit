@@ -74,9 +74,7 @@ class Quantization(SensorErrorModel):
     def __init__(self, limit, bits):
 
         self.limit = limit
-        self.bits = bits
-
-        print(f"Quantization Error Model: limit={self.limit}, bits={self.bits}")
+        self.bits = bits        
 
     def apply(self, measurement, dt=None):
 
