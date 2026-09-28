@@ -45,9 +45,17 @@ dependencies = [
     "psutil>=7.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
 [project.urls]
 Homepage = "https://rodandres.github.io/"
 Repository = "https://github.com/rodandres/ARGOS-Toolkit"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
