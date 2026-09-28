@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "argos-toolkit"
 version = "0.1.0"
-description = "ARGOS - Aerospace Researcg for GNC Operational Scenarios toolkit"
+description = "ARGOS - Aerospace Research for GNC Operational Scenarios toolkit"
 requires-python = ">=3.14"
 dependencies = [
     "numpy>=2.5",
