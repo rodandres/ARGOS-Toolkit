@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 import numpy as np
-from py.general.data_classes_declaration import SimSharedData
+from py.modules.general.data_classes_declaration import SimSharedData
 from py.modules.math import quaternion_error as quat_error
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
+    from py.modules.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
     from py.modules.actuators.actuators_base import ActuatorBase
 
 

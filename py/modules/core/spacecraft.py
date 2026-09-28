@@ -1,16 +1,16 @@
 import warnings
 import numpy as np
 
-from py.general.dataclasses import SpacecraftData
+from py.modules.general.dataclasses import SpacecraftData
 from py.modules.core.mission_manager import MissionManager
 from py.modules.sensors.sensor_base import SensorBase
 from py.modules.actuators.actuators_base import ActuatorBase
 from py.modules.faults.fault_manager import FaultManager
-from py.general.data_save import TransitionEventInfo
+from py.modules.general.data_save import TransitionEventInfo
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:    
-    from py.general.dataclasses import MissionPhase
+    from py.modules.general.dataclasses import MissionPhase
     from py.modules.core.simulation import Simulation
 
 class Spacecraft():

@@ -1,7 +1,7 @@
 import warnings
 import numpy as np
 from py.modules.actuators.actuators_base import ActuatorBase
-from py.general.dataclasses import ActuatorOutput
+from py.modules.general.dataclasses import ActuatorOutput
 
 
 class RCSThruster(ActuatorBase):

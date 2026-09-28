@@ -74,7 +74,7 @@ sensors = [AbsoluteSensor(1/dt, verbose=False)]
 
 # %%
 from py.modules.navigation.basic_laws import IdealNavigation
-from py.general.dataclasses import MissionPhase
+from py.modules.general.dataclasses import MissionPhase
 from py.modules.core.mission_manager import MissionManager
 
 nav_law = IdealNavigation()

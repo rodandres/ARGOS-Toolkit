@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.general.dataclasses import SpacecraftData
+    from py.modules.general.dataclasses import SpacecraftData
 
 
 @dataclass

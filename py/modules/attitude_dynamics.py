@@ -1,6 +1,6 @@
 import numpy as np
 
-from py.general.data_classes_declaration import SimSharedData
+from py.modules.general.data_classes_declaration import SimSharedData
 
 def rotational_dynamics_quaternion(
     state: np.ndarray,

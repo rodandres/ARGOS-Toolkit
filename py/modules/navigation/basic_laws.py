@@ -1,6 +1,6 @@
 import numpy as np
 from py.modules.navigation.navigation_base import NavigationBase
-from py.general.dataclasses import NavigationOutput, StateVariables
+from py.modules.general.dataclasses import NavigationOutput, StateVariables
 
 class IdealNavigation(NavigationBase):
     def __init__(self, sensor_to_be_use=1):

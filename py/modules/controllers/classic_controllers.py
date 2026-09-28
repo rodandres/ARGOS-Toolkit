@@ -1,13 +1,13 @@
 from py.modules.controllers.controller_base import ControllerBase
 import numpy as np
-from py.general.data_classes_declaration import SimSharedData
+from py.modules.general.data_classes_declaration import SimSharedData
 from py.modules.math import quaternion_error as quat_error
 
-from py.general.dataclasses import ControlOutput
+from py.modules.general.dataclasses import ControlOutput
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
+    from py.modules.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
     from py.modules.actuators.actuators_base import ActuatorBase
 
 class PDController(ControllerBase):

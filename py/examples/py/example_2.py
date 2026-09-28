@@ -71,7 +71,7 @@ sensors_SC2 = [AbsoluteSensor(1/dt_SC2, verbose=False)]
 
 # %%
 from py.modules.navigation.basic_laws import IdealNavigation
-from py.general.dataclasses import MissionPhase
+from py.modules.general.dataclasses import MissionPhase
 from py.modules.core.mission_manager import MissionManager
 
 nav_law_SC2 = IdealNavigation()

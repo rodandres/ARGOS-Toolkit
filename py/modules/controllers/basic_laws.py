@@ -1,10 +1,10 @@
 import numpy as np
 from py.modules.controllers.controller_base import ControllerBase, ControlAllocatorBase
-from py.general.dataclasses import ControlOutput
+from py.modules.general.dataclasses import ControlOutput
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from py.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
+    from py.modules.general.dataclasses import ControlOutput, GuidanceOutput, NavigationOutput
     from py.modules.actuators.actuators_base import ActuatorBase
 
 class CustomController(ControllerBase):

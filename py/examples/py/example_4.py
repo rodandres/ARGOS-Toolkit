@@ -137,7 +137,7 @@ nav_law = IdealNavigation()
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator
 translational_propagator = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
 
-from py.general.dataclasses import MissionPhase
+from py.modules.general.dataclasses import MissionPhase
 
 initial_phase = MissionPhase(
     name="Initial Phase",
@@ -257,7 +257,7 @@ initial_orientation = initial_orientation = [45, -30, -10]  # Initial orientatio
 initial_orientation_quat = quaternion_from_euler(np.deg2rad(initial_orientation[0]), np.deg2rad(initial_orientation[1]), np.deg2rad(initial_orientation[2]))
 initial_angular_velocity = np.array([-0.08, 0.05, 0.1])  # Initial angular velocity in rad/s
 
-from py.general.general_data import Ix_total, Iy_total, Iz_total
+from py.modules.general.general_data import Ix_total, Iy_total, Iz_total
 
 inertia_tensor=np.diag([
     Ix_total,

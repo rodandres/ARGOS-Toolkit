@@ -90,7 +90,7 @@ sensors = [AbsoluteSensor(100, verbose=False)]  # Sample rate of 100 Hz
 from py.modules.propagators.native_propagator import NativeRotationalPropagator
 
 rot_propagator = NativeRotationalPropagator(integration_method="NATIVE_RK45")
-from py.general.dataclasses import GuidanceReference, StateVariables
+from py.modules.general.dataclasses import GuidanceReference, StateVariables
 from py.modules.guidance.basic_laws import CustomGuidanceLaw
 from py.modules.math import quaternion_from_euler
 
@@ -119,7 +119,7 @@ from py.modules.guidance.basic_laws import ConstantReferenceGuidance
 guidance_law = ConstantReferenceGuidance(
     desired_quat = quaternion_from_euler(np.deg2rad(objective_orientation[0]), np.deg2rad(objective_orientation[1]), np.deg2rad(objective_orientation[2]))
 )
-from py.general.dataclasses import EstimationOutput
+from py.modules.general.dataclasses import EstimationOutput
 from py.modules.navigation.basic_laws import CustomNavigation
 
 def estimate(sensors):
@@ -184,7 +184,7 @@ from py.modules.controllers.basic_laws import BasicRCSAllocator
 
 allocator_law = BasicRCSAllocator()
 
-from py.general.dataclasses import MissionPhase
+from py.modules.general.dataclasses import MissionPhase
 
 phase = MissionPhase(
     name="SinglePhase",
@@ -209,7 +209,7 @@ mission_manager = MissionManager(
 )
 
 from py.modules.math import quaternion_from_euler
-from py.general.general_data import Ix_total, Iy_total, Iz_total
+from py.modules.general.general_data import Ix_total, Iy_total, Iz_total
 
 initial_vel = np.array([0.0, 0.0, 0.0])  # Initial velocity in meters per second
 initial_orientation = initial_orientation = [45, -30, -10]  # Initial orientation in Euler angles (degrees)

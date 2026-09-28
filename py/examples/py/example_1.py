@@ -212,7 +212,7 @@ rot_propagator = NativeRotationalPropagator(integration_method="NATIVE_RK45")
 
 # %%
 # Next step is define the guidance law
-from py.general.dataclasses import GuidanceOutput, StateVariables
+from py.modules.general.dataclasses import GuidanceOutput, StateVariables
 from py.modules.guidance.basic_laws import CustomGuidanceLaw
 from py.modules.math import quaternion_from_euler
 
@@ -254,7 +254,7 @@ guidance_law = ConstantReferenceGuidance(
 # Similar to the guidance law, it is possible to define custom navigation laws using the `CustomNavigation` class. For this, the input will be only the sensors that the spacecraft has; therefore, you will not have access to the real/true states (unless you define an Absolute Sensor).
 
 # %%
-from py.general.dataclasses import NavigationOutput
+from py.modules.general.dataclasses import NavigationOutput
 from py.modules.navigation.basic_laws import CustomNavigation
 
 def estimate(sensors):
@@ -353,7 +353,7 @@ allocator_law = BasicRCSAllocator()
 # For the mission phase, in addition to the previously discussed items, we need to provide a unique name for the phase and the update rates for each of the laws and propagators in seconds.
 
 # %%
-from py.general.dataclasses import MissionPhase
+from py.modules.general.dataclasses import MissionPhase
 
 phase = MissionPhase(
     name="SinglePhase",
@@ -389,7 +389,7 @@ mission_manager = MissionManager(
 # %%
 # With all this, we can now add an spacecraft to the sim
 from py.modules.math import quaternion_from_euler
-from py.general.general_data import Ix_total, Iy_total, Iz_total
+from py.modules.general.general_data import Ix_total, Iy_total, Iz_total
 
 initial_vel = np.array([0.0, 0.0, 0.0])  # Initial velocity in meters per second
 initial_orientation = initial_orientation = [45, -30, -10]  # Initial orientation in Euler angles (degrees)

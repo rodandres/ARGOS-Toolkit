@@ -16,7 +16,7 @@ from py.modules.navigation.basic_laws import CustomNavigation, IdealNavigation
 from py.modules.controllers.basic_laws import CustomController, ControlAllocatorPlaceholder, CustomControlAllocator
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator, NativeRotationalPropagator
 from py.modules.core.mission_manager import MissionPhase, MissionManager
-from py.general.general_data import CM_mass, SM_mass, Ix_total, Iy_total, Iz_total
+from py.modules.general.general_data import CM_mass, SM_mass, Ix_total, Iy_total, Iz_total
 from py.modules.visualization.trajectories import plot_trajectory, plot_trajectory_3d
 
 sim_max_time = 60*10
@@ -238,7 +238,7 @@ translational_propagator = NativeTranslationalPropagator()
 rotational_propagator = NativeRotationalPropagator()
 
 
-from py.general.dataclasses import GuidanceReference, StateVariables, ControlOutput
+from py.modules.general.dataclasses import GuidanceReference, StateVariables, ControlOutput
 
 def docking_axis_guidance(navigation_estimated_data, simulation_data):
     spacecraft_state = navigation_estimated_data.spacecraft_state

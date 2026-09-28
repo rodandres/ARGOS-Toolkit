@@ -4,7 +4,7 @@ import numpy as np
 
 from typing import TYPE_CHECKING
 
-from py.general.data_save import SimulationHistory
+from py.modules.general.data_save import SimulationHistory
 
 if TYPE_CHECKING:
     from py.modules.controllers.controller_base import ControllerBase, ControlAllocatorBase

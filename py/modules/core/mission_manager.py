@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from typing import TYPE_CHECKING
-from py.general.dataclasses import MissionPhase
+from py.modules.general.dataclasses import MissionPhase
 
 if TYPE_CHECKING:
     from py.modules.core.simulation import SimulationData

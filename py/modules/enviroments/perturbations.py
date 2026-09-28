@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from py.general.data_classes_declaration import SimSharedData
+from py.modules.general.data_classes_declaration import SimSharedData
 from py.modules.math import quaternion_to_DCM
 
 

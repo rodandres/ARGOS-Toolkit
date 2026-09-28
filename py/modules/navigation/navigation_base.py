@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from py.modules.sensors.sensor_base import SensorBase
-from py.general.dataclasses import NavigationOutput
+from py.modules.general.dataclasses import NavigationOutput
 
 class NavigationBase(ABC):
 

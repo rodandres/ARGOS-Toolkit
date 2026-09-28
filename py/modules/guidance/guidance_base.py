@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from py.general.dataclasses import NavigationOutput, SimulationData, GuidanceOutput
+from py.modules.general.dataclasses import NavigationOutput, SimulationData, GuidanceOutput
 
 class GuidanceBase(ABC):
 

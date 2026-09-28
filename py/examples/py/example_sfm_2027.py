@@ -18,9 +18,9 @@ from py.modules.controllers.basic_laws import MultiRCSAllocator
 from py.modules.controllers.classic_controllers import PDController
 from py.modules.propagators.native_propagator import NativeTranslationalPropagator, NativeRotationalPropagator
 from py.modules.core.mission_manager import MissionPhase, MissionManager
-from py.general.dataclasses import StateVariables, GuidanceOutput
+from py.modules.general.dataclasses import StateVariables, GuidanceOutput
 from py.modules.general_tools import get_state_at
-from py.general.general_data import CM_mass, SM_mass, Ix_total, Iy_total, Iz_total
+from py.modules.general.general_data import CM_mass, SM_mass, Ix_total, Iy_total, Iz_total
 
 # ========================================================
 #                      SIMULATION SETUP
