@@ -19,6 +19,7 @@ class SimulationHistoryMetadata:
     chunk_size: dict
     chunk_count: dict
     csv_folder_path: str = ""
+    targets_info: dict = None
 
 @dataclass
 class TransitionEventInfo:
@@ -87,16 +88,28 @@ class SimulationHistory:
         else:
             raise ValueError(f"Spacecraft '{spacecraft_name}' not found in simulation history.")
 
+    def record_target(self, spacecraft_name: str, target_name: str):
+        if spacecraft_name in self.spacecrafts_history:
+            self.spacecrafts_history[spacecraft_name].record_target(target_name)
+        else:
+            raise ValueError(f"Spacecraft '{spacecraft_name}' not found in simulation history.")
+
     def finalize(self):
         for spacecraft_history in self.spacecrafts_history.values():
             spacecraft_history.flush()
+                                
+        targets_dict = {}
+
+        for spacecraft_name, spacecraft_history in self.spacecrafts_history.items():
+            targets_dict[spacecraft_name] = spacecraft_history.targets
 
         metadata = SimulationHistoryMetadata(
             data_file_path=self.data_file_path,
             unique_id=self.unique_id,
             spacecraft_names=self.spacecraft_names,
             chunk_size= {name: history.chunk_size for name, history in self.spacecrafts_history.items()},
-            chunk_count={name: history.chunk_index for name, history in self.spacecrafts_history.items()}
+            chunk_count={name: history.chunk_index for name, history in self.spacecrafts_history.items()},
+            targets_info=targets_dict
         )
 
         metadata_file_path = os.path.join(self.data_file_path, "simulation_history_metadata.json")
@@ -127,6 +140,7 @@ class SimulationHistory:
 class SpacecraftHistory:
     def __init__(self, spacecraft_name: str, chunk_size: int, data_file_path: str):
         self.spacecraft_name = spacecraft_name
+        self.targets = []  # List to hold the names of targets for this spacecraft
 
         self.chunk_size = chunk_size
         self.data_file_path = data_file_path
@@ -230,6 +244,10 @@ class SpacecraftHistory:
 
     def record_event(self, event: TransitionEventInfo):
         self.events.append(event)
+
+    def record_target(self, target_name: str):
+        if target_name not in self.targets:
+            self.targets.append(target_name)
 
     def flush(self):
         #print(f"[DEBUG] Flushing history for spacecraft '{self.spacecraft_name}' to disk. Chunk index: {self.chunk_index}")
