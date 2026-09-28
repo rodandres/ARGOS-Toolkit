@@ -413,7 +413,7 @@ sim.add_spacecraft(
 
 # %%
 # We can now simulate
-result = sim.simulate()
+metadata = sim.simulate()
 
 # %% [markdown]
 # The results of the simulation can be accessed via the result variable. For more information on the data format of the result, check `dataSave` class documentation.
@@ -424,16 +424,16 @@ result = sim.simulate()
 from py.modules.visualization.state_variables import plot_attitude_quaternions, plot_angular_velocity, plot_position
 from py.modules.visualization.gnc import plot_control_result
 
-plot_attitude_quaternions("Spacecraft_1", result)
+plot_attitude_quaternions("Spacecraft_1", metadata)
 
 # %%
-plot_angular_velocity("Spacecraft_1", result)
+plot_angular_velocity("Spacecraft_1", metadata)
 
 # %%
-plot_control_result("Spacecraft_1", result)
+plot_position("Spacecraft_1", metadata)
 
 # %%
-plot_position("Spacecraft_1", result)
+plot_control_result("Spacecraft_1", metadata)
 
 
 

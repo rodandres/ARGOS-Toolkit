@@ -2,13 +2,16 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import json
 
 from py.modules.visualization.style import *
 
 def plot_control_result(
     spacecraft_name: str,
-    result,
+    metadata,
     save: bool = False,
+    show: bool = True,
     output_dir: Path | str = DEFAULT_OUTPUT_DIR,
     filename: str = "control_result.png",
     dpi: int = 300,
@@ -20,14 +23,23 @@ def plot_control_result(
     ----------
     spacecraft_name : str
         Name of the spacecraft to plot.
-    result : SimulationHistory
-        General simulation result containing spacecraft histories.
+
+    metadata : SimulationHistoryMetadata | str | Path
+        Simulation metadata. Can be either a ``SimulationHistoryMetadata``
+        instance or a path to ``simulation_history_metadata.json``.
+
     save : bool, optional
         Save the generated figure to disk. Default is False.
+
+    show : bool, optional
+        Display the generated figure. Default is True.
+
     output_dir : Path | str, optional
         Directory where the figure will be saved.
+
     filename : str, optional
         Output filename.
+
     dpi : int, optional
         Figure resolution in dots per inch.
 
@@ -38,37 +50,152 @@ def plot_control_result(
     """
 
     # ------------------------------------------------------------------
+    # Load metadata
+    # ------------------------------------------------------------------
+
+    if isinstance(metadata, (str, Path)):
+
+        metadata_path = Path(metadata)
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(
+                f"Metadata file not found: '{metadata_path}'"
+            )
+
+        with open(
+            metadata_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            metadata = json.load(file)
+
+        unique_id = metadata["unique_id"]
+        available_spacecrafts = metadata["spacecraft_names"]
+        data_file_path = metadata["data_file_path"]
+        csv_folder_path = metadata.get(
+            "csv_folder_path",
+            None,
+        )
+
+    else:
+
+        unique_id = metadata.unique_id
+        available_spacecrafts = metadata.spacecraft_names
+        data_file_path = metadata.data_file_path
+        csv_folder_path = metadata.csv_folder_path
+
+    # ------------------------------------------------------------------
     # Validate spacecraft
     # ------------------------------------------------------------------
 
-    if spacecraft_name not in result.spacecrafts_history:
+    if spacecraft_name not in available_spacecrafts:
         raise KeyError(
-            f"Spacecraft '{spacecraft_name}' not found in simulation history."
+            f"Spacecraft '{spacecraft_name}' not found in simulation "
+            f"metadata. Available spacecrafts: "
+            f"{available_spacecrafts}"
         )
 
-    history = result.spacecrafts_history[spacecraft_name]
+    # ------------------------------------------------------------------
+    # Determine CSV directory
+    # ------------------------------------------------------------------
+
+    if csv_folder_path:
+
+        csv_directory = (
+            Path(csv_folder_path)
+            / f"simulation_{unique_id}"
+        )
+
+    else:
+
+        csv_directory = Path(data_file_path)
+
+    csv_file = (
+        csv_directory
+        / f"{spacecraft_name}.csv"
+    )
+
+    if not csv_file.exists():
+        raise FileNotFoundError(
+            f"CSV file for spacecraft '{spacecraft_name}' "
+            f"not found: '{csv_file}'"
+        )
+
+    # ------------------------------------------------------------------
+    # Load CSV
+    # ------------------------------------------------------------------
+
+    data = pd.read_csv(csv_file)
+
+    required_columns = [
+        "t",
+
+        "control_force_0",
+        "control_force_1",
+        "control_force_2",
+
+        "current_force_exerted_0",
+        "current_force_exerted_1",
+        "current_force_exerted_2",
+
+        "control_torque_0",
+        "control_torque_1",
+        "control_torque_2",
+
+        "current_torque_exerted_0",
+        "current_torque_exerted_1",
+        "current_torque_exerted_2",
+    ]
+
+    missing_columns = [
+        column_name
+        for column_name in required_columns
+        if column_name not in data.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"CSV file '{csv_file}' is missing required "
+            f"columns: {missing_columns}"
+        )
 
     # ------------------------------------------------------------------
     # Retrieve data
     # ------------------------------------------------------------------
 
-    t = np.asarray(history.t)
+    t = data["t"].to_numpy()
 
-    commanded_force = np.asarray(
-        history.control_output_data["force"]
-    )
+    commanded_force = data[
+        [
+            "control_force_0",
+            "control_force_1",
+            "control_force_2",
+        ]
+    ].to_numpy()
 
-    applied_force = np.asarray(
-        history.current_force_exerted
-    )
+    applied_force = data[
+        [
+            "current_force_exerted_0",
+            "current_force_exerted_1",
+            "current_force_exerted_2",
+        ]
+    ].to_numpy()
 
-    commanded_torque = np.asarray(
-        history.control_output_data["torque"]
-    )
+    commanded_torque = data[
+        [
+            "control_torque_0",
+            "control_torque_1",
+            "control_torque_2",
+        ]
+    ].to_numpy()
 
-    applied_torque = np.asarray(
-        history.current_torque_exerted
-    )
+    applied_torque = data[
+        [
+            "current_torque_exerted_0",
+            "current_torque_exerted_1",
+            "current_torque_exerted_2",
+        ]
+    ].to_numpy()
 
     labels = ("X", "Y", "Z")
 
@@ -118,7 +245,7 @@ def plot_control_result(
         style_axes(
             ax_force,
             title=f"Force {label}",
-            ylabel=r"$F_{" + label.lower() + r"}$ [N]",
+            ylabel=rf"$F_{{{label.lower()}}}$ [N]",
         )
 
         ax_force.legend(
@@ -155,7 +282,7 @@ def plot_control_result(
         style_axes(
             ax_torque,
             title=f"Torque {label}",
-            ylabel=r"$\tau_{" + label.lower() + r"}$ [N·m]",
+            ylabel=rf"$\tau_{{{label.lower()}}}$ [N·m]",
         )
 
         ax_torque.legend(
@@ -182,7 +309,9 @@ def plot_control_result(
         y=0.99,
     )
 
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.tight_layout(
+        rect=[0, 0, 1, 0.96]
+    )
 
     # ------------------------------------------------------------------
     # Finalize
@@ -190,20 +319,12 @@ def plot_control_result(
 
     return finalize_figure(
         fig,
-        show=True,
+        show=show,
         save=save,
         output_dir=output_dir,
         filename=filename,
         dpi=dpi,
     )
-
-import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
-
-# ============================================================================
-# Helpers
-# ============================================================================
 
 def _normalize_spacecraft_names(
     spacecraft_names: str | list[str],

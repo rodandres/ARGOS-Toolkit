@@ -13,12 +13,12 @@ if TYPE_CHECKING:
 
 @dataclass
 class SimulationHistoryMetadata:
-    data_file_path: str
+    data_file_path: str    
     unique_id: int
     spacecraft_names: list[str]
     chunk_size: dict
     chunk_count: dict
-    
+    csv_folder_path: str = ""
 
 @dataclass
 class TransitionEventInfo:
@@ -111,7 +111,17 @@ class SimulationHistory:
                 json.dump(events_data, f, indent=4)
 
         if self.auto_convert_to_csv:
+            metadata.csv_folder_path = self.csv_folder_path
+
             save_simulation_history_csv(metadata_file_path, self.csv_folder_path)
+
+            # Save the metadata file in the CSV folder as well
+            csv_metadata_file_path = os.path.join(self.csv_folder_path, f"simulation_{self.unique_id}", "simulation_history_metadata.json")
+            os.makedirs(os.path.dirname(csv_metadata_file_path), exist_ok=True)
+            with open(csv_metadata_file_path, 'w') as f:
+                json.dump(metadata.__dict__, f, indent=4)
+
+        return metadata
 
 
 class SpacecraftHistory:
