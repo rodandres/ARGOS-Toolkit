@@ -1,26 +1,20 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
-import sys
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(REPO_ROOT))
-
-from py.modules.math import quaternion_from_euler, quaternion_to_DCM, DCM_to_quaternion
-from py.modules.enviroments.environments import ClassicalEnvironment
-from py.modules.core.simulation import Simulation
-from py.modules.actuators.RCS import RCSThruster
-from py.modules.sensors.generic_sensor import AbsoluteSensor
-from py.modules.sensors.inertial_sensors import Accelerometer, Gyroscope
-from py.modules.guidance.basic_laws import CustomGuidanceLaw
-from py.modules.navigation.basic_laws import IdealNavigation
-from py.modules.controllers.basic_laws import MultiRCSAllocator
-from py.modules.controllers.classic_controllers import PDController
-from py.modules.propagators.native_propagator import NativeTranslationalPropagator, NativeRotationalPropagator
-from py.modules.core.mission_manager import MissionPhase, MissionManager
-from py.modules.general.dataclasses import StateVariables, GuidanceOutput
-from py.modules.general_tools import get_state_at
-from py.modules.general.general_data import CM_mass, SM_mass, Ix_total, Iy_total, Iz_total
+from argos.math import quaternion_from_euler, quaternion_to_DCM, DCM_to_quaternion
+from argos.enviroments.environments import ClassicalEnvironment
+from argos.core.simulation import Simulation
+from argos.actuators.RCS import RCSThruster
+from argos.sensors.generic_sensor import AbsoluteSensor
+from argos.sensors.inertial_sensors import Accelerometer, Gyroscope
+from argos.guidance.basic_laws import CustomGuidanceLaw
+from argos.navigation.basic_laws import IdealNavigation
+from argos.controllers.basic_laws import MultiRCSAllocator
+from argos.controllers.classic_controllers import PDController
+from argos.propagators.native_propagator import NativeTranslationalPropagator, NativeRotationalPropagator
+from argos.core.mission_manager import MissionPhase, MissionManager
+from argos.general.dataclasses import StateVariables, GuidanceOutput
+from argos.general_tools import get_state_at
+from argos.general.general_data import CM_mass, SM_mass, Ix_total, Iy_total, Iz_total
 
 # ========================================================
 #                      SIMULATION SETUP

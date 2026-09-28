@@ -10,13 +10,6 @@
 
 # %%
 import numpy as np
-from pathlib import Path
-import sys
-
-path = Path.cwd()
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(REPO_ROOT))
 
 # %% [markdown]
 # ## General Simulation Setup
@@ -29,7 +22,7 @@ sys.path.insert(0, str(REPO_ROOT))
 # The environment object provides the simulation environment in which the spacecraft dynamics are evaluated.
 
 # %%
-from py.modules.enviroments.environments import ClassicalEnvironment
+from argos.enviroments.environments import ClassicalEnvironment
 
 env = ClassicalEnvironment()
 
@@ -41,7 +34,7 @@ env = ClassicalEnvironment()
 # *Note: All the units in the simulations are in the International Metric System.*
 
 # %%
-from py.modules.core.simulation import Simulation
+from argos.core.simulation import Simulation
 
 sim = Simulation(max_sim_time=5*60, # 3 minutes,                 
                  environment= env,                 
@@ -82,7 +75,7 @@ sim = Simulation(max_sim_time=5*60, # 3 minutes,
 # Note that the class also allows different command methods; by default, we have a PWM method.
 
 # %%
-from py.modules.actuators.RCS import RCSThruster
+from argos.actuators.RCS import RCSThruster
 
 thruster_X_pos = RCSThruster(
     nominal_thrust= 0,
@@ -169,7 +162,7 @@ thruster_X_pos.print_information()
 # For any sensor, we need to define a Sample Rate in Hz, which will define the interval at which the sensor will update the data it is measuring.
 
 # %%
-from py.modules.sensors.generic_sensor import AbsoluteSensor
+from argos.sensors.generic_sensor import AbsoluteSensor
 
 sensors = [AbsoluteSensor(100, verbose=False)]  # Sample rate of 100 Hz
 
@@ -199,7 +192,7 @@ sensors = [AbsoluteSensor(100, verbose=False)]  # Sample rate of 100 Hz
 # This will be added later to a mission phase.
 
 # %%
-from py.modules.propagators.native_propagator import NativeRotationalPropagator
+from argos.propagators.native_propagator import NativeRotationalPropagator
 
 rot_propagator = NativeRotationalPropagator(integration_method="NATIVE_RK45")
 
@@ -212,9 +205,9 @@ rot_propagator = NativeRotationalPropagator(integration_method="NATIVE_RK45")
 
 # %%
 # Next step is define the guidance law
-from py.modules.general.dataclasses import GuidanceOutput, StateVariables
-from py.modules.guidance.basic_laws import CustomGuidanceLaw
-from py.modules.math import quaternion_from_euler
+from argos.general.dataclasses import GuidanceOutput, StateVariables
+from argos.guidance.basic_laws import CustomGuidanceLaw
+from argos.math import quaternion_from_euler
 
 objective_orientation = [0, 0, 0]  # Desired orientation in Euler angles (degrees)
 
@@ -240,7 +233,7 @@ guidance_law = CustomGuidanceLaw(
 # However, some guidance laws are already implemented, such as a constant reference guidance law, which is the one that we need in this example, as throughout the whole phase, the reference will be the same.
 
 # %%
-from py.modules.guidance.basic_laws import ConstantReferenceGuidance
+from argos.guidance.basic_laws import ConstantReferenceGuidance
 
 guidance_law = ConstantReferenceGuidance(
     desired_quat = quaternion_from_euler(np.deg2rad(objective_orientation[0]), np.deg2rad(objective_orientation[1]), np.deg2rad(objective_orientation[2]))
@@ -254,8 +247,8 @@ guidance_law = ConstantReferenceGuidance(
 # Similar to the guidance law, it is possible to define custom navigation laws using the `CustomNavigation` class. For this, the input will be only the sensors that the spacecraft has; therefore, you will not have access to the real/true states (unless you define an Absolute Sensor).
 
 # %%
-from py.modules.general.dataclasses import NavigationOutput
-from py.modules.navigation.basic_laws import CustomNavigation
+from argos.general.dataclasses import NavigationOutput
+from argos.navigation.basic_laws import CustomNavigation
 
 def estimate(sensors):
 
@@ -279,7 +272,7 @@ navigation_law = CustomNavigation(
 # Again, there are some already defined navigation laws. As we initially talked about not using any sensor model, but using the Absolute Sensor to test the control law, we need to keep the same philosophy here. Therefore, an Ideal Navigation law is already implemented, which will automatically translate the real/true states into the estimation output (that is used both in the reference/guidance module and in the control module).
 
 # %%
-from py.modules.navigation.basic_laws import IdealNavigation
+from argos.navigation.basic_laws import IdealNavigation
 
 navigation_law = IdealNavigation()  # Using the ideal navigation law for this example
 
@@ -291,7 +284,7 @@ navigation_law = IdealNavigation()  # Using the ideal navigation law for this ex
 # In this case, we will use a PD Attitude Controller.
 
 # %%
-from py.modules.controllers.classic_controllers import PDAttitudeController
+from argos.controllers.classic_controllers import PDAttitudeController
 
 control_law = PDAttitudeController(
     proportional_gain= 1000,
@@ -308,7 +301,7 @@ control_law = PDAttitudeController(
 # Once again, custom and already implemented methods can be used, as shown:
 
 # %%
-from py.modules.controllers.basic_laws import CustomControlAllocator
+from argos.controllers.basic_laws import CustomControlAllocator
 
 def allocate(control_output, actuators):
     
@@ -340,7 +333,7 @@ allocator_law = CustomControlAllocator(
 # The same basic algorithm previously shown is implemented in the `BasicRCSAllocator`, which will assume 6 RCS thrusters where the torque will be allocated.
 
 # %%
-from py.modules.controllers.basic_laws import BasicRCSAllocator
+from argos.controllers.basic_laws import BasicRCSAllocator
 
 allocator_law = BasicRCSAllocator()
 
@@ -353,7 +346,7 @@ allocator_law = BasicRCSAllocator()
 # For the mission phase, in addition to the previously discussed items, we need to provide a unique name for the phase and the update rates for each of the laws and propagators in seconds.
 
 # %%
-from py.modules.general.dataclasses import MissionPhase
+from argos.general.dataclasses import MissionPhase
 
 phase = MissionPhase(
     name="SinglePhase",
@@ -375,7 +368,7 @@ phase = MissionPhase(
 # With that, we can set this phase as the initial phase in the mission manager. In this example, it is not covered how to add phases and transitions; this is covered in Example 4.
 
 # %%
-from py.modules.core.mission_manager import MissionManager
+from argos.core.mission_manager import MissionManager
 
 mission_manager = MissionManager(
     initial_phase= phase
@@ -388,8 +381,8 @@ mission_manager = MissionManager(
 
 # %%
 # With all this, we can now add an spacecraft to the sim
-from py.modules.math import quaternion_from_euler
-from py.modules.general.general_data import Ix_total, Iy_total, Iz_total
+from argos.math import quaternion_from_euler
+from argos.general.general_data import Ix_total, Iy_total, Iz_total
 
 initial_vel = np.array([0.0, 0.0, 0.0])  # Initial velocity in meters per second
 initial_orientation = initial_orientation = [45, -30, -10]  # Initial orientation in Euler angles (degrees)
@@ -421,8 +414,8 @@ metadata = sim.simulate()
 # Some plotting functions are already defined, as shown below.
 
 # %%
-from py.modules.visualization.state_variables import plot_attitude_quaternions, plot_angular_velocity, plot_position
-from py.modules.visualization.gnc import plot_control_result
+from argos.visualization.state_variables import plot_attitude_quaternions, plot_angular_velocity, plot_position
+from argos.visualization.gnc import plot_control_result
 
 plot_attitude_quaternions("Spacecraft_1", metadata)
 

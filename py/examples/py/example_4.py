@@ -10,13 +10,6 @@
 
 # %%
 import numpy as np
-from pathlib import Path
-import sys
-
-path = Path.cwd()
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(REPO_ROOT))
 
 # %% [markdown]
 # ## General Simulation Setup
@@ -30,7 +23,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 # %%
 # Define the environment
-from py.modules.enviroments.environments import ClassicalEnvironment
+from argos.enviroments.environments import ClassicalEnvironment
 
 env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of the environment class
 
@@ -42,7 +35,7 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 # *Note: All the units in the simulations are in the International Metric System.*
 
 # %%
-from py.modules.core.simulation import Simulation
+from argos.core.simulation import Simulation
 
 sim_max_time = 60*15
 
@@ -57,7 +50,7 @@ sim = Simulation(max_sim_time=sim_max_time,
 # We will begin by creating a spacecraft similar to the first example, with thrusters, but with two absolute sensors, each with a different refresh time, so each phase can use a different one.
 
 # %%
-from py.modules.sensors.generic_sensor import AbsoluteSensor
+from argos.sensors.generic_sensor import AbsoluteSensor
 
 # Update times
 
@@ -67,7 +60,7 @@ dt_phase_2 = 10.0  # Propagation update every 10 seconds
 sensors = [AbsoluteSensor(100), AbsoluteSensor(100, verbose=False)]
 
 # %%
-from py.modules.actuators.RCS import RCSThruster
+from argos.actuators.RCS import RCSThruster
 
 thruster_X_pos = RCSThruster(
     nominal_thrust=0.01,
@@ -130,14 +123,14 @@ thrusters = [thruster_X_pos, thruster_X_neg, thruster_Y_pos, thruster_Y_neg, thr
 # We will now begin to model the first phase of the mission, which will be similar to the one in Example 2.
 
 # %%
-from py.modules.navigation.basic_laws import IdealNavigation
+from argos.navigation.basic_laws import IdealNavigation
 
 nav_law = IdealNavigation()
 
-from py.modules.propagators.native_propagator import NativeTranslationalPropagator
+from argos.propagators.native_propagator import NativeTranslationalPropagator
 translational_propagator = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
 
-from py.modules.general.dataclasses import MissionPhase
+from argos.general.dataclasses import MissionPhase
 
 initial_phase = MissionPhase(
     name="Initial Phase",
@@ -155,20 +148,20 @@ initial_phase = MissionPhase(
 # %%
 translational_propagator_phase_2 = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
 
-from py.modules.propagators.native_propagator import NativeRotationalPropagator
+from argos.propagators.native_propagator import NativeRotationalPropagator
 rotational_propagator_phase_2 =  NativeRotationalPropagator(integration_method="NATIVE_RK45")
 
 
 nav_law_phase_2 = IdealNavigation(sensor_to_be_use=2)  # Use the second AbsoluteSensor for phase 2
 
-from py.modules.guidance.basic_laws import ConstantReferenceGuidance
-from py.modules.math import quaternion_from_euler
+from argos.guidance.basic_laws import ConstantReferenceGuidance
+from argos.math import quaternion_from_euler
 objective_orientation = [0, 0, 0]  # Desired orientation in Euler angles (degrees)
 guidance_law = ConstantReferenceGuidance(
     desired_quat = quaternion_from_euler(np.deg2rad(objective_orientation[0]), np.deg2rad(objective_orientation[1]), np.deg2rad(objective_orientation[2]))
 )
 
-from py.modules.controllers.classic_controllers import PDAttitudeController
+from argos.controllers.classic_controllers import PDAttitudeController
 
 control_law = PDAttitudeController(
     proportional_gain= 1000,    
@@ -177,7 +170,7 @@ control_law = PDAttitudeController(
     minimum_torque= -1000
 )
 
-from py.modules.controllers.basic_laws import BasicRCSAllocator
+from argos.controllers.basic_laws import BasicRCSAllocator
 allocator_law = BasicRCSAllocator()
 
 
@@ -207,7 +200,7 @@ second_phase = MissionPhase(
 # We can now begin to model the mission manager and its transitions, so we begin by setting which is the initial phase and then adding the second phase.
 
 # %%
-from py.modules.core.mission_manager import MissionManager
+from argos.core.mission_manager import MissionManager
 
 mission_manager = MissionManager(
     initial_phase=initial_phase
@@ -257,7 +250,7 @@ initial_orientation = initial_orientation = [45, -30, -10]  # Initial orientatio
 initial_orientation_quat = quaternion_from_euler(np.deg2rad(initial_orientation[0]), np.deg2rad(initial_orientation[1]), np.deg2rad(initial_orientation[2]))
 initial_angular_velocity = np.array([-0.08, 0.05, 0.1])  # Initial angular velocity in rad/s
 
-from py.modules.general.general_data import Ix_total, Iy_total, Iz_total
+from argos.general.general_data import Ix_total, Iy_total, Iz_total
 
 inertia_tensor=np.diag([
     Ix_total,
@@ -287,16 +280,16 @@ sim.add_spacecraft(
 metada = sim.simulate()
 
 # %%
-from py.modules.visualization.state_variables import plot_attitude_quaternions, plot_position
+from argos.visualization.state_variables import plot_attitude_quaternions, plot_position
 
 plot_attitude_quaternions(["SC1"], metada, show=True)
 plot_position(["SC1"], metada, show=True)
 
 
-from py.modules.visualization.gnc import plot_control_result
+from argos.visualization.gnc import plot_control_result
 plot_control_result("SC1", metada)
 
-from py.modules.visualization.trajectories import *
+from argos.visualization.trajectories import *
 
 plot_trajectory_xy(["SC1"], metada, show=True, body="Earth",)
 plot_trajectory_xz(["SC1"], metada, show=True, body="Earth",)

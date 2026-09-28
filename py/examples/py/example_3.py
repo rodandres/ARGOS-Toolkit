@@ -8,13 +8,6 @@
 
 # %%
 import numpy as np
-from pathlib import Path
-import sys
-
-path = Path.cwd()
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(REPO_ROOT))
 
 # %% [markdown]
 # As we are working with the CR3BP, it is usually expressed in normalized units. However, as the toolkit uses SI units, we need to define the corresponding factors to make the respective conversions between units.
@@ -36,7 +29,7 @@ LENGTH_FACTOR = 384400.0e3
 
 # %%
 # Define the environment
-from py.modules.enviroments.environments import ClassicalEnvironment
+from argos.enviroments.environments import ClassicalEnvironment
 
 env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of the environment class
 
@@ -48,7 +41,7 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 # *Note: All the units in the simulations are in the International Metric System.*
 
 # %%
-from py.modules.core.simulation import Simulation
+from argos.core.simulation import Simulation
 
 sim = Simulation(max_sim_time=0.75952417*2 * TIME_FACTOR_SEC * 10,                 
                  environment= env,                 
@@ -63,8 +56,8 @@ sim = Simulation(max_sim_time=0.75952417*2 * TIME_FACTOR_SEC * 10,
 # As this is a basic case, where there is just translational motion, no other GNC or phases will be defined. This translational motion could be propagated under different dynamic equations. In this case, we will use the `CR3BP` method.
 
 # %%
-from py.modules.propagators.native_propagator import NativeTranslationalPropagator
-from py.modules.sensors.generic_sensor import AbsoluteSensor
+from argos.propagators.native_propagator import NativeTranslationalPropagator
+from argos.sensors.generic_sensor import AbsoluteSensor
 
 translational_propagator = NativeTranslationalPropagator(dynamics="CR3BP", integration_method="NATIVE_RK45")
 
@@ -73,9 +66,9 @@ dt = 5e-4 * TIME_FACTOR_SEC
 sensors = [AbsoluteSensor(1/dt, verbose=False)]
 
 # %%
-from py.modules.navigation.basic_laws import IdealNavigation
-from py.modules.general.dataclasses import MissionPhase
-from py.modules.core.mission_manager import MissionManager
+from argos.navigation.basic_laws import IdealNavigation
+from argos.general.dataclasses import MissionPhase
+from argos.core.mission_manager import MissionManager
 
 nav_law = IdealNavigation()
 
@@ -116,11 +109,11 @@ sim.add_spacecraft(
 result = sim.simulate()
 
 # %%
-from py.modules.visualization.trajectories import *
+from argos.visualization.trajectories import *
 
 plot_trajectory("SC", result, show=True, body="Moon",body_position=np.array([(1-MU)*LENGTH_FACTOR, 0.0, 0.0]),)
 
-from py.modules.visualization.state_variables import plot_position
+from argos.visualization.state_variables import plot_position
 
 plot_position("SC", result)
 

@@ -10,14 +10,6 @@
 
 # %%
 import numpy as np
-from pathlib import Path
-import sys
-
-path = Path.cwd()
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(REPO_ROOT))
-
 
 # %% [markdown]
 # ## General Simulation Setup
@@ -31,7 +23,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 # %%
 # Define the environment
-from py.modules.enviroments.environments import ClassicalEnvironment
+from argos.enviroments.environments import ClassicalEnvironment
 
 env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of the environment class
 
@@ -43,7 +35,7 @@ env = ClassicalEnvironment() # NOTE: Need to review for proper implmentation of 
 # *Note: All the units in the simulations are in the International Metric System.*
 
 # %%
-from py.modules.core.simulation import Simulation
+from argos.core.simulation import Simulation
 
 sim = Simulation(max_sim_time=3*60*60,                 
                  environment= env,                 
@@ -60,8 +52,8 @@ sim = Simulation(max_sim_time=3*60*60,
 # As this is a basic case, where there is just translational motion, no other GNC or phases will be defined. This translational motion could be propagated under different dynamic equations, the most common being the basic two-body relative problem, which can be used by setting the parameter `dynamics` to `REL2BP`.
 
 # %%
-from py.modules.propagators.native_propagator import NativeTranslationalPropagator
-from py.modules.sensors.generic_sensor import AbsoluteSensor
+from argos.propagators.native_propagator import NativeTranslationalPropagator
+from argos.sensors.generic_sensor import AbsoluteSensor
 
 translational_propagator_SC2 = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
 
@@ -70,9 +62,9 @@ dt_SC2 = 10 # Time step for the Spacecraft 2 in seconds
 sensors_SC2 = [AbsoluteSensor(1/dt_SC2, verbose=False)]
 
 # %%
-from py.modules.navigation.basic_laws import IdealNavigation
-from py.modules.general.dataclasses import MissionPhase
-from py.modules.core.mission_manager import MissionManager
+from argos.navigation.basic_laws import IdealNavigation
+from argos.general.dataclasses import MissionPhase
+from argos.core.mission_manager import MissionManager
 
 nav_law_SC2 = IdealNavigation()
 
@@ -154,7 +146,7 @@ sim.add_spacecraft(
 metada = sim.simulate()
 
 # %%
-from py.modules.visualization.trajectories import *
+from argos.visualization.trajectories import *
 
 plot_trajectory_xy(["SC1", "SC2"], metada, show=True, body="Earth",)
 plot_trajectory_xz(["SC1", "SC2"], metada, show=True, body="Earth",)
@@ -163,7 +155,7 @@ plot_trajectory_3d(["SC1", "SC2"], metada, show=True, body="Earth",)
 plot_trajectory(["SC1", "SC2"], metada, show=True, body="Earth",)
 
 
-from py.modules.visualization.gnc import *
+from argos.visualization.gnc import *
 plot_state_comparison(["SC1", "SC2"], metada, show=True)
 
 # %%
