@@ -8,8 +8,17 @@ if TYPE_CHECKING:
     from argos.core.simulation import SimulationData
 
 
-class MissionManager: # NOTE add method to print info about the transitions
+class MissionManager:
+    """
+    Manage mission phases and transitions for a spacecraft.
 
+    Parameters
+    ----------
+    initial_phase : MissionPhase
+        Initial mission phase.
+    verbose : bool, optional
+        If True, print information when mission phase transitions occur.
+    """
     def __init__(self, initial_phase: MissionPhase, verbose: bool = False):
         self.phases = {initial_phase.name: initial_phase}
         self.current_phase = initial_phase

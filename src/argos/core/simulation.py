@@ -16,13 +16,39 @@ if TYPE_CHECKING:
     from argos.enviroments.environment_base import EnvironmentBase
 
 class Simulation:
-    def __init__(self, max_sim_time: float,
-                 environment: EnvironmentBase,
-                 history_chunk_size: int = 4096,
-                 history_data_file_path: str = "tmp",
-                 auto_save_csv: bool = True,
-                 csv_folder_path: str = None,
-                 verbose: bool = False):        
+    """
+    Manage and execute a spacecraft simulation.
+
+    Parameters
+    ----------
+    max_sim_time : float
+        Maximum simulation time [s].
+    environment : EnvironmentBase
+        Environment model used during the simulation.
+    history_chunk_size : int, optional
+        Number of simulation history records stored in each chunk before
+        being written to disk.
+    history_data_file_path : str, optional
+        Path used for temporary simulation history data.
+    auto_save_csv : bool, optional
+        If True, automatically convert simulation history data to CSV.
+    csv_folder_path : str, optional
+        Directory where CSV simulation data is stored. Defaults to
+        ``"sim_data"``.
+    verbose : bool, optional
+        If True, print simulation status and spacecraft information.
+    """
+
+    def __init__(
+        self,
+        max_sim_time: float,
+        environment: EnvironmentBase,
+        history_chunk_size: int = 4096,
+        history_data_file_path: str = "tmp",
+        auto_save_csv: bool = True,
+        csv_folder_path: str = None,
+        verbose: bool = False,
+    ):   
 
         simulation_data = SimulationData(
             max_sim_time=max_sim_time,

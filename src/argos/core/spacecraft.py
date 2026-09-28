@@ -14,12 +14,46 @@ if TYPE_CHECKING:
     from argos.core.simulation import Simulation
 
 class Spacecraft():
+    """
+    Represent a spacecraft within an ARGOS simulation.
 
-    def __init__(self, name: str, mass: float, initial_state: np.ndarray, inertia_tensor: np.ndarray, 
-                 actuators: list | None = None, sensors: list[SensorBase] | None = None,
-                 mission_manager: MissionManager | None = None,
-                 parent: Simulation | None = None,
-                 verbose: bool = False):                        
+    Parameters
+    ----------
+    name : str
+        Spacecraft identifier.
+    mass : float
+        Spacecraft mass [kg].
+    initial_state : ndarray, shape (13,)
+        Initial spacecraft state vector. The state is ordered as
+        position [m], velocity [m/s], attitude quaternion, and angular
+        velocity [rad/s].
+    inertia_tensor : ndarray, shape (3, 3)
+        Spacecraft inertia tensor [kg·m²].
+    actuators : list of ActuatorBase, optional
+        Actuators attached to the spacecraft.
+    sensors : list of SensorBase, optional
+        Sensors attached to the spacecraft.
+    mission_manager : MissionManager, optional
+        Mission manager defining the spacecraft mission phases and
+        transitions.
+    parent : Simulation, optional
+        Simulation instance containing the spacecraft.
+    verbose : bool, optional
+        If True, print spacecraft information during initialization.
+    """
+    
+    def __init__(
+        self,
+        name: str,
+        mass: float,
+        initial_state: np.ndarray,
+        inertia_tensor: np.ndarray,
+        actuators: list | None = None,
+        sensors: list[SensorBase] | None = None,
+        mission_manager: MissionManager | None = None,
+        parent: Simulation | None = None,
+        verbose: bool = False,
+    ):                       
 
         # --- ATRIBUTES DECLARATION ---        
         self.name = name
