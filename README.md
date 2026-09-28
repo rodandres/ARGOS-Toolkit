@@ -217,13 +217,11 @@ The intent is to allow users to replace individual algorithms without modifying 
 Clone the repository and install the required Python dependencies.
 
 ```bash
-git clone https://github.com/<your-username>/ARGOS-Toolkit.git
+git clone https://github.com/rodandres/ARGOS-Toolkit.git
 cd ARGOS-Toolkit
 
-pip install -r requirements.txt
+pip install -e .
 ```
-
-ARGOS is currently intended to be executed directly from the repository. Packaging and installation through `pip` are planned for a future.
 
 ## Quick Start
 
@@ -231,7 +229,7 @@ The simplest way to become familiar with ARGOS is to run the provided examples.
 
 The examples are located under:
 ```text
-py/examples/
+examples/
 ```
 
 and are provided both as Python scripts and Jupyter notebooks.
@@ -311,21 +309,17 @@ Plots  Analysis  Custom Processing
 ```text
 ARGOS-Toolkit/
 │
-├── py/
+├── src/
 │   │
-│   ├── general/
-│   │   ├── dataclasses.py
-│   │   ├── data_classes_declaration.py
-│   │   ├── data_save.py
-│   │   └── general_data.py
 │   │
-│   ├── modules/
+│   ├── argos/
 │   │   │
 │   │   ├── actuators/
 │   │   ├── controllers/
 │   │   ├── enviroments/
 │   │   ├── frames/
 │   │   ├── guidance/
+│   │   ├── general/
 │   │   ├── navigation/
 │   │   ├── propagators/
 │   │   ├── sensors/
@@ -341,10 +335,9 @@ ARGOS-Toolkit/
 │   │
 │   │
 │   └── examples/
-│       ├── py/
+│       ├── src/
 │       └── ipynb/
 │
-├── requirements.txt
 ├── LICENSE
 └── README.md
 ``` 
@@ -390,7 +383,7 @@ These capabilities provide a foundation for studying spacecraft trajectories in 
 A more detail example of usage can be seen in:
 
 ```text
-py/examples/xx/Continuation of Lyapunov and Halo Orbit Families.xx
+examples/xx/Continuation of Lyapunov and Halo Orbit Families.xx
 ``` 
 
 ## Development Status
@@ -463,8 +456,8 @@ ARGOS is primarily built on the following Python libraries:
 - **NumPy** — Numerical computing.
 - **SciPy** — Scientific computing and numerical methods.
 - **Matplotlib** — Data visualization and simulation plotting.
-
-Additional dependencies are listed in `requirements.txt`.
+- **Pandas** — Data analysis and structured simulation results.
+- **psutil** — System and process information used by the simulation infrastructure.
 
 ## Contributing
 
