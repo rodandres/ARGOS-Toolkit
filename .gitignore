@@ -9,3 +9,6 @@ notes.md
 
 # Python packaging artifacts
 *.egg-info/
+
+# Documentation Site
+/site/
