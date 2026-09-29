@@ -17,7 +17,7 @@ class RCSThruster(ActuatorBase):
         minimum_on_time: float = 0.01,
         activation_threshold: float = 0.0,
 
-        override_torque_value: np.ndarray | None = None,
+        override_torque_value: float | None = None,
 
         name: str = None
     ):
@@ -48,8 +48,8 @@ class RCSThruster(ActuatorBase):
         activation_threshold : float, optional
             Minimum commanded force required to activate the thruster in
             bang-bang mode [N].
-        override_torque_value : ndarray, shape (3,), optional
-            Torque vector used instead of the torque computed from the
+        override_torque_value : float, optional
+            Torque value used instead of the torque computed from the
             thruster position and generated force.
         name : str, optional
             Thruster identifier.
@@ -59,17 +59,7 @@ class RCSThruster(ActuatorBase):
 
         self.nominal_thrust = nominal_thrust
         self.position = position
-
-        self.command_mode = command_mode
-
-        self.modulation_window = modulation_window
-        self.minimum_on_time = minimum_on_time
-
-        self.activation_threshold = activation_threshold
-
         self.direction = direction
-
-        self._check_initialization()
 
         if self.position is None:
             self.position = np.zeros(3)  # Default position at the origin
@@ -77,7 +67,16 @@ class RCSThruster(ActuatorBase):
 
         if self.direction is None:
             self.direction = np.array([1, 0, 0])  # Default direction along the X-axis
+            
         
+        self.command_mode = command_mode
+
+        self.modulation_window = modulation_window
+        self.minimum_on_time = minimum_on_time
+
+        self.activation_threshold = activation_threshold
+
+        self._check_initialization()        
 
         self.direction = self.direction / np.linalg.norm(self.direction)  # Normalize the direction vector
 
@@ -112,6 +111,13 @@ class RCSThruster(ActuatorBase):
     def _check_initialization(self):
         if self.nominal_thrust < 0:
             raise ValueError("Nominal thrust must be positive.")
+
+        if self.override_torque and self.override_torque_value is not None:
+            if self.override_torque_value < 0:
+                raise ValueError("Override torque value must be positive.")
+
+            if np.linalg.norm(self.direction) == 0:
+                raise ValueError("Direction vector cannot be zero when override torque is enabled.")            
 
         if self.modulation_window <= 0:
             raise ValueError("Modulation window must be positive.")
