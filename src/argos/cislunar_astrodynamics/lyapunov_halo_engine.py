@@ -17,6 +17,54 @@ TU_DAYS = 27.321661 / (2.0 * np.pi)  # Time unit in days (sideral lunar month)
 
 @dataclass
 class OrbitData:
+    """
+    Store computed data describing a periodic CR3BP orbit.
+
+    The state-related quantities are expressed in normalized CR3BP units,
+    while geometric distances and orbital periods are also provided in
+    physical units where indicated.
+
+    Attributes
+    ----------
+    x0 : float
+        Initial dimensionless x-coordinate in the rotating frame.
+    y0 : float
+        Initial dimensionless y-coordinate in the rotating frame.
+    z0 : float
+        Initial dimensionless z-coordinate in the rotating frame.
+    xdot0 : float
+        Initial dimensionless x-velocity in the rotating frame.
+    ydot0 : float
+        Initial dimensionless y-velocity in the rotating frame.
+    zdot0 : float
+        Initial dimensionless z-velocity in the rotating frame.
+    T_half : float
+        Half-period in normalized CR3BP time units.
+    CJ : float
+        Jacobi constant of the orbit.
+    amp_y : float
+        In-plane y-amplitude in normalized distance units.
+    amp_z : float
+        Out-of-plane z-amplitude in normalized distance units.
+    monodromy : np.ndarray, shape (6, 6)
+        Monodromy matrix of the periodic orbit.
+    trajectory : np.ndarray
+        Computed orbit trajectory in normalized CR3BP state coordinates.
+    u : np.ndarray
+        Auxiliary orbit parameters associated with the continuation or
+        correction process.
+    tangent : np.ndarray or None
+        Continuation tangent vector, if available.
+    stability_indices : np.ndarray or None
+        Stability indices computed from the orbit monodromy matrix, if
+        available.
+    perilune_km : float
+        Minimum orbital distance from the relevant primary [km].
+    apolune_km : float
+        Maximum orbital distance from the relevant primary [km].
+    period_days : float
+        Full orbital period [days].
+    """
     x0: float = 0.0
     y0: float = 0.0
     z0: float = 0.0
@@ -39,21 +87,18 @@ class OrbitData:
 @dataclass
 class PropagationResult:
     """
-    Stores the results of a state and STM propagation.
+    Store the result of a CR3BP trajectory propagation.
 
     Attributes
     ----------
     state_final : np.ndarray
-        Final spacecraft state at the end of the propagation.
-
-    Phi_final : np.ndarray
-        Final State Transition Matrix (STM).
-
+        Final propagated CR3BP state.
+    Phi_final : np.ndarray, shape (6, 6)
+        Final state transition matrix.
     trajectory : np.ndarray
-        State trajectory over the propagation interval.
-
+        Propagated state trajectory.
     solution : OdeResult
-        Raw integration result returned by the ODE solver.
+        Complete integration result returned by ``solve_ivp``.
     """
 
     state_final: np.ndarray
@@ -64,31 +109,25 @@ class PropagationResult:
 @dataclass
 class ResidualResult:
     """
-    Stores the residual vector and Jacobian associated with the
-    differential correction process.
+    Store the residual and sensitivity information from a periodic-orbit propagation.
 
     Attributes
     ----------
     F : np.ndarray
-        Residual vector evaluated at the half-period crossing.
-
+        Periodic-orbit residual vector.
     J : np.ndarray
-        Jacobian matrix of the residual vector.
-
+        Jacobian or sensitivity matrix associated with the residual.
     state_cross : np.ndarray
-        State vector at the symmetry-plane crossing.
-
+        State evaluated at the trajectory crossing used to construct the
+        residual.
     half_period : float
-        Half-period corresponding to the evaluated orbit.
-
-    Phi : np.ndarray
-        State Transition Matrix (STM) at the half-period crossing.
-
+        Computed half-period in normalized CR3BP time units.
+    Phi : np.ndarray, shape (6, 6)
+        State transition matrix at the crossing.
     trajectory : np.ndarray
-        State trajectory over the propagated half-period.
-
+        Propagated trajectory used to evaluate the residual.
     solution : OdeResult
-        Raw integration result returned by the ODE solver.
+        Complete integration result returned by ``solve_ivp``.
     """
 
     F: np.ndarray
@@ -102,27 +141,22 @@ class ResidualResult:
 @dataclass
 class ContinuationStep:
     """
-    Stores the result of a single pseudo-arclength continuation step.
+    Store the result of a pseudo-arclength continuation step.
 
-    Parameters
+    Attributes
     ----------
     predicted_state : np.ndarray
-        State vector obtained from the Euler predictor.
-
+        State predicted by the continuation predictor.
     corrected_state : np.ndarray
-        State vector after Newton correction.
-
+        State obtained after applying the correction procedure.
     tangent_vector : np.ndarray
-        Unit tangent vector at the corrected solution.
-
+        Continuation tangent vector used for the step.
     residual_norm : float
-        Euclidean norm of the residual after convergence.
-
+        Norm of the corrected periodic-orbit residual.
     iterations : int
-        Number of Newton iterations performed.
-
+        Number of correction iterations performed.
     converged : bool
-        Indicates whether the corrector converged.
+        Indicates whether the correction procedure converged.
     """
 
     predicted_state: np.ndarray
@@ -139,26 +173,24 @@ def build_state_vector(
     half_period: float,
 ) -> np.ndarray:
     """
-    Builds the continuation state vector.
+    Build the state vector used by the periodic-orbit correction process.
 
     Parameters
     ----------
     x0 : float
-        Initial x-coordinate.
-
+        Initial dimensionless x-coordinate in the rotating frame.
     z0 : float
-        Initial z-coordinate.
-
+        Initial dimensionless z-coordinate in the rotating frame.
     ydot0 : float
-        Initial y-velocity.
-
+        Initial dimensionless y-velocity in the rotating frame.
     half_period : float
-        Half-period of the periodic orbit.
+        Half-period of the orbit in normalized CR3BP time units.
 
     Returns
     -------
-    np.ndarray
-        Continuation state vector.
+    np.ndarray, shape (4,)
+        Reduced orbit parameter vector ordered as
+        ``[x0, z0, ydot0, half_period]``.
     """
 
     return np.array(
@@ -170,17 +202,19 @@ def unpack_state_vector(
     state_vector: np.ndarray,
 ) -> tuple[float, float, float, float]:
     """
-    Unpacks the continuation state vector.
+    Extract the orbit parameters from a reduced state vector.
 
     Parameters
     ----------
-    state_vector : np.ndarray
-        Continuation state vector.
+    state_vector : np.ndarray, shape (4,)
+        Reduced orbit parameter vector ordered as
+        ``[x0, z0, ydot0, half_period]``.
 
     Returns
     -------
-    tuple[float, float, float, float]
-        x0, z0, ydot0, and half-period.
+    tuple of float
+        Values ``(x0, z0, ydot0, half_period)`` extracted from the input
+        vector.
     """
 
     return (
@@ -201,60 +235,28 @@ def differential_corrector(
     verbose: bool = False,
 ):
     """
-    Differential corrector for periodic Lyapunov and Halo orbits
-    in the CR3BP.
+    Correct a periodic orbit using a differential correction method.
+
+    The correction iteratively adjusts the selected initial conditions and
+    half-period to satisfy the periodic-orbit symmetry and crossing
+    conditions.
 
     Parameters
     ----------
-    x0 : float
-        Initial x position.
-
-    ydot0 : float
-        Initial y velocity.
-
-    period_guess : float
-        Initial guess for the FULL orbital period.
-
-    z0 : float or None, optional
-        Initial z position.
-
-        If z0 is None:
-            Planar Lyapunov orbit is corrected.
-
-        If z0 is specified:
-            3D Halo orbit is corrected.
-
-    mu : float
-        CR3BP mass parameter.
-
-    tol : float
-        Convergence tolerance for the symmetry-plane constraints.
-
-    max_iter : int
-        Maximum number of Newton iterations.
-
-    verbose : bool
-        Print iteration information.
-
+    ...
+    
     Returns
     -------
-    x0 : float or None
-        Corrected initial x position.
+    tuple of float or None
+        Corrected orbit parameters ``(x0, ydot0, half_period, z0)`` if the
+        correction converges successfully. Returns ``(None, None, None,
+        None)`` if the correction does not converge.
 
-    ydot0 : float or None
-        Corrected initial y velocity.
-
-    half_period : float or None
-        Corrected half period.
-
-    z0 : float or None
-        Corrected initial z position.
-
-        For Lyapunov:
-            None
-
-        For Halo:
-            corrected z0
+    Raises
+    ------
+    ...
+        Document only exceptions that are explicitly raised by the
+        implementation.    
 
     Notes
     -----
@@ -643,13 +645,26 @@ def compute_monodromy(
     mu: float,
 ):
     """
-    Propagate the State Transition Matrix (STM) over one full period
-    to compute the monodromy matrix.
+    Compute the monodromy matrix of a periodic CR3BP orbit.
+
+    The monodromy matrix is obtained by propagating the state transition
+    matrix over one complete orbital period.
+
+    Parameters
+    ----------
+    x0 : float
+        Initial dimensionless x-coordinate in the rotating frame.
+    ydot0 : float
+        Initial dimensionless y-velocity in the rotating frame.
+    period : float
+        Orbital period in normalized CR3BP time units.
+    mu : float
+        Dimensionless CR3BP mass parameter.
 
     Returns
     -------
-        Monodromy matrix:
-            M = Φ(T)
+    np.ndarray, shape (6, 6)
+        Monodromy matrix evaluated after one complete orbital period.
     """
 
     initial_state = np.zeros(42)
@@ -674,38 +689,23 @@ def analyze_monodromy(
     verbose: bool = False,
 ):
     """
-    Analyze the eigenstructure of the monodromy matrix.
+    Analyze the eigenstructure and stability of a periodic-orbit monodromy matrix.
 
-    The eigenvalues are classified into three groups:
+    The eigenvalues of the monodromy matrix are used to characterize the
+    linear stability properties of the periodic orbit.
 
-        - Real pair:
-            (λ, 1/λ), associated with planar instability.
-
-        - Marginal pair:
-            (e^{±iα}), associated with neutral planar motion.
-
-        - Vertical pair:
-            (e^{±iβ}), associated with the out-of-plane mode.
+    Parameters
+    ----------
+    monodromy_matrix : np.ndarray, shape (6, 6)
+        Monodromy matrix of the periodic orbit.
+    verbose : bool, optional
+        If True, print the computed eigenvalues and stability information.
 
     Returns
     -------
-        Dictionary containing:
-
-            eigenvalues
-            eigenvectors
-            lambda_z
-                Eigenvalue associated with the vertical mode.
-
-            beta_z
-                Vertical-mode angle β.
-                β = 0 corresponds to the bifurcation point.
-
-            distance_to_unity
-                |λ_z - 1|.
-                Zero indicates an exact bifurcation.
-
-            vertical_eigenvector
-                Eigenvector associated with λ_z.
+    dict
+        Dictionary containing the eigenvalues, eigenvectors, and stability
+        information derived from the monodromy matrix.
     """
 
     eigenvalues, eigenvectors = np.linalg.eig(monodromy_matrix)
@@ -824,29 +824,21 @@ def propagate_half_period(
     rtol: float = 1e-12,
 ) -> PropagationResult:
     """
-    Propagates a periodic orbit and its State Transition Matrix (STM)
-    over half of the orbital period.
+    Propagate a CR3BP orbit over one half-period.
+
+    The state transition matrix is propagated together with the spacecraft
+    state to obtain the sensitivity information required by the orbit
+    correction process.
 
     Parameters
     ----------
-    state_vector : np.ndarray
-        Continuation state vector
-        [x0, z0, ydot0, half_period].
-
-    mu : float
-        CR3BP mass parameter.
-
-    atol : float, optional
-        Absolute integration tolerance.
-
-    rtol : float, optional
-        Relative integration tolerance.
-
+    ...
+    
     Returns
     -------
     PropagationResult
-        Propagation results containing the final state, final STM,
-        trajectory, and complete ODE solution.
+        Propagation result containing the final state, state transition
+        matrix, trajectory, and integration solution.
     """
 
     x0, z0, ydot0, half_period = unpack_state_vector(state_vector)
@@ -887,35 +879,20 @@ def propagate_full_period(
     rtol: float = 1e-12,
 ) -> PropagationResult:
     """
-    Propagates a periodic orbit and its State Transition Matrix (STM)
-    over one complete orbital period.
+    Propagate a CR3BP orbit over one complete orbital period.
 
-    The monodromy matrix is obtained through direct integration over the
-    full orbital period rather than by reconstructing it from the half-period
-    STM using symmetry relations. Although this approximately doubles the
-    propagation cost, it avoids potential sign errors in the symmetry
-    transformation and is performed only once per converged orbit.
+    The state transition matrix is propagated together with the spacecraft
+    state to obtain the monodromy matrix of the periodic orbit.
 
     Parameters
     ----------
-    state_vector : np.ndarray
-        Continuation state vector
-        [x0, z0, ydot0, half_period].
-
-    mu : float
-        CR3BP mass parameter.
-
-    atol : float, optional
-        Absolute integration tolerance.
-
-    rtol : float, optional
-        Relative integration tolerance.
-
+    ...
+    
     Returns
     -------
     PropagationResult
-        Propagation results containing the final state, final STM,
-        trajectory, and complete ODE solution.
+        Propagation result containing the final state, state transition
+        matrix, trajectory, and integration solution.
     """
 
     x0, z0, ydot0, half_period = unpack_state_vector(state_vector)
@@ -956,29 +933,22 @@ def compute_residual(
     rtol: float = 1e-12,
 ) -> ResidualResult:
     """
-    Computes the residual vector and its Jacobian for the
-    pseudo-arclength differential corrector.
+    Compute the periodic-orbit residual and its sensitivity information.
+
+    The orbit is propagated to the symmetry-plane crossing and the resulting
+    state and state transition matrix are used to construct the residual
+    required by the correction algorithm.
 
     Parameters
     ----------
-    state_vector : np.ndarray
-        Continuation state vector
-        [x0, z0, ydot0, half_period].
-
-    mu : float
-        CR3BP mass parameter.
-
-    atol : float, optional
-        Absolute integration tolerance.
-
-    rtol : float, optional
-        Relative integration tolerance.
-
+    ...
+    
     Returns
     -------
     ResidualResult
-        Residual vector, Jacobian, propagated state,
-        State Transition Matrix, trajectory, and solver output.
+        Residual information including the residual vector, sensitivity
+        matrix, crossing state, half-period, state transition matrix,
+        trajectory, and integration solution.
     """
 
     propagation = propagate_half_period(
@@ -1044,46 +1014,19 @@ def newton_minimum_norm(
     verbose: bool = True,
 ) -> np.ndarray:
     """
-    Refines the initial continuation seed using a minimum-norm Newton
-    iteration.
+    Compute a minimum-norm Newton correction for a nonlinear system.
 
-    The initial solution must satisfy F(u) ≈ 0 before computing the first
-    continuation tangent. The tangent vector represents the local geometry
-    of the solution manifold and is therefore meaningful only when
-    evaluated at a converged solution.
-
-    Since the correction problem consists of three equations and four
-    unknowns, the system is underdetermined. Rather than fixing one
-    variable, the Moore-Penrose pseudoinverse is used to compute the
-    minimum-norm Newton step, yielding the closest solution to the initial
-    guess.
+    The correction is obtained using the singular value decomposition of the
+    system Jacobian.
 
     Parameters
     ----------
-    initial_state_vector : np.ndarray
-        Initial continuation state vector.
-
-    mu : float
-        CR3BP mass parameter.
-
-    tol : float, optional
-        Convergence tolerance on the residual norm.
-
-    max_iter : int, optional
-        Maximum number of Newton iterations.
-
-    verbose : bool, optional
-        Enables iteration logging.
-
+    ...
+    
     Returns
     -------
     np.ndarray
-        Corrected continuation state vector.
-
-    Raises
-    ------
-    RuntimeError
-        If the Newton iteration fails to converge.
+        Minimum-norm correction vector.
     """
 
     state_vector = initial_state_vector.copy()
@@ -1116,27 +1059,18 @@ def compute_stability_indices(
     monodromy_matrix: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Computes the Howell (1984) stability indices from the monodromy matrix.
-
-    The two non-trivial reciprocal eigenvalue pairs are identified after
-    removing the trivial pair located near λ = 1, which is associated with
-    time invariance of the periodic orbit.
-
-    The stability indices are defined as
-
-        ν_i = 0.5 * (λ_i + 1 / λ_i)
-
-    for each reciprocal eigenvalue pair.
+    Compute stability indices from a periodic-orbit monodromy matrix.
 
     Parameters
     ----------
-    monodromy_matrix : np.ndarray
+    monodromy_matrix : np.ndarray, shape (6, 6)
         Monodromy matrix of the periodic orbit.
 
     Returns
     -------
-    tuple[np.ndarray, np.ndarray]
-        Stability indices and the complete set of eigenvalues.
+    tuple of np.ndarray
+        Stability indices and the corresponding eigenvalues of the
+        monodromy matrix.
     """
 
     eigenvalues = np.linalg.eigvals(monodromy_matrix)
@@ -1208,31 +1142,20 @@ def compute_orbit_extrema(
     n_samples: int = 1500,
 ) -> tuple[float, float]:
     """
-    Computes the perilune and apolune distances of a periodic orbit.
+    Compute the minimum and maximum orbital distances.
 
-    The orbit is propagated over one complete period without integrating
-    the State Transition Matrix (STM), making this computation
-    significantly less expensive than a full monodromy propagation.
-
-    The minimum lunar distance provides a physically meaningful measure
-    of the continuation progress toward the NRHO family.
+    The normalized CR3BP trajectory is converted to physical distance using
+    the configured characteristic length unit.
 
     Parameters
     ----------
-    state_vector : np.ndarray
-        Continuation state vector
-        [x0, z0, ydot0, half_period].
-
-    mu : float
-        CR3BP mass parameter.
-
-    n_samples : int, optional
-        Number of uniformly distributed samples used to evaluate the orbit.
-
+    ...
+    
     Returns
     -------
-    tuple[float, float]
-        Perilune and apolune distances, in kilometers.
+    tuple of float
+        Minimum and maximum orbital distances from the relevant primary
+        ``(perilune_km, apolune_km)`` [km].
     """
 
     x0, z0, ydot0, half_period = unpack_state_vector(state_vector)
@@ -1292,24 +1215,17 @@ def compute_initial_tangent(
     orientation_hint: Optional[float] = None,
 ) -> np.ndarray:
     """
-    Computes the initial pseudo-arclength continuation tangent.
-
-    The tangent is obtained as the null-space vector of the Jacobian using
-    Singular Value Decomposition (SVD).
+    Compute the initial tangent vector for pseudo-arclength continuation.
 
     Parameters
     ----------
-    jacobian : np.ndarray
-        Residual Jacobian evaluated at the converged solution.
-
-    orientation_hint : float, optional
-        Desired sign of the z-direction component used to enforce a
-        consistent continuation direction.
-
+    ...
+    
     Returns
     -------
     np.ndarray
-        Unit tangent vector.
+        Initial normalized tangent vector in the continuation parameter
+        space.
     """
 
     _, _, right_singular_vectors = svd(jacobian)
@@ -1330,21 +1246,16 @@ def update_tangent(
     previous_tangent: np.ndarray,
 ) -> np.ndarray:
     """
-    Updates the continuation tangent using Keller's bordered system
-    formulation (Keller, 1977).
+    Update the continuation tangent vector between neighboring solutions.
 
     Parameters
     ----------
-    jacobian : np.ndarray
-        Residual Jacobian at the current solution.
-
-    previous_tangent : np.ndarray
-        Tangent vector from the previous continuation step.
-
+    ...
+    
     Returns
     -------
     np.ndarray
-        Updated unit tangent vector.
+        Updated normalized tangent vector.
     """
 
     bordered_system = np.zeros((4, 4))
@@ -1372,23 +1283,16 @@ def predictor(
     continuation_step: float,
 ) -> np.ndarray:
     """
-    Euler predictor for pseudo-arclength continuation.
+    Predict the next solution along a continuation branch.
 
     Parameters
     ----------
-    state_vector : np.ndarray
-        Current solution vector.
-
-    tangent_vector : np.ndarray
-        Unit tangent vector at the current solution.
-
-    continuation_step : float
-        Pseudo-arclength continuation step.
-
+    ...
+    
     Returns
     -------
     np.ndarray
-        Predicted solution vector.
+        Predicted state for the next continuation step.
     """
     return state_vector + continuation_step * tangent_vector
 
@@ -1397,27 +1301,20 @@ def compute_augmented_system(
     predicted_state: np.ndarray,
     tangent_vector: np.ndarray,
     mu: float,
-):
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Assemble the augmented pseudo-arclength continuation system.
+    Compute the augmented system used by pseudo-arclength continuation.
+
+    The augmented system combines the periodic-orbit residual with the
+    pseudo-arclength constraint.
 
     Parameters
     ----------
-    state_vector : np.ndarray
-        Current solution vector.
-
-    predicted_state : np.ndarray
-        Euler predictor obtained from the previous continuation step.
-
-    tangent_vector : np.ndarray
-        Unit tangent vector defining the pseudo-arclength constraint.
-
-    mu : float
-        CR3BP mass parameter.
-
+    ...
+    
     Returns
     -------
-    tuple[np.ndarray, np.ndarray]
+    tuple of np.ndarray
         Augmented residual vector and augmented Jacobian matrix.
     """
     residual = compute_residual(state_vector, mu)
@@ -1445,32 +1342,18 @@ def pseudo_arclength_corrector(
     verbose: bool = False,
 ) -> ContinuationStep:
     """
-    Newton corrector for pseudo-arclength continuation.
+    Correct a predicted solution using pseudo-arclength continuation.
 
     Parameters
     ----------
-    predicted_state : np.ndarray
-        State vector obtained from the Euler predictor.
-
-    tangent_vector : np.ndarray
-        Unit tangent vector defining the pseudo-arclength constraint.
-
-    mu : float
-        CR3BP mass parameter.
-
-    tol : float, optional
-        Convergence tolerance for the augmented residual norm.
-
-    max_iter : int, optional
-        Maximum number of Newton iterations.
-
-    verbose : bool, optional
-        If True, prints iteration information.
-
+    ...
+    
     Returns
     -------
     ContinuationStep
-        Result of the continuation step.
+        Result of the continuation correction, including the predicted and
+        corrected states, tangent vector, residual norm, iteration count,
+        and convergence status.
     """
     corrected_state = predicted_state.copy()
 
@@ -1532,41 +1415,25 @@ def compute_lyapunov_family(
     x0_step: float = 2e-3,
     stop_at_bifurcation: bool = True,
     verbose: bool = True,
-):
+) -> tuple[list[OrbitData], OrbitData | None]:
     """
-    Computes a family of planar Lyapunov orbits while evaluating the
-    monodromy matrix of each solution to detect the Halo bifurcation.
+    Compute a family of planar Lyapunov periodic orbits.
+
+    The family is generated using pseudo-arclength continuation, starting
+    from an initial corrected orbit and progressively computing neighboring
+    solutions.
 
     Parameters
     ----------
-    x0_start : float
-        Initial x-coordinate of the first Lyapunov orbit.
-
-    ydot0_start : float
-        Initial y-velocity of the first Lyapunov orbit.
-
-    initial_period : float
-        Initial orbital period estimate.
-
-    mu : float
-        CR3BP mass parameter.
-
-    number_of_orbits : int, optional
-        Maximum number of family members to compute.
-
-    x0_step : float, optional
-        Predictor step applied to x0 during continuation.
-
-    stop_at_bifurcation : bool, optional
-        Stops the continuation when the bifurcation is detected.
-
-    verbose : bool, optional
-        Enables differential corrector output.
-
+    ...
+    
     Returns
     -------
-    tuple[list[dict], dict | None]
-        Computed Lyapunov family and the detected bifurcation orbit.
+    tuple
+        A tuple ``(family, bifurcation_orbit)`` where ``family`` is a list
+        of ``OrbitData`` objects containing the computed Lyapunov orbits,
+        and ``bifurcation_orbit`` is an ``OrbitData`` object identifying a
+        detected bifurcation orbit, or ``None`` if no bifurcation is found.
     """
 
     family = []
@@ -1774,30 +1641,22 @@ def build_halo_seed(
     bifurcation_orbit: OrbitData,
     vertical_perturbation: float = 1e-3,
     verbose: bool = True,
-):
+) -> tuple[float, float, float]:
     """
-    Construct an initial Halo-orbit seed from the Lyapunov-family
-    bifurcation point.
+    Construct an initial seed for a halo orbit.
 
-    The initial condition is generated using the eigenvector
-    associated with the vertical mode (lambda ≈ 1) of the
-    monodromy matrix.
+    The seed is generated by perturbing a Lyapunov orbit using the vertical
+    component of the corresponding linearized eigenvector.
 
     Parameters
     ----------
-    bifurcation_orbit : OrbitData
-        Lyapunov orbit at the Halo bifurcation point.
-
-    vertical_perturbation : float, optional
-        Desired magnitude of the vertical perturbation.
-
-    verbose : bool, optional
-        If True, print diagnostic information.
-
+    ...
+    
     Returns
     -------
-    tuple
-        (x0, z0, ydot0)
+    tuple of float
+        Initial halo-orbit parameters ``(x0, z0, ydot0)`` in normalized
+        CR3BP units.
     """
 
     monodromy = bifurcation_orbit.monodromy
@@ -2019,25 +1878,18 @@ def build_halo_orbit(
     mu: float,
 ) -> OrbitData:
     """
-    Build a HaloOrbit object from a converged continuation state.
+    Build a corrected halo orbit and compute its associated orbit data.
 
     Parameters
     ----------
-    state_vector : np.ndarray
-        Continuation state vector
-        ``[x0, z0, ydot0, T_half]``.
-
-    tangent_vector : np.ndarray, optional
-        Unit tangent vector associated with the continuation branch.
-
-    mu : float
-        CR3BP mass parameter.
-
+    ...
+    
     Returns
     -------
     OrbitData
-        Orbit data containing the propagated trajectory, stability
-        properties, and geometric characteristics.
+        Computed halo-orbit data, including the initial state, period,
+        Jacobi constant, trajectory, monodromy matrix, and stability
+        information.
     """
     residual = compute_residual(state_vector, mu)
     full_period = propagate_full_period(state_vector, mu)
@@ -2101,68 +1953,19 @@ def compute_halo_family(
     verbose_every: int = 25,
 ) -> List[OrbitData]:
     """
-    Generate a continuous family of Halo orbits using pseudo-arclength
-    continuation.
+    Compute a family of halo periodic orbits.
 
-    The algorithm consists of:
-
-    1. Minimum-norm Newton correction of the initial seed.
-    2. Euler predictor.
-    3. Newton corrector applied to the augmented system.
-    4. Keller tangent update.
-    5. Adaptive continuation step-size control.
-
-    The continuation may terminate after a fixed number of accepted steps
-    or when a target perilune distance is reached.
+    The family is generated by continuing corrected halo-orbit solutions
+    across the selected continuation parameter.
 
     Parameters
     ----------
-    initial_state : np.ndarray
-        Initial continuation state vector
-        ``[x0, z0, ydot0, T_half]``.
-
-    mu : float
-        CR3BP mass parameter.
-
-    initial_step_size : float, optional
-        Initial pseudo-arclength step size.
-
-    minimum_step_size : float, optional
-        Minimum allowable continuation step size.
-
-    maximum_step_size : float, optional
-        Maximum allowable continuation step size.
-
-    n_steps : int, optional
-        Maximum number of continuation steps when no target perilune is
-        specified.
-
-    max_steps : int, optional
-        Absolute upper limit on continuation steps.
-
-    target_newton_iterations : int, optional
-        Desired number of Newton iterations used for adaptive step-size
-        control.
-
-    tol : float, optional
-        Newton convergence tolerance.
-
-    orientation_hint : float, optional
-        Preferred orientation of the initial tangent vector.
-
-    target_perilune_km : float, optional
-        Target perilune distance in kilometers.
-
-    verbose : bool, optional
-        If True, prints continuation progress.
-
-    verbose_every : int, optional
-        Interval between progress messages.
-
+    ...
+    
     Returns
     -------
-    List[OrbitData]
-        Converged Halo orbit family.
+    list of OrbitData
+        Computed halo orbits belonging to the family.
     """
     initial_state = newton_minimum_norm(
         initial_state,

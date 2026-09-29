@@ -13,6 +13,28 @@ if TYPE_CHECKING:
 
 @dataclass
 class SimulationHistoryMetadata:
+    """
+    Store metadata describing a completed simulation history.
+
+    Attributes
+    ----------
+    data_file_path : str
+        Directory containing the simulation history data.
+    unique_id : int
+        Unique identifier assigned to the simulation history.
+    spacecraft_names : list of str
+        Names of the spacecraft recorded in the simulation history.
+    chunk_size : dict
+        History chunk size associated with each spacecraft.
+    chunk_count : dict
+        Number of history chunks generated for each spacecraft.
+    csv_folder_path : str, optional
+        Directory containing the CSV representation of the simulation
+        history, if CSV conversion was enabled.
+    targets_info : dict, optional
+        Mapping between spacecraft names and their assigned target
+        spacecraft names.
+    """
     data_file_path: str    
     unique_id: int
     spacecraft_names: list[str]
@@ -23,6 +45,32 @@ class SimulationHistoryMetadata:
 
 @dataclass
 class TransitionEventInfo:
+    """
+    Store information about a spacecraft mission phase transition.
+
+    Attributes
+    ----------
+    time : float
+        Simulation time at which the transition occurred [s].
+    tick : int
+        Simulation tick at which the transition occurred.
+    from_phase : str
+        Mission phase active before the transition.
+    to_phase : str
+        Mission phase active after the transition.
+    transition_name : str
+        Name of the transition that triggered the phase change.
+    dt_guidance : float
+        Guidance update period active at the transition [s].
+    dt_navigation : float
+        Navigation update period active at the transition [s].
+    dt_control : float
+        Control update period active at the transition [s].
+    dt_propagation : float
+        Propagation time step active at the transition [s].
+    dt_master : float
+        Master simulation time step active at the transition [s].
+    """
     time: float
     tick: int
     from_phase: str
@@ -36,6 +84,24 @@ class TransitionEventInfo:
     dt_master: float
 
 class SimulationHistory:
+    """
+    Manage persistent simulation history data for multiple spacecraft.
+
+    Simulation history is stored in memory using fixed-size chunks and
+    periodically written to NPZ files. The history can optionally be
+    converted to CSV files when the simulation is finalized.
+
+    Parameters
+    ----------
+    chunk_size : int
+        Number of simulation records stored in each history chunk.
+    data_file_path : str
+        Directory where the simulation history data will be stored.
+    auto_convert_to_csv : bool
+        If True, convert the recorded history to CSV files when finalized.
+    csv_folder_path : str, optional
+        Directory where CSV simulation data will be stored.
+    """
     def __init__(self,
                  chunk_size: int,
                  data_file_path: str,
@@ -62,6 +128,19 @@ class SimulationHistory:
         self.spacecrafts_history = spacecraft_histories
 
     def add_spacecraft_history(self, spacecraft_name: str):
+        """
+        Initialize history storage for a spacecraft.
+
+        Parameters
+        ----------
+        spacecraft_name : str
+            Name of the spacecraft whose history will be recorded.
+
+        Raises
+        ------
+        ValueError
+            If history for the spacecraft already exists.
+        """
         if spacecraft_name in self.spacecrafts_history:
             raise ValueError(f"Spacecraft '{spacecraft_name}' already exists in simulation history.")
 
@@ -77,24 +156,81 @@ class SimulationHistory:
         print(f"[INFO] Spacecraft '{spacecraft_name}' history initialized. Data will be saved in '{self.data_file_path}'.")
         
     def record_spacecraft(self, spacecraft_name: str, data: "SpacecraftData"):
+        """
+        Record the current spacecraft data in its simulation history.
+
+        Parameters
+        ----------
+        spacecraft_name : str
+            Name of the spacecraft whose data is being recorded.
+        data : SpacecraftData
+            Current spacecraft simulation data.
+
+        Raises
+        ------
+        ValueError
+            If the spacecraft does not have an initialized history.
+        """
         if spacecraft_name in self.spacecrafts_history:
             self.spacecrafts_history[spacecraft_name].record(data)
         else:
             raise ValueError(f"Spacecraft '{spacecraft_name}' not found in simulation history.")
         
     def record_event(self, spacecraft_name: str, event: TransitionEventInfo):
+        """
+        Record a mission phase transition event for a spacecraft.
+
+        Parameters
+        ----------
+        spacecraft_name : str
+            Name of the spacecraft associated with the event.
+        event : TransitionEventInfo
+            Mission phase transition information.
+
+        Raises
+        ------
+        ValueError
+            If the spacecraft does not have an initialized history.
+        """
         if spacecraft_name in self.spacecrafts_history:
             self.spacecrafts_history[spacecraft_name].record_event(event)
         else:
             raise ValueError(f"Spacecraft '{spacecraft_name}' not found in simulation history.")
 
     def record_target(self, spacecraft_name: str, target_name: str):
+        """
+        Record a target spacecraft associated with a spacecraft history.
+
+        Parameters
+        ----------
+        spacecraft_name : str
+            Name of the spacecraft to which the target is assigned.
+        target_name : str
+            Name of the target spacecraft.
+
+        Raises
+        ------
+        ValueError
+            If the spacecraft does not have an initialized history.
+        """
         if spacecraft_name in self.spacecrafts_history:
             self.spacecrafts_history[spacecraft_name].record_target(target_name)
         else:
             raise ValueError(f"Spacecraft '{spacecraft_name}' not found in simulation history.")
 
     def finalize(self):
+        """
+        Finalize and persist the simulation history.
+
+        Remaining in-memory history chunks are written to disk, simulation
+        metadata and mission transition events are saved as JSON files, and
+        the history is optionally converted to CSV.
+
+        Returns
+        -------
+        SimulationHistoryMetadata
+            Metadata describing the finalized simulation history.
+        """
         for spacecraft_history in self.spacecrafts_history.values():
             spacecraft_history.flush()
                                 
@@ -138,7 +274,40 @@ class SimulationHistory:
 
 
 class SpacecraftHistory:
-    def __init__(self, spacecraft_name: str, chunk_size: int, data_file_path: str):
+    """
+    Store time-history data for a single spacecraft.
+
+    The history contains true, estimated, guidance, control, and exerted
+    force and torque data. Records are accumulated in fixed-size chunks and
+    written to NPZ files when a chunk is full.
+
+    Parameters
+    ----------
+    spacecraft_name : str
+        Name of the spacecraft.
+    chunk_size : int
+        Number of records stored in each history chunk.
+    data_file_path : str
+        Directory where history chunk files are stored.
+    """
+    def __init__(
+        self,
+        spacecraft_name: str,
+        chunk_size: int,
+        data_file_path: str,
+    ):
+        """
+        Initialize the history storage for a spacecraft.
+
+        Parameters
+        ----------
+        spacecraft_name : str
+            Name of the spacecraft.
+        chunk_size : int
+            Number of records stored in each history chunk.
+        data_file_path : str
+            Directory where history chunk files are stored.
+        """
         self.spacecraft_name = spacecraft_name
         self.targets = []  # List to hold the names of targets for this spacecraft
 
@@ -194,7 +363,18 @@ class SpacecraftHistory:
         self.events = []  # List of TransitionEventInfo objects
 
     def record(self, data: SpacecraftData):
+        """
+        Record one spacecraft simulation state.
 
+        The current true state, navigation estimates, guidance state, control
+        output, exerted force and torque, simulation time, and simulation tick
+        are stored in the current history chunk.
+
+        Parameters
+        ----------
+        data : SpacecraftData
+            Spacecraft simulation data to record.
+        """
         # True state
         self.true_position[self.index] = data.true_state.position
         self.true_velocity[self.index] = data.true_state.velocity
@@ -243,13 +423,38 @@ class SpacecraftHistory:
             self.flush()
 
     def record_event(self, event: TransitionEventInfo):
+        """
+        Record a mission phase transition event.
+
+        Parameters
+        ----------
+        event : TransitionEventInfo
+            Transition event information to store.
+        """
         self.events.append(event)
 
     def record_target(self, target_name: str):
+        """
+        Register a target spacecraft for this spacecraft history.
+
+        Duplicate target names are ignored.
+
+        Parameters
+        ----------
+        target_name : str
+            Name of the target spacecraft.
+        """
         if target_name not in self.targets:
             self.targets.append(target_name)
 
     def flush(self):
+        """
+        Write the current history chunk to an NPZ file.
+
+        If the current chunk contains no records, no file is created.
+        After a successful flush, the chunk index is incremented and the
+        in-memory record index is reset.
+        """
         #print(f"[DEBUG] Flushing history for spacecraft '{self.spacecraft_name}' to disk. Chunk index: {self.chunk_index}")
 
         if self.index == 0:
@@ -317,6 +522,26 @@ def save_simulation_history_csv(
     metadata_file: str,
     main_directory: str = "sim_data",
 ):
+    """
+    Convert simulation history NPZ chunks into one CSV file per spacecraft.
+
+    Parameters
+    ----------
+    metadata_file : str
+        Path to the simulation metadata JSON file.
+    main_directory : str, optional
+        Main directory where the CSV simulation directory will be created.
+
+    Returns
+    -------
+    str
+        Path to the directory containing the generated CSV files.
+
+    Raises
+    ------
+    FileNotFoundError
+        If a history chunk referenced by the metadata file does not exist.
+    """
     """
     Convert simulation history NPZ chunks into one CSV file per spacecraft.
 

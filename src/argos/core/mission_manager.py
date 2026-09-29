@@ -76,6 +76,15 @@ class MissionManager:
         
 
     def add_phases(self, phase: MissionPhase | list[MissionPhase]):
+        """
+        Add one or more mission phases to the mission manager.
+
+        Parameters
+        ----------
+        phase : MissionPhase or list of MissionPhase
+            Mission phase or list of mission phases to add.
+        """
+
         if isinstance(phase, list):
             for p in phase:                
                 self.__add_phase(p)
@@ -88,7 +97,38 @@ class MissionManager:
             raise ValueError(f"Phase '{phase.name}' already exists.")
         self.phases[phase.name] = phase
 
-    def add_transition(self, from_phase: MissionPhase, target_phase: MissionPhase, condition: Callable[[SimulationData], bool], transition_name: str | None = None):
+    def add_transition(
+        self,
+        from_phase: MissionPhase,
+        target_phase: MissionPhase,
+        condition: Callable[[SimulationData], bool],
+        transition_name: str | None = None,
+    ):
+        """
+        Add a transition between two mission phases.
+
+        Parameters
+        ----------
+        from_phase : MissionPhase
+            Mission phase from which the transition originates.
+        target_phase : MissionPhase
+            Mission phase activated when the transition condition is satisfied.
+        condition : Callable[[SimulationData], bool]
+            Function evaluated during the simulation to determine whether the
+            transition should occur. It receives the current simulation data
+            and must return a boolean value.
+        transition_name : str, optional
+            Name assigned to the transition. If not provided, a name is
+            generated from the source and target phase names.
+
+        Raises
+        ------
+        ValueError
+            If the source or target phase has not been registered, or if a
+            transition with the same name already exists for the source phase.
+        TypeError
+            If `condition` is not callable.
+        """
         if from_phase.name not in self.phases:
             raise ValueError(f"Initial phase '{from_phase.name}' does not exist.")
 
@@ -115,8 +155,23 @@ class MissionManager:
             "condition": condition,
         }
 
-    def update(self, simulation_data):
+    def update(self, simulation_data: SimulationData) -> tuple[bool, dict | None]:
+        """
+        Evaluate mission phase transitions and update the current phase.
 
+        Parameters
+        ----------
+        simulation_data : SimulationData
+            Current simulation data used to evaluate transition conditions.
+
+        Returns
+        -------
+        tuple of (bool, dict or None)
+            A tuple containing a boolean indicating whether a phase transition
+            occurred and transition information when a transition takes place.
+            The transition information contains the source phase, target phase,
+            and transition name.
+    """
         current_phase = self.current_phase.name
 
         if current_phase not in self.transitions:

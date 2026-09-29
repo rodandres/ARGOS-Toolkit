@@ -12,8 +12,13 @@ from argos.general.data_save import SimulationHistory
 
 from typing import TYPE_CHECKING
 
+from argos.sensors.sensor_base import SensorBase
+
 if TYPE_CHECKING:
     from argos.enviroments.environment_base import EnvironmentBase
+    from argos.actuators.actuators_base import ActuatorBase 
+    from argos.core.mission_manager import MissionManager
+    from argos.general.data_save import TransitionEventInfo
 
 class Simulation:
     """
@@ -82,12 +87,50 @@ class Simulation:
                        initial_attitude: np.ndarray | None=None, # NOTE: Add the type of the initial attitude
                        initial_angular_velocity: np.ndarray | None=None, # NOTE: Add the type of
                        inertia_tensor: np.ndarray | None=None,
-                       actuators: list | None=None, # NOTE: Add the type of the list
-                       sensors: list | None=None, # NOTE: Add the type of the list
-                       mission_manager: object | None=None, # NOTE: Add the type of the mission manager
+                       actuators: list[ActuatorBase] | None=None, # NOTE: Add the type of the list
+                       sensors: list[SensorBase] | None=None, # NOTE: Add the type of the list
+                       mission_manager: MissionManager | None=None, # NOTE: Add the type of the mission manager
                        target_name: str | None=None, # NOTE: Add the type of the target name
                        name: str |None=None,
                        verbose=False):
+        """
+        Add a spacecraft to the simulation.
+
+        Parameters
+        ----------
+        mass : float, optional
+            Spacecraft mass [kg]. Defaults to 0.0.
+        initial_position : ndarray, shape (3,), optional
+            Initial spacecraft position [m]. Defaults to a zero vector.
+        initial_velocity : ndarray, shape (3,), optional
+            Initial spacecraft velocity [m/s]. Defaults to a zero vector.
+        initial_attitude : ndarray, shape (4,), optional
+            Initial spacecraft attitude represented as a quaternion.
+            Defaults to [0, 0, 0, 1].
+        initial_angular_velocity : ndarray, shape (3,), optional
+            Initial spacecraft angular velocity [rad/s]. Defaults to a zero
+            vector.
+        inertia_tensor : ndarray, shape (3, 3), optional
+            Spacecraft inertia tensor [kg·m²]. Defaults to the identity matrix.
+        actuators : list of ActuatorBase, optional
+            Actuators attached to the spacecraft.
+        sensors : list of SensorBase, optional
+            Sensors attached to the spacecraft.
+        mission_manager : MissionManager, optional
+            Mission manager associated with the spacecraft.
+        target_name : str, optional
+            Name of the spacecraft target, if applicable.
+        name : str, optional
+            Spacecraft identifier. If not provided, a name is generated
+            automatically.
+        verbose : bool, optional
+            If True, print information about the spacecraft during creation.
+
+        Returns
+        -------
+        None
+            The spacecraft is added directly to the simulation.
+        """
         
 
         if mass is None:
@@ -147,7 +190,17 @@ class Simulation:
         if self.verbose:
             print(f"Spacecraft '{name}' added to the simulation.")
 
-    def add_spacecraft_target(self, spacecraft_name, target_name):
+    def add_spacecraft_target(self, spacecraft_name: str, target_name: str):
+        """
+        Assign a target spacecraft to a spacecraft in the simulation.
+
+        Parameters
+        ----------
+        spacecraft_name : str
+            Name of the spacecraft to which the target is assigned.
+        target_name : str
+            Name of the target spacecraft.
+        """
         for spacecraft in self.simulation_data.spacecrafts:
             if spacecraft.name == spacecraft_name:
                 spacecraft.change_target(target_name)
@@ -172,7 +225,17 @@ class Simulation:
 
         self.simulation_data.dt_master = min(dts)
 
-    def record_transition(self, spacecraft_name, event_info):
+    def record_transition(self, spacecraft_name: str, event_info: TransitionEventInfo):
+        """
+        Record a spacecraft mission transition in the simulation history.
+
+        Parameters
+        ----------
+        spacecraft_name : str
+            Name of the spacecraft associated with the transition.
+        event_info : TransitionEventInfo
+            Information describing the mission phase transition.
+        """
         self.simulation_data.simulation_history.record_event(spacecraft_name, event_info)
 
     def _init_simulation(self):
@@ -188,7 +251,20 @@ class Simulation:
         if self.verbose:
             print("Simulation initialized.")
 
-    def simulate(self):        
+    def simulate(self):
+        """
+        Execute the spacecraft simulation.
+
+        The simulation is initialized before execution and advances each
+        spacecraft according to its configured mission, GNC components,
+        actuators, and dynamics models. Simulation states and events are
+        recorded in the configured simulation history.
+
+        Returns
+        -------
+        dict
+            Metadata generated when the simulation history is finalized.
+        """
         self._init_simulation()
 
         if self.verbose:

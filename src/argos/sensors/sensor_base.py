@@ -7,7 +7,28 @@ from argos.faults.fault_manager import FaultInjector
 
 class SensorBase(ABC):
     """
-    Abstract interface for spacecraft sensors.
+    Abstract base class for spacecraft sensors.
+
+    A sensor generates an ideal measurement from spacecraft and simulation
+    data, applies configured measurement error models, and then applies any
+    active fault injection before storing the resulting measurement.
+
+    Parameters
+    ----------
+    sensor_type : str
+        Sensor type identifier.
+    sensor_pos : np.ndarray
+        Sensor position relative to the spacecraft body frame [m].
+    sensor_rotation : np.ndarray
+        Sensor orientation relative to the spacecraft body frame [deg].
+    sample_rate_freq : float, optional
+        Sensor sampling frequency [Hz]. Defaults to 100 Hz.
+    error_models : tuple, optional
+        Sequence of sensor error models applied to each measurement.
+    name : str, optional
+        Sensor identifier.
+    verbose : bool, optional
+        If True, print sensor information and update status.
     """
     def __init__(self,
                  sensor_type: str,
@@ -47,7 +68,7 @@ class SensorBase(ABC):
 
     def print_info(self):
         """
-        Print the sensor information.
+        Print the sensor configuration and current setup information.
         """
         print("="*50)
         print(f"Sensor Name: {self.name}")
@@ -58,7 +79,7 @@ class SensorBase(ABC):
         print(f"Error Models: {[type(model).__name__ for model in self.error_models]}")
         print("="*50)    
 
-    def get_type(self) -> str:
+    def get_type(self) -> str: # NOTE: To be deleted
         """
         Get the type of the sensor.
 
@@ -71,14 +92,19 @@ class SensorBase(ABC):
     
     def update(self, spacecraft_data, simulation_data):
         """
-        Review and update the sensor state based on the spacecraft data and simulation data.
+        Update the sensor measurement according to its sampling rate.
+
+        When a measurement is due, the ideal measurement is generated, sensor
+        error models are applied sequentially, and active fault modes are then
+        applied. Between sampling instants, the previous measurement is
+        retained.
 
         Parameters
         ----------
         spacecraft_data : SpacecraftData
-            The current state of the spacecraft.
+            Current spacecraft state and simulation timing information.
         simulation_data : SimulationData
-            The current state of the simulation.            
+            Current simulation data.
         """
 
         if self.verbose: print("Sensor Update: ", self.type, " at time: ", spacecraft_data.t)
@@ -110,7 +136,7 @@ class SensorBase(ABC):
             self.should_sample = False
             self.measurement = self.old_measurement
         
-    def get_measurement(self) -> np.ndarray:
+    def get_measurement(self) -> np.ndarray: # NOTE: To be deleted
         return self.measurement
         
         
@@ -118,18 +144,23 @@ class SensorBase(ABC):
     @abstractmethod
     def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:
         """
-        Get the ideal sensor measurement without any noise or errors.
+        Compute the ideal sensor measurement before error and fault injection.
 
         Parameters
         ----------
         spacecraft_data : SpacecraftData
-            The current state of the spacecraft.
+            Current spacecraft state.
         simulation_data : SimulationData
-            The current state of the simulation.
+            Current simulation data.
 
         Returns
         -------
         np.ndarray
             Ideal sensor measurement.
+
+        Raises
+        ------
+        NotImplementedError
+            Subclasses must implement this method.
         """
         pass

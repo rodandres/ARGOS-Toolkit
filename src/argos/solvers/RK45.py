@@ -15,20 +15,76 @@ b = [25/216, 0, 1408/2565, 2197/4104, -1/5, 0]
 # b_star: 5th order solution coefficients
 b_star = [16/135, 0, 6656/12825, 28561/56430, -9/50, 2/55]    
 
-def rk45(fun,
-         t_span,
-         Y0,
-         *,
-         args=(),
-         events=None,
-         h0=0.1,
-         h_min=1e-6,
-         h_max=1.0,
-         rtol=1e-6,
-         atol=1e-9,
-         h_adaptative=True,
-         max_iter=100000,
-         verbose=False):
+def rk45(
+    fun,
+    t_span,
+    Y0,
+    *,
+    args=(),
+    events=None,
+    h0=0.1,
+    h_min=1e-6,
+    h_max=1.0,
+    rtol=1e-6,
+    atol=1e-9,
+    h_adaptative=True,
+    max_iter=100000,
+    verbose=False,
+):
+    """
+    Integrate an ordinary differential equation using an explicit RK45 method.
+
+    The solver computes fourth- and fifth-order Runge-Kutta solutions and,
+    when adaptive stepping is enabled, uses their difference to control the
+    integration step size. Event functions can be supplied to detect zero
+    crossings and optionally terminate the integration.
+
+    Parameters
+    ----------
+    fun : callable
+        Function defining the ordinary differential equation. It must have
+        the form ``fun(t, y, *args)`` and return the state derivative.
+    t_span : array-like, shape (2,)
+        Integration interval ``[t0, tf]`` [s].
+    Y0 : array-like
+        Initial state vector.
+    args : tuple, optional
+        Additional arguments passed to ``fun`` and event functions.
+    events : callable or sequence of callable, optional
+        Event function or functions used to detect zero crossings. An event
+        function should have the form ``event(t, y, *args)``. Event
+        functions may define ``direction`` and ``terminal`` attributes.
+    h0 : float, optional
+        Initial integration step size [s].
+    h_min : float, optional
+        Minimum allowed integration step size [s].
+    h_max : float, optional
+        Maximum allowed integration step size [s].
+    rtol : float, optional
+        Relative tolerance used for adaptive step-size control.
+    atol : float, optional
+        Absolute tolerance used for adaptive step-size control.
+    h_adaptative : bool, optional
+        If True, adapt the integration step size according to the estimated
+        local error. If False, use a fixed step size equal to ``h0``.
+    max_iter : int, optional
+        Maximum number of integration iterations.
+    verbose : bool, optional
+        If True, print information about accepted integration steps.
+
+    Returns
+    -------
+    OdeResult
+        Integration result containing time points, state history, solver
+        status, success flag, message, function evaluation count, and
+        detected event information.
+
+    Raises
+    ------
+    RuntimeError
+        If adaptive integration reduces the step size below the minimum
+        allowed value while the estimated error remains above tolerance.
+    """
     
     # ===== Initialize variables =====
     # Time setup

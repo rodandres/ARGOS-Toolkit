@@ -1,3 +1,11 @@
+"""
+Shared styling utilities for ARGOS visualization functions.
+
+This module defines the common Matplotlib appearance used by ARGOS plots,
+including figure and axes colors, text colors, grid settings, and output
+handling.
+"""
+
 from pathlib import Path
 from typing import Any
 

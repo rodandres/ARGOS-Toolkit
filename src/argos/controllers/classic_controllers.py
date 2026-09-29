@@ -10,6 +10,28 @@ if TYPE_CHECKING:
     from argos.actuators.actuators_base import ActuatorBase
 
 class PDController(ControllerBase):
+    """
+    Proportional-Derivative controller for spacecraft translation and attitude.
+
+    The controller computes translational force from position and velocity
+    errors and rotational torque from quaternion attitude error and angular
+    velocity.
+
+    Parameters
+    ----------
+    attitude_proportional_gain : float
+        Proportional gain applied to the quaternion attitude error.
+    attitude_derivative_gain : float
+        Derivative gain applied to the spacecraft angular velocity.
+    translational_proportional_gain : float
+        Proportional gain applied to the position error.
+    translational_derivative_gain : float
+        Derivative gain applied to the velocity error.
+    minimum_torque : float, optional
+        Minimum torque command applied during torque saturation.
+    maximum_torque : float, optional
+        Maximum torque command applied during torque saturation.
+    """
     def __init__(self,
                  attitude_proportional_gain,
                  attitude_derivative_gain,
@@ -60,6 +82,26 @@ class PDController(ControllerBase):
             )
 
     def compute_control(self, navigation_output: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
+        """
+        Compute translational force and attitude-control torque.
+
+        The translational control command is computed from the position and
+        velocity errors between the guidance state and the navigation state.
+        The attitude control command is computed from the quaternion attitude
+        error and the spacecraft angular velocity.
+
+        Parameters
+        ----------
+        navigation_output : NavigationOutput
+            Navigation solution containing the current spacecraft state.
+        guidance_output : GuidanceOutput
+            Guidance output containing the desired spacecraft state.
+
+        Returns
+        -------
+        ControlOutput
+            Control command containing the commanded force [N] and torque [N·m].
+        """
         # ==========================================================
         # State retrieval
         # ==========================================================
@@ -167,8 +209,22 @@ class PDController(ControllerBase):
 
 class PDAttitudeController(ControllerBase):
     """
-    Proportional-Derivative spacecraft attitude controller based on
-    quaternion feedback.
+    Proportional-Derivative spacecraft attitude controller based on quaternion feedback.
+
+    The controller computes a commanded torque from the quaternion attitude
+    error and the spacecraft angular velocity. Optional torque saturation
+    limits can be applied to the resulting command.
+
+    Parameters
+    ----------
+    proportional_gain : float
+        Proportional gain applied to the quaternion attitude error.
+    derivative_gain : float
+        Derivative gain applied to the spacecraft angular velocity.
+    minimum_torque : float, optional
+        Minimum torque command applied during torque saturation.
+    maximum_torque : float, optional
+        Maximum torque command applied during torque saturation.
     """
 
     def __init__(
@@ -214,7 +270,25 @@ class PDAttitudeController(ControllerBase):
 
     def compute_control(self, navigation_output: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
         """
-        Compute the control torque required to track the guidance_output attitude.
+        Compute the commanded attitude-control torque.
+
+        The attitude error is computed from the desired and current
+        quaternions. The resulting proportional-derivative control law produces
+        a torque command while the translational force is set to zero.
+
+        Parameters
+        ----------
+        navigation_output : NavigationOutput
+            Navigation solution containing the current spacecraft attitude and
+            angular velocity.
+        guidance_output : GuidanceOutput
+            Guidance output containing the desired spacecraft attitude.
+
+        Returns
+        -------
+        ControlOutput
+            Control command containing zero translational force [N] and the
+            commanded attitude-control torque [N·m].
         """
 
         # ==========================================================

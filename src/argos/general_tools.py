@@ -11,6 +11,27 @@ if TYPE_CHECKING:
 
 
 def _as_3d_array(value: float | np.ndarray, name: str) -> np.ndarray:
+    """
+    Convert a scalar or 3D vector to a NumPy array of shape ``(3,)``.
+
+    Parameters
+    ----------
+    value : float or np.ndarray
+        Scalar value or 3D vector to convert.
+    name : str
+        Name of the value, used in the error message if its shape is invalid.
+
+    Returns
+    -------
+    np.ndarray, shape (3,)
+        Three-dimensional floating-point array. A scalar is broadcast to all
+        three components.
+
+    Raises
+    ------
+    ValueError
+        If ``value`` is neither a scalar nor an array with shape ``(3,)``.
+    """
     arr = np.asarray(value, dtype=float)
 
     if arr.ndim == 0:
@@ -31,25 +52,40 @@ import numpy as np
 
 def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
     """
-    Returns the true state of a spacecraft at a requested time.
+    Retrieve the true spacecraft state at a requested simulation time.
 
-    If an exact time is available, the corresponding state is returned.
-    If the requested time lies between two recorded states, linear
-    interpolation is performed.
-    If the requested time lies outside the recorded range, linear
-    extrapolation using the nearest two states is performed.
+    If the requested time matches a recorded sample, the corresponding state
+    is returned directly. Otherwise, the state is obtained by linear
+    interpolation between the two neighboring samples. If the requested time
+    lies outside the recorded history range, linear extrapolation based on
+    the nearest two samples is performed.
 
-    Args:
-        history: SimulationHistory containing spacecraft histories.
-        spacecraft_name: Name of the spacecraft.
-        t: Requested time [s].
+    Parameters
+    ----------
+    history : SimulationHistory
+        Simulation history containing the spacecraft data and stored history
+        chunks.
+    spacecraft_name : str
+        Name of the spacecraft whose state is requested.
+    t : float
+        Requested simulation time [s].
 
-    Returns:
-        StateVariables: Spacecraft state at time t.
+    Returns
+    -------
+    StateVariables
+        Deep copy of the true spacecraft state at the requested time.
 
-    Raises:
-        ValueError: If the spacecraft does not exist, the history is empty,
-                    or fewer than two samples are available.
+    Raises
+    ------
+    ValueError
+        If the spacecraft is not present in the history.
+    ValueError
+        If no event is available at or before the requested time.
+    ValueError
+        If no history samples are available for the spacecraft.
+    ValueError
+        If fewer than two history samples are available for interpolation
+        or extrapolation.
     """
 
     # Get spacecraft history

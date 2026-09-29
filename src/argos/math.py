@@ -89,21 +89,20 @@ def quaternion_to_DCM(
     quaternion: np.ndarray,
 ) -> np.ndarray:
     """
-    Convert quaternion into Direction Cosine Matrix associated with the quaternion.
+    Convert a quaternion into its associated Direction Cosine Matrix (DCM).
 
-    If the quaternion represents the orientation of frame A
-    with respect to frame B, the returned DCM transforms vectors
-    from frame A to frame B.
+    The rotation convention follows the quaternion convention used by
+    ``scipy.spatial.transform.Rotation``.
 
     Parameters
     ----------
     quaternion : np.ndarray
-        Quaternion in (x, y, z, w) convention.
+        Quaternion in ``(x, y, z, w)`` convention.
 
     Returns
     -------
-    np.ndarray
-        Rotation matrix from body frame to inertial frame.
+    np.ndarray, shape (3, 3)
+        Direction Cosine Matrix associated with the quaternion.
     """
 
     return Rotation.from_quat(
@@ -116,23 +115,23 @@ def quaternion_error(
     actual_quaternion: np.ndarray,
 ) -> np.ndarray:
     """
-    Compute quaternion attitude error.
+    Compute the relative rotation between target and actual attitudes.
 
-    The error quaternion represents the rotation required to move from
-    the actual attitude to the target attitude.
+    The relative rotation is computed as the inverse of the target rotation
+    multiplied by the actual rotation.
 
     Parameters
     ----------
     target_quaternion : np.ndarray
-        Desired quaternion in (x, y, z, w) convention.
+        Target attitude quaternion in ``(x, y, z, w)`` convention.
 
     actual_quaternion : np.ndarray
-        Current quaternion in (x, y, z, w) convention.
+        Actual attitude quaternion in ``(x, y, z, w)`` convention.
 
     Returns
     -------
     np.ndarray
-        Error quaternion in (x, y, z, w) convention.
+        Relative rotation quaternion in ``(x, y, z, w)`` convention.
     """
 
     target_rotation = Rotation.from_quat(target_quaternion)

@@ -8,6 +8,16 @@ if TYPE_CHECKING:
     from argos.actuators.actuators_base import ActuatorBase
 
 class CustomController(ControllerBase):
+    """
+    Controller that delegates control computation to a user-defined function.
+
+    Parameters
+    ----------
+    control_function : callable
+        Function used to compute the control output. It receives the
+        navigation output and guidance output as arguments and must return
+        a ``ControlOutput`` instance.
+    """
     def __init__(self, control_function):
         self.control_function = control_function
 
@@ -20,13 +30,24 @@ class CustomController(ControllerBase):
 
     def compute_control(self, estimated_state: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
         """
-        Compute the control output based on the estimated state and guidance_output.
+        Compute the control output using the user-defined control function.
 
-        Args:
-            estimated_state (EstimationOutput): The estimated state of the spacecraft.
-            guidance_output (GuidanceReference): The guidance_output guidance data.
-        Returns:
-            ControlOutput: The computed control output.
+        Parameters
+        ----------
+        estimated_state : NavigationOutput
+            Estimated spacecraft state provided to the control function.
+        guidance_output : GuidanceOutput
+            Guidance information provided to the control function.
+
+        Returns
+        -------
+        ControlOutput
+            Control output returned by the user-defined control function.
+
+        Raises
+        ------
+        TypeError
+            If ``control_function`` does not return a ``ControlOutput`` instance.
         """
 
         output = self.control_function(estimated_state, guidance_output)
@@ -37,6 +58,15 @@ class CustomController(ControllerBase):
         return output
 
 class CustomControlAllocator(ControlAllocatorBase):
+    """
+    Control allocator that delegates actuator allocation to a user-defined function.
+
+    Parameters
+    ----------
+    allocation_function : callable
+        Function used to allocate the control output. It receives the
+        ``ControlOutput`` and the allocator's actuator list.
+    """
     def __init__(self, allocation_function):
         self.allocation_function = allocation_function
 
@@ -49,18 +79,25 @@ class CustomControlAllocator(ControlAllocatorBase):
 
     def allocate(self, control_output: ControlOutput):
         """
-        Allocate the control output to actuators.
+        Allocate a control output using the user-defined allocation function.
 
-        Args:
-            control_output (ControlOutput): The computed control output.
-        Returns:
-            list: The allocated actuator commands.
+        Parameters
+        ----------
+        control_output : ControlOutput
+            Control force and torque to be allocated to the actuators.
         """
 
         self.allocation_function(control_output, self.actuators)
 
 
 class BasicRCSAllocator(ControlAllocatorBase):
+    """
+    Allocate commanded torque among RCS actuators.
+
+    The allocator determines the component of each actuator direction along
+    the requested torque direction and commands actuators that can
+    contribute positively to the requested torque.
+    """
     def __init__(self):
         super().__init__()
 
@@ -69,12 +106,12 @@ class BasicRCSAllocator(ControlAllocatorBase):
 
     def allocate(self, control_output: ControlOutput):
         """
-        Allocate the control output to RCS actuators.
+        Allocate the commanded torque to the available RCS actuators.
 
-        Args:
-            control_output (ControlOutput): The computed control output.
-        Returns:
-            list: The allocated RCS commands.
+        Parameters
+        ----------
+        control_output : ControlOutput
+            Control output containing the commanded torque to be allocated.
         """
         
         torque_to_allocate = control_output.torque
@@ -97,6 +134,14 @@ class BasicRCSAllocator(ControlAllocatorBase):
                 actuator.set_command(0)
 
 class MultiRCSAllocator(ControlAllocatorBase):
+    """
+    Allocate translational and rotational control commands among multiple RCS actuators.
+
+    Translational force and rotational torque are allocated independently
+    along the three Cartesian axes. For each requested component, the
+    allocator selects an actuator capable of producing the requested
+    direction, preferring the smallest actuator with sufficient capacity.
+    """
     def __init__(self):
         super().__init__()
 
@@ -180,6 +225,18 @@ class MultiRCSAllocator(ControlAllocatorBase):
             )    
 
     def allocate(self, control_output):
+        """
+        Allocate commanded force and torque to RCS actuators.
+
+        All actuator commands are reset before translational force and
+        rotational torque commands are allocated independently along the
+        Cartesian axes.
+
+        Parameters
+        ----------
+        control_output : ControlOutput
+            Control output containing the commanded force and torque vectors.
+        """
         force_to_allocate = np.asarray(control_output.force,dtype=float)
         torque_to_allocate = np.asarray(control_output.torque,dtype=float)
     
@@ -204,6 +261,9 @@ class MultiRCSAllocator(ControlAllocatorBase):
 
 
 class ControlAllocatorPlaceholder(ControlAllocatorBase):
+    """
+    Placeholder control allocator for unsupported or unimplemented allocation logic.
+    """
     def __init__(self):
         super().__init__()
 
@@ -211,13 +271,26 @@ class ControlAllocatorPlaceholder(ControlAllocatorBase):
         # No specific initialization checks for ControlAllocatorPlaceholder
         pass
 
-    def allocate(self, control_output):
+    def allocate(self, control_output: ControlOutput):
         """
-        Placeholder method for allocating control output to actuators.        
+        Placeholder method for allocating a control output.
+
+        Parameters
+        ----------
+        control_output : ControlOutput
+            Control output to be allocated.
+
+        Raises
+        ------
+        NotImplementedError
+            Always raised because allocation is not implemented.
         """
         raise NotImplementedError("ControlAllocatorPlaceholder does not implement the allocate method.")
 
 class ControllerPlaceholder(ControllerBase):
+    """
+    Placeholder controller for unsupported or unimplemented control logic.
+    """
     def __init__(self):
         super().__init__()
 
@@ -227,12 +300,18 @@ class ControllerPlaceholder(ControllerBase):
 
     def compute_control(self, estimated_state: NavigationOutput, guidance_output: GuidanceOutput) -> ControlOutput:
         """
-        Placeholder method for computing control output.
-        
-        Args:
-            estimated_state (EstimationOutput): The estimated state of the spacecraft.
-            guidance_output (GuidanceReference): The guidance_output guidance data.
-        Returns:
-            ControlOutput: The computed control output.
+        Placeholder method for computing a control output.
+
+        Parameters
+        ----------
+        estimated_state : NavigationOutput
+            Estimated spacecraft state provided to the controller.
+        guidance_output : GuidanceOutput
+            Guidance information provided to the controller.
+
+        Raises
+        ------
+        NotImplementedError
+            Always raised because control computation is not implemented.
         """
         raise NotImplementedError("ControllerPlaceholder does not implement the compute_control method.")

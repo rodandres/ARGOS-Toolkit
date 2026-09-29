@@ -5,6 +5,34 @@ import threading
 
 
 def benchmark(func, *args, **kwargs):
+    """
+    Measure execution time, CPU time, and memory usage of a function call.
+
+    The function is executed while a background thread monitors the process
+    memory usage. The measured statistics are printed after execution.
+
+    Parameters
+    ----------
+    func : callable
+        Function to benchmark.
+    *args
+        Positional arguments passed to ``func``.
+    **kwargs
+        Keyword arguments passed to ``func``.
+
+    Returns
+    -------
+    None
+        The function does not return the computed benchmark statistics.
+        The result returned by ``func`` is stored internally in the
+        statistics dictionary.
+
+    Notes
+    -----
+    The reported memory values correspond to the process resident set size
+    (RSS) and are expressed in MiB. CPU time includes both user and system
+    CPU time.
+    """
     process = psutil.Process(os.getpid())
 
     # Estado inicial

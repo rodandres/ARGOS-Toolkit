@@ -48,7 +48,7 @@ class Spacecraft():
         mass: float,
         initial_state: np.ndarray,
         inertia_tensor: np.ndarray,
-        actuators: list | None = None,
+        actuators: list[ActuatorBase] | None = None,
         sensors: list[SensorBase] | None = None,
         mission_manager: MissionManager | None = None,
         parent: Simulation | None = None,
