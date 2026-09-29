@@ -131,8 +131,8 @@ def rk45(
             g_new = ev(t, Y, *args)
 
             crossed = (
-                (g_prev[i] <= 0 and g_new >= 0) or
-                (g_prev[i] >= 0 and g_new <= 0)
+                (g_prev[i] < 0 and g_new >= 0) or
+                (g_prev[i] > 0 and g_new <= 0)
             )
 
             direction = getattr(ev, "direction", 0)
