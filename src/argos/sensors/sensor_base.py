@@ -15,11 +15,11 @@ class SensorBase(ABC):
 
     Parameters
     ----------
-    sensor_type : str
+    type : str
         Sensor type identifier.
-    sensor_pos : np.ndarray
+    position : np.ndarray
         Sensor position relative to the spacecraft body frame [m].
-    sensor_rotation : np.ndarray
+    rotation : np.ndarray
         Sensor orientation relative to the spacecraft body frame [deg].
     sample_rate_freq : float, optional
         Sensor sampling frequency [Hz]. Defaults to 100 Hz.
@@ -31,17 +31,17 @@ class SensorBase(ABC):
         If True, print sensor information and update status.
     """
     def __init__(self,
-                 sensor_type: str,
-                 sensor_pos: np.ndarray,
-                 sensor_rotation: np.ndarray,
+                 type: str,
+                 position: np.ndarray,
+                 rotation: np.ndarray,
                  sample_rate_freq: float = 100.0,
                  error_models: tuple = (),
                  name: str = None,
                  verbose: bool = False):        
         
-        self.type = sensor_type
-        self.position = _as_3d_array(sensor_pos, "sensor_pos") # Position of the sensor in the spacecraft body frame (numpy array of shape (3,))
-        self.rotation = _as_3d_array(sensor_rotation, "sensor_rotation") # Rotation of the sensor in the spacecraft body frame (numpy array of shape (3,))
+        self.type = type
+        self.position = _as_3d_array(position, "position") # Position of the sensor in the spacecraft body frame (numpy array of shape (3,))
+        self.rotation = _as_3d_array(rotation, "rotation") # Rotation of the sensor in the spacecraft body frame (numpy array of shape (3,))
         self.sample_rate_sec = 1.0 / sample_rate_freq
         self.error_models = error_models  # Tuple of error models to apply to the sensor measurement
 
@@ -49,11 +49,11 @@ class SensorBase(ABC):
 
         self.verbose = verbose
 
-        sensor_pos = _as_3d_array(sensor_pos, "sensor_pos")
-        sensor_rotation = _as_3d_array(sensor_rotation, "sensor_rotation")
-        sensor_rotation_rad = np.radians(sensor_rotation)
+        position = _as_3d_array(position, "position")
+        rotation = _as_3d_array(rotation, "rotation")
+        rotation_rad = np.radians(rotation)
 
-        self.rotation_quat = quaternion_from_euler(sensor_rotation_rad[0], sensor_rotation_rad[1], sensor_rotation_rad[2])  # Quaternion representing the sensor rotation in the body frame
+        self.rotation_quat = quaternion_from_euler(rotation_rad[0], rotation_rad[1], rotation_rad[2])  # Quaternion representing the sensor rotation in the body frame
         self.DCM_sensor_to_body = quaternion_to_DCM(self.rotation_quat)  # Direction Cosine Matrix from sensor frame to body frame
 
         self.old_measurement = np.zeros(3)
@@ -120,7 +120,7 @@ class SensorBase(ABC):
             context = {
                 "spacecraft_data": spacecraft_data,
                 "simulation_data": simulation_data,
-                "sensor_type": self.type,                
+                "type": self.type,                
             }
 
             measurement = self.fault_injector.apply(measurement,

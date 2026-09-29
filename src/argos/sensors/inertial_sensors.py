@@ -14,9 +14,9 @@ class Accelerometer(SensorBase):
 
     Parameters
     ----------
-    sensor_pos : np.ndarray or float, optional
+    position : np.ndarray or float, optional
         Accelerometer position relative to the spacecraft body frame [m].
-    sensor_rotation : np.ndarray or float, optional
+    rotation : np.ndarray or float, optional
         Accelerometer orientation relative to the spacecraft body frame [deg].
     bias : np.ndarray or float, optional
         Constant accelerometer bias.
@@ -36,8 +36,8 @@ class Accelerometer(SensorBase):
         If True, print sensor information during initialization.
     """
     def __init__(self,
-                 sensor_pos: np.ndarray | float = 0.0,
-                 sensor_rotation: np.ndarray | float = 0.0,
+                 position: np.ndarray | float = 0.0,
+                 rotation: np.ndarray | float = 0.0,
                  bias: np.ndarray | float = 0.0,                 
                  noise_std: np.ndarray | float = 0.0,
                  random_walk_std: np.ndarray | float = 0.0,
@@ -56,9 +56,9 @@ class Accelerometer(SensorBase):
             )
         
         super().__init__(
-            sensor_type="Accelerometer",
-            sensor_pos=sensor_pos,
-            sensor_rotation=sensor_rotation,
+            type="Accelerometer",
+            position=position,
+            rotation=rotation,
             sample_rate_freq=sample_rate_freq,
             error_models=error_models,
             name=name,
@@ -120,7 +120,7 @@ class Accelerometer(SensorBase):
         accel_body = simulation_data.DCM_inertial_to_body @ accel
 
         # Correction of the accel in the body frame to the sensor frame
-        accel_body += (np.cross(spacecraft_data.true_alpha, self.sensor_pos) + np.cross(spacecraft_data.true_omega, np.cross(spacecraft_data.true_omega, self.sensor_pos)))
+        accel_body += (np.cross(spacecraft_data.true_alpha, self.position) + np.cross(spacecraft_data.true_omega, np.cross(spacecraft_data.true_omega, self.position)))
         
 
         return self.DCM_sensor_to_body.T @ accel_body
@@ -159,9 +159,9 @@ class Gyroscope(SensorBase):
 
     Parameters
     ----------
-    sensor_pos : np.ndarray or float, optional
+    position : np.ndarray or float, optional
         Gyroscope position relative to the spacecraft body frame [m].
-    sensor_rotation : np.ndarray or float, optional
+    rotation : np.ndarray or float, optional
         Gyroscope orientation relative to the spacecraft body frame [deg].
     bias : np.ndarray or float, optional
         Constant gyroscope bias.
@@ -181,8 +181,8 @@ class Gyroscope(SensorBase):
         If True, print sensor information during initialization.
     """
     def __init__(self,
-                 sensor_pos: np.ndarray | float = 0.0,
-                 sensor_rotation: np.ndarray | float = 0.0,
+                 position: np.ndarray | float = 0.0,
+                 rotation: np.ndarray | float = 0.0,
                  bias: np.ndarray | float = 0.0,                 
                  noise_std: np.ndarray | float = 0.0,
                  random_walk_std: np.ndarray | float = 0.0,
@@ -201,9 +201,9 @@ class Gyroscope(SensorBase):
             )
         
         super().__init__(
-            sensor_type="Gyroscope",
-            sensor_pos=sensor_pos,
-            sensor_rotation=sensor_rotation,
+            type="Gyroscope",
+            position=position,
+            rotation=rotation,
             sample_rate_freq=sample_rate_freq,
             error_models=error_models,
             name=name,
