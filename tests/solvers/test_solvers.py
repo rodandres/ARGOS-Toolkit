@@ -459,3 +459,23 @@ def test_solve_rejects_unsupported_method():
             [0.0],
             "INVALID",
         )
+
+
+def test_rk45_does_not_detect_same_event_twice():
+    def dynamics(t, y):
+        return np.array([1.0])
+
+    def event(t, y):
+        return y[0] - 0.5
+
+    result = rk45(
+        dynamics,
+        [0.0, 1.0],
+        [0.0],
+        events=event,
+        h_adaptative=False,
+        h0=0.1,
+    )
+
+    assert len(result.t_events[0]) == 1
+    assert result.t_events[0][0] == pytest.approx(0.5)        
