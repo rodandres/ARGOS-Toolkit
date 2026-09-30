@@ -293,7 +293,7 @@ class Spacecraft():
         return self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt
 
     def get_min_dt(self):
-        dts = [dt for dt in [self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt] if dt is not None]        
+        dts = [dt for dt in [self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt] if dt is not None and not np.isnan(dt)]
 
         if self.has_sensors:    
             for sensor in self.sensors:            
