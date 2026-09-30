@@ -19,48 +19,69 @@ class PDController(ControllerBase):
 
     Parameters
     ----------
-    attitude_proportional_gain : float
+    Kp_rotational : float | np.ndarray
         Proportional gain applied to the quaternion attitude error.
-    attitude_derivative_gain : float
+        If a scalar is provided, the same gain is applied to all three axes.
+        If an array is provided, it should be of shape (3,) or (3, 3) to specify different gains for each axis.
+    Kd_rotational : float | np.ndarray
         Derivative gain applied to the spacecraft angular velocity.
-    translational_proportional_gain : float
+        If a scalar is provided, the same gain is applied to all three axes.
+        If an array is provided, it should be of shape (3,) or (3, 3) to specify different gains for each axis.
+    Kp_translational : float | np.ndarray
         Proportional gain applied to the position error.
-    translational_derivative_gain : float
+        If a scalar is provided, the same gain is applied to all three axes.
+        If an array is provided, it should be of shape (3,) or (3, 3) to specify different gains for each axis.
+    Kd_translational : float | np.ndarray
         Derivative gain applied to the velocity error.
+        If a scalar is provided, the same gain is applied to all three axes.
+        If an array is provided, it should be of shape (3,) or (3, 3) to specify different gains for each axis.
     minimum_torque : float, optional
         Minimum torque command applied during torque saturation.
     maximum_torque : float, optional
         Maximum torque command applied during torque saturation.
     """
     def __init__(self,
-                 attitude_proportional_gain,
-                 attitude_derivative_gain,
-                 translational_proportional_gain,
-                 translational_derivative_gain,
+                 Kp_rotational: float | np.ndarray,
+                 Kd_rotational: float | np.ndarray,
+                 Kp_translational: float | np.ndarray,
+                 Kd_translational: float | np.ndarray,
                  minimum_torque=None,
                  maximum_torque=None):
+
+        if isinstance(Kp_rotational, (int, float)):
+            Kp_rotational = np.array([Kp_rotational] * 3)
+        if isinstance(Kd_rotational, (int, float)):
+            Kd_rotational = np.array([Kd_rotational] * 3)
+        if isinstance(Kp_translational, (int, float)):
+            Kp_translational = np.array([Kp_translational] * 3)
+        if isinstance(Kd_translational, (int, float)):
+            Kd_translational = np.array([Kd_translational] * 3)
         
-        self.attitude_proportional_gain = attitude_proportional_gain
-        self.attitude_derivative_gain = attitude_derivative_gain
-        self.translational_proportional_gain = translational_proportional_gain
-        self.translational_derivative_gain = translational_derivative_gain
+        self.Kp_rotational = Kp_rotational
+        self.Kd_rotational = Kd_rotational
+        self.Kp_translational = Kp_translational
+        self.Kd_translational = Kd_translational
         self.minimum_torque = minimum_torque
         self.maximum_torque = maximum_torque
 
         super().__init__()
 
     def _check_initialization(self):
-        if not isinstance(self.attitude_proportional_gain, (int, float)):
-            raise TypeError("attitude_proportional_gain must be a numeric value.")
+        if not isinstance(self.Kp_rotational, (int, float)):
+            if not isinstance(self.Kp_rotational, np.ndarray):
+                raise TypeError("Kp_rotational must be a numeric value or a numpy array.")            
 
-        if not isinstance(self.attitude_derivative_gain, (int, float)):
-            raise TypeError("attitude_derivative_gain must be a numeric value.")
+        if not isinstance(self.Kd_rotational, (int, float)):
+            if not isinstance(self.Kd_rotational, np.ndarray):
+                raise TypeError("Kd_rotational must be a numeric value or a numpy array.")
 
-        if not isinstance(self.translational_proportional_gain, (int, float)):
-            raise TypeError("translational_proportional_gain must be a numeric value.")
+        if not isinstance(self.Kp_translational, (int, float)):
+            if not isinstance(self.Kp_translational, np.ndarray):
+                raise TypeError("Kp_translational must be a numeric value or a numpy array.")
 
-        if not isinstance(self.translational_derivative_gain, (int, float)):
-            raise TypeError("translational_derivative_gain must be a numeric value.")
+        if not isinstance(self.Kd_translational, (int, float)):
+            if not isinstance(self.Kd_translational, np.ndarray):
+                raise TypeError("Kd_translational must be a numeric value or a numpy array.")
 
         if self.minimum_torque is not None and not isinstance(
             self.minimum_torque, (int, float)
@@ -135,8 +156,8 @@ class PDController(ControllerBase):
         # ==========================================================
     
         commanded_torque = (
-            -self.attitude_proportional_gain * quaternion_vector
-            -self.attitude_derivative_gain * actual_angular_velocity
+            -self.Kp_rotational * quaternion_vector
+            -self.Kd_rotational * actual_angular_velocity
         )
     
         # ==========================================================
@@ -197,8 +218,8 @@ class PDController(ControllerBase):
         # ==========================================================
     
         commanded_force = (
-            self.translational_proportional_gain * position_error
-            + self.translational_derivative_gain * velocity_error
+            self.Kp_translational * position_error
+            + self.Kd_translational * velocity_error
         )
     
         return ControlOutput(
@@ -217,10 +238,14 @@ class PDAttitudeController(ControllerBase):
 
     Parameters
     ----------
-    proportional_gain : float
+    Kp : float | np.ndarray
         Proportional gain applied to the quaternion attitude error.
-    derivative_gain : float
+        If a scalar is provided, the same gain is applied to all three axes.
+        If an array is provided, it should be of shape (3,) or (3, 3) to specify different gains for each axis.
+    Kd : float | np.ndarray
         Derivative gain applied to the spacecraft angular velocity.
+        If a scalar is provided, the same gain is applied to all three axes.
+        If an array is provided, it should be of shape (3,) or (3, 3) to specify different gains for each axis.
     minimum_torque : float, optional
         Minimum torque command applied during torque saturation.
     maximum_torque : float, optional
@@ -229,13 +254,18 @@ class PDAttitudeController(ControllerBase):
 
     def __init__(
         self,
-        proportional_gain: float,
-        derivative_gain: float,
+        Kp: float | np.ndarray,
+        Kd: float | np.ndarray,
         minimum_torque: float | None = None,
         maximum_torque: float | None = None,
     ):
-        self.proportional_gain = proportional_gain
-        self.derivative_gain = derivative_gain
+        self.Kp = Kp
+        self.Kd = Kd
+
+        if isinstance(Kp, (int, float)):
+            self.Kp = np.array([Kp] * 3)
+        if isinstance(Kd, (int, float)):
+            self.Kd = np.array([Kd] * 3)
 
         self.minimum_torque = minimum_torque
         self.maximum_torque = maximum_torque
@@ -243,11 +273,13 @@ class PDAttitudeController(ControllerBase):
         super().__init__()
 
     def _check_initialization(self):
-        if not isinstance(self.proportional_gain, (int, float)):
-            raise TypeError("proportional_gain must be a numeric value.")
+        
+        if not isinstance(self.Kp, np.ndarray):
+            raise TypeError("Kp must be a numeric value or a numpy array.")            
 
-        if not isinstance(self.derivative_gain, (int, float)):
-            raise TypeError("derivative_gain must be a numeric value.")
+        
+        if not isinstance(self.Kd, np.ndarray):
+            raise TypeError("Kd must be a numeric value or a numpy array.")
 
         if self.minimum_torque is not None and not isinstance(
             self.minimum_torque, (int, float)
@@ -298,10 +330,6 @@ class PDAttitudeController(ControllerBase):
         actual_quaternion = navigation_output.spacecraft_state.attitude.astype(float).copy()
         actual_angular_velocity = navigation_output.spacecraft_state.angular_velocity.astype(float).copy()     
 
-        # TODO:
-        # Replace the true spacecraft state by the estimated state once
-        # the navigation filter is integrated.
-
         guidance_output_quaternion = guidance_output.state.attitude.astype(float).copy()
 
         # ==========================================================
@@ -328,8 +356,8 @@ class PDAttitudeController(ControllerBase):
         # ==========================================================
 
         commanded_torque = (
-            -self.proportional_gain * quaternion_vector
-            -self.derivative_gain * actual_angular_velocity
+            -self.Kp * quaternion_vector
+            -self.Kd * actual_angular_velocity
         )
 
         # ==========================================================
