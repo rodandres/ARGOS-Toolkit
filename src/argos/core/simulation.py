@@ -3,6 +3,7 @@
 # Se debe añadir una verificacion o manejo de los propagadores en caso de ser None
 
 import time
+from collections import defaultdict
 
 import numpy as np
 
@@ -251,82 +252,404 @@ class Simulation:
         if self.verbose:
             print("Simulation initialized.")
 
-    def simulate(self):
+    # def simulate(self):
+    #     """
+    #     Execute the spacecraft simulation.
+
+    #     The simulation is initialized before execution and advances each
+    #     spacecraft according to its configured mission, GNC components,
+    #     actuators, and dynamics models. Simulation states and events are
+    #     recorded in the configured simulation history.
+
+    #     Returns
+    #     -------
+    #     dict
+    #         Metadata generated when the simulation history is finalized.
+    #     """
+    #     if not self.simulation_data.spacecrafts:
+    #         raise ValueError("No spacecrafts have been added to the simulation. Please add at least one spacecraft before running the simulation.")
+        
+    #     self._init_simulation()
+
+
+    #     if self.verbose:
+    #         print("Starting simulation...")
+
+
+    #     t = 0.0
+    #     current_ts = []
+    #     self.simulation_data.t = np.nan
+    #     self.simulation_data.tick = np.nan
+
+    #     while t < self.simulation_data.max_sim_time:
+
+    #         for spacecraft in self.simulation_data.spacecrafts:
+    #             if spacecraft.spacecraft_data.t >= self.simulation_data.max_sim_time:                    
+    #                 continue  # Skip this spacecraft if its time exceeds the max simulation time
+
+    #             # Update Mission Manager
+    #             spacecraft.update_mission_manager(self.simulation_data)                
+
+    #             # Update sensors
+    #             spacecraft.update_sensors(self.simulation_data)
+
+    #             # Update Navigation
+    #             spacecraft.update_navigation(self.simulation_data)
+
+    #             # Update Guidance
+    #             spacecraft.update_guidance(self.simulation_data)
+
+    #             # Update Control
+    #             spacecraft.update_control(self.simulation_data)
+
+    #             # Compute Actuation
+    #             spacecraft.compute_actuation(self.simulation_data)  
+
+    #             # Propagate Translational and Rotational Dynamics
+    #             spacecraft.propagate_translational(self.simulation_data, self.environment)
+    #             spacecraft.propagate_rotational(self.simulation_data, self.environment)
+
+    #             t_spacecraft = spacecraft.spacecraft_data.t
+    #             spacecraft.spacecraft_data.t += spacecraft.spacecraft_data.current_master_dt
+    #             spacecraft.spacecraft_data.tick += 1
+    #             current_ts.append(t_spacecraft)
+                
+    #             self.simulation_data.simulation_history.record_spacecraft(spacecraft.name, spacecraft.spacecraft_data)
+
+
+    #         try:
+    #             t = min(current_ts)
+    #         except ValueError:
+    #             break  # Exit the loop if there are no spacecrafts to simulate
+
+    #         current_ts = []  # Reset for the next iteration
+            
+        
+    #     if self.verbose: print("Simulation completed.")
+    #     timer_end = time.perf_counter()        
+        
+    #     metadata = self.simulation_data.simulation_history.finalize()  # Finalize the history after the simulation is complete
+
+    #     return metadata
+
+    def simulate(self, profile: bool = True):
         """
         Execute the spacecraft simulation.
 
-        The simulation is initialized before execution and advances each
-        spacecraft according to its configured mission, GNC components,
-        actuators, and dynamics models. Simulation states and events are
-        recorded in the configured simulation history.
+        Parameters
+        ----------
+        profile : bool, optional
+            If True, measure execution time for each simulation module.
 
         Returns
         -------
         dict
             Metadata generated when the simulation history is finalized.
         """
-        if not self.simulation_data.spacecrafts:
-            raise ValueError("No spacecrafts have been added to the simulation. Please add at least one spacecraft before running the simulation.")
-        
-        self._init_simulation()
 
+        if not self.simulation_data.spacecrafts:
+            raise ValueError(
+                "No spacecrafts have been added to the simulation. "
+                "Please add at least one spacecraft before running the simulation."
+            )
+
+        self._init_simulation()
 
         if self.verbose:
             print("Starting simulation...")
 
+        # ---------------------------------------------------------
+        # Profiling setup
+        # ---------------------------------------------------------
+
+        profile_data = defaultdict(lambda: {
+            "total_time": 0.0,
+            "calls": 0,
+        })
+
+        total_start = time.perf_counter()
+
+        # ---------------------------------------------------------
+        # Helper for timing individual modules
+        # ---------------------------------------------------------
+
+        def timed_call(name, function, *args):
+            """
+            Execute a function and record its execution time.
+            """
+
+            if profile:
+                start = time.perf_counter()
+
+                result = function(*args)
+
+                elapsed = time.perf_counter() - start
+
+                profile_data[name]["total_time"] += elapsed
+                profile_data[name]["calls"] += 1
+
+                return result
+
+            return function(*args)
+
+        # ---------------------------------------------------------
+        # Simulation
+        # ---------------------------------------------------------
 
         t = 0.0
         current_ts = []
+
         self.simulation_data.t = np.nan
         self.simulation_data.tick = np.nan
 
         while t < self.simulation_data.max_sim_time:
 
+            iteration_start = time.perf_counter()
+
             for spacecraft in self.simulation_data.spacecrafts:
-                if spacecraft.spacecraft_data.t >= self.simulation_data.max_sim_time:                    
-                    continue  # Skip this spacecraft if its time exceeds the max simulation time
 
-                # Update Mission Manager
-                spacecraft.update_mission_manager(self.simulation_data)                
+                if spacecraft.spacecraft_data.t >= self.simulation_data.max_sim_time:
+                    continue
 
-                # Update sensors
-                spacecraft.update_sensors(self.simulation_data)
+                # -------------------------------------------------
+                # Mission Manager
+                # -------------------------------------------------
 
-                # Update Navigation
-                spacecraft.update_navigation(self.simulation_data)
+                timed_call(
+                    "mission_manager",
+                    spacecraft.update_mission_manager,
+                    self.simulation_data
+                )
 
-                # Update Guidance
-                spacecraft.update_guidance(self.simulation_data)
+                # -------------------------------------------------
+                # Sensors
+                # -------------------------------------------------
 
-                # Update Control
-                spacecraft.update_control(self.simulation_data)
+                timed_call(
+                    "sensors",
+                    spacecraft.update_sensors,
+                    self.simulation_data
+                )
 
-                # Compute Actuation
-                spacecraft.compute_actuation(self.simulation_data)  
+                # -------------------------------------------------
+                # Navigation
+                # -------------------------------------------------
 
-                # Propagate Translational and Rotational Dynamics
-                spacecraft.propagate_translational(self.simulation_data, self.environment)
-                spacecraft.propagate_rotational(self.simulation_data, self.environment)
+                timed_call(
+                    "navigation",
+                    spacecraft.update_navigation,
+                    self.simulation_data
+                )
+
+                # -------------------------------------------------
+                # Guidance
+                # -------------------------------------------------
+
+                timed_call(
+                    "guidance",
+                    spacecraft.update_guidance,
+                    self.simulation_data
+                )
+
+                # -------------------------------------------------
+                # Control
+                # -------------------------------------------------
+
+                timed_call(
+                    "control",
+                    spacecraft.update_control,
+                    self.simulation_data
+                )
+
+                # -------------------------------------------------
+                # Actuation
+                # -------------------------------------------------
+
+                timed_call(
+                    "actuation",
+                    spacecraft.compute_actuation,
+                    self.simulation_data
+                )
+
+                # -------------------------------------------------
+                # Translational dynamics
+                # -------------------------------------------------
+
+                timed_call(
+                    "translation_propagation",
+                    spacecraft.propagate_translational,
+                    self.simulation_data,
+                    self.environment
+                )
+
+                # -------------------------------------------------
+                # Rotational dynamics
+                # -------------------------------------------------
+
+                timed_call(
+                    "rotation_propagation",
+                    spacecraft.propagate_rotational,
+                    self.simulation_data,
+                    self.environment
+                )
+
+                # -------------------------------------------------
+                # Advance spacecraft clock
+                # -------------------------------------------------
 
                 t_spacecraft = spacecraft.spacecraft_data.t
-                spacecraft.spacecraft_data.t += spacecraft.spacecraft_data.current_master_dt
-                spacecraft.spacecraft_data.tick += 1
-                current_ts.append(t_spacecraft)
-                
-                self.simulation_data.simulation_history.record_spacecraft(spacecraft.name, spacecraft.spacecraft_data)
 
+                spacecraft.spacecraft_data.t += (
+                    spacecraft.spacecraft_data.current_master_dt
+                )
+
+                spacecraft.spacecraft_data.tick += 1
+
+                current_ts.append(t_spacecraft)
+
+                # -------------------------------------------------
+                # History
+                # -------------------------------------------------
+
+                timed_call(
+                    "history_recording",
+                    self.simulation_data.simulation_history.record_spacecraft,
+                    spacecraft.name,
+                    spacecraft.spacecraft_data
+                )
+
+            # -----------------------------------------------------
+            # Update global simulation time
+            # -----------------------------------------------------
 
             try:
                 t = min(current_ts)
             except ValueError:
-                break  # Exit the loop if there are no spacecrafts to simulate
+                break
 
-            current_ts = []  # Reset for the next iteration
-            
-        
-        if self.verbose: print("Simulation completed.")
-        timer_end = time.perf_counter()        
-        
-        metadata = self.simulation_data.simulation_history.finalize()  # Finalize the history after the simulation is complete
+            current_ts = []
 
-        return metadata
+            # -----------------------------------------------------
+            # Loop overhead
+            # -----------------------------------------------------
+
+            if profile:
+                iteration_elapsed = time.perf_counter() - iteration_start
+
+                profile_data["simulation_iteration"]["total_time"] += (
+                    iteration_elapsed
+                )
+
+                profile_data["simulation_iteration"]["calls"] += 1
+
+        # ---------------------------------------------------------
+        # Finalization
+        # ---------------------------------------------------------
+
+        simulation_time = time.perf_counter() - total_start
+
+        if self.verbose:
+            print("Simulation completed.")
+
+        metadata = self.simulation_data.simulation_history.finalize()
+
+        # ---------------------------------------------------------
+        # Profiling report
+        # ---------------------------------------------------------
+
+        if profile:
+            print("\n" + "=" * 70)
+            print("SIMULATION PERFORMANCE PROFILE")
+            print("=" * 70)
+
+            print(f"\nWall-clock simulation time: {simulation_time:.6f} s")
+            print(
+                f"Simulated time: "
+                f"{self.simulation_data.max_sim_time:.6f} s"
+            )
+
+            speed_ratio = (
+                self.simulation_data.max_sim_time /
+                simulation_time
+            )
+
+            print(
+                f"Simulation speed: "
+                f"{speed_ratio:.3f}x real-time"
+            )
+
+            print("\nModule timing:")
+            print("-" * 70)
+
+            print(
+                f"{'Module':<30}"
+                f"{'Calls':>12}"
+                f"{'Total [s]':>15}"
+                f"{'Avg [ms]':>15}"
+                f"{'% total':>12}"
+            )
+
+            print("-" * 70)
+
+            # Do not use simulation_iteration for the module table
+            module_items = [
+                (name, data)
+                for name, data in profile_data.items()
+                if name != "simulation_iteration"
+            ]
+
+            # Sort by total execution time
+            module_items.sort(
+                key=lambda item: item[1]["total_time"],
+                reverse=True
+            )
+
+            for name, data in module_items:
+
+                total_time = data["total_time"]
+                calls = data["calls"]
+
+                avg_time = (
+                    total_time / calls
+                    if calls > 0
+                    else 0.0
+                )
+
+                percentage = (
+                    100.0 * total_time / simulation_time
+                    if simulation_time > 0
+                    else 0.0
+                )
+
+                print(
+                    f"{name:<30}"
+                    f"{calls:>12,}"
+                    f"{total_time:>15.6f}"
+                    f"{avg_time * 1000:>15.6f}"
+                    f"{percentage:>11.2f}%"
+                )
+
+            print("-" * 70)
+
+            # -----------------------------------------------------
+            # Profiling consistency check
+            # -----------------------------------------------------
+
+            measured_module_time = sum(
+                data["total_time"]
+                for name, data in module_items
+            )
+
+            print(
+                f"\nMeasured module time: "
+                f"{measured_module_time:.6f} s"
+            )
+
+            print(
+                f"Unaccounted time: "
+                f"{simulation_time - measured_module_time:.6f} s"
+            )
+
+            print("=" * 70)
+
+        return metadata    

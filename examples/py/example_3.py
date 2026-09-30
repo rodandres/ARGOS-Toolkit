@@ -111,10 +111,10 @@ result = sim.simulate()
 # %%
 from argos.visualization.trajectories import *
 
-plot_trajectory("SC", result, show=True, body="Moon",body_position=np.array([(1-MU)*LENGTH_FACTOR, 0.0, 0.0]),)
+#plot_trajectory("SC", result, show=True, body="Moon",body_position=np.array([(1-MU)*LENGTH_FACTOR, 0.0, 0.0]),)
 
 from argos.visualization.state_variables import plot_position
 
-plot_position("SC", result)
+#plot_position("SC", result)
 
 

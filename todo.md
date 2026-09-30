@@ -1,2 +1,11 @@
 - [ ] Revisar que realmente ningún sensor / sc / actuador tengan el mismo nombre
 - [ ] Posible improvement en fault manager, al inicio, crear diccionario de todos los componentes, y a partir de eso buscar por llave, o directo al componente ???
+- [ ] Definit Stop Conditions (premature ending) de la simulación
+- [ ] Implementar módulo FDIR
+- [ ] Revisar la implementación de todos los verbose
+- [ ] Integrate Ephemerides
+- [ ] Add perturbations full
+- [ ] Add unitary tests
+- [ ] Add gravity / environments
+- [ ] Implement fault modes
+- [ ] Couple / decouple thrusters / actuators
