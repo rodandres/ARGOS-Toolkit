@@ -265,7 +265,11 @@ class Simulation:
         dict
             Metadata generated when the simulation history is finalized.
         """
+        if not self.simulation_data.spacecrafts:
+            raise ValueError("No spacecrafts have been added to the simulation. Please add at least one spacecraft before running the simulation.")
+        
         self._init_simulation()
+
 
         if self.verbose:
             print("Starting simulation...")
