@@ -51,34 +51,48 @@ class TestPDControllerInitialization:
 
     def test_initialization(self):
         controller = PDController(
-            attitude_proportional_gain=2.0,
-            attitude_derivative_gain=0.5,
-            translational_proportional_gain=3.0,
-            translational_derivative_gain=1.0,
+            Kp_rotational=2.0,
+            Kd_rotational=0.5,
+            Kp_translational=3.0,
+            Kd_translational=1.0,
         )
 
-        assert controller.attitude_proportional_gain == 2.0
-        assert controller.attitude_derivative_gain == 0.5
-        assert controller.translational_proportional_gain == 3.0
-        assert controller.translational_derivative_gain == 1.0
+        np.testing.assert_array_equal(
+            controller.Kp_rotational,
+            np.array([2.0, 2.0, 2.0]),
+        )
+        np.testing.assert_array_equal(
+            controller.Kd_rotational,
+            np.array([0.5, 0.5, 0.5]),
+        )
+
+        np.testing.assert_array_equal(
+            controller.Kp_translational,
+            np.array([3.0, 3.0, 3.0]),
+        )
+
+        np.testing.assert_array_equal(
+            controller.Kd_translational,
+            np.array([1.0, 1.0, 1.0]),
+        )
         assert controller.minimum_torque is None
         assert controller.maximum_torque is None
 
     @pytest.mark.parametrize(
         "parameter",
         [
-            "attitude_proportional_gain",
-            "attitude_derivative_gain",
-            "translational_proportional_gain",
-            "translational_derivative_gain",
+            "Kp_rotational",
+            "Kd_rotational",
+            "Kp_translational",
+            "Kd_translational",
         ],
     )
     def test_gain_must_be_numeric(self, parameter):
         kwargs = {
-            "attitude_proportional_gain": 1.0,
-            "attitude_derivative_gain": 1.0,
-            "translational_proportional_gain": 1.0,
-            "translational_derivative_gain": 1.0,
+            "Kp_rotational": 1.0,
+            "Kd_rotational": 1.0,
+            "Kp_translational": 1.0,
+            "Kd_translational": 1.0,
         }
 
         kwargs[parameter] = "invalid"
@@ -125,18 +139,35 @@ class TestPDControllerInitialization:
             0.0,
         )
 
-        assert controller.attitude_proportional_gain == 0.0
-        assert controller.translational_proportional_gain == 0.0
+        np.testing.assert_array_equal(
+            controller.Kp_rotational,
+            np.zeros(3),
+        )
+
+        np.testing.assert_array_equal(
+            controller.Kd_rotational,
+            np.zeros(3),
+        )
+
+        np.testing.assert_array_equal(
+            controller.Kp_translational,
+            np.zeros(3),
+        )
+
+        np.testing.assert_array_equal(
+            controller.Kd_translational,
+            np.zeros(3),
+        )
 
 
 class TestPDControllerControl:
 
     def test_zero_error_produces_zero_force_and_torque(self):
         controller = PDController(
-            attitude_proportional_gain=10.0,
-            attitude_derivative_gain=2.0,
-            translational_proportional_gain=5.0,
-            translational_derivative_gain=3.0,
+            Kp_rotational=10.0,
+            Kd_rotational=2.0,
+            Kp_translational=5.0,
+            Kd_translational=3.0,
         )
 
         state = MockState(
@@ -162,10 +193,10 @@ class TestPDControllerControl:
 
     def test_translational_proportional_term(self):
         controller = PDController(
-            attitude_proportional_gain=0.0,
-            attitude_derivative_gain=0.0,
-            translational_proportional_gain=2.0,
-            translational_derivative_gain=0.0,
+            Kp_rotational=0.0,
+            Kd_rotational=0.0,
+            Kp_translational=2.0,
+            Kd_translational=0.0,
         )
 
         navigation = MockNavigationOutput(
@@ -193,10 +224,10 @@ class TestPDControllerControl:
 
     def test_translational_derivative_term(self):
         controller = PDController(
-            attitude_proportional_gain=0.0,
-            attitude_derivative_gain=0.0,
-            translational_proportional_gain=0.0,
-            translational_derivative_gain=2.0,
+            Kp_rotational=0.0,
+            Kd_rotational=0.0,
+            Kp_translational=0.0,
+            Kd_translational=2.0,
         )
 
         navigation = MockNavigationOutput(
@@ -223,10 +254,10 @@ class TestPDControllerControl:
 
     def test_translational_pd_terms_are_combined(self):
         controller = PDController(
-            attitude_proportional_gain=0.0,
-            attitude_derivative_gain=0.0,
-            translational_proportional_gain=2.0,
-            translational_derivative_gain=3.0,
+            Kp_rotational=0.0,
+            Kd_rotational=0.0,
+            Kp_translational=2.0,
+            Kd_translational=3.0,
         )
 
         navigation = MockNavigationOutput(
@@ -259,10 +290,10 @@ class TestPDControllerControl:
 
     def test_derivative_torque_term(self):
         controller = PDController(
-            attitude_proportional_gain=0.0,
-            attitude_derivative_gain=2.0,
-            translational_proportional_gain=0.0,
-            translational_derivative_gain=0.0,
+            Kp_rotational=0.0,
+            Kd_rotational=2.0,
+            Kp_translational=0.0,
+            Kd_translational=0.0,
         )
 
         angular_velocity = np.array([1.0, -2.0, 3.0])
@@ -288,10 +319,10 @@ class TestPDControllerControl:
 
     def test_torque_saturation(self):
         controller = PDController(
-            attitude_proportional_gain=0.0,
-            attitude_derivative_gain=10.0,
-            translational_proportional_gain=0.0,
-            translational_derivative_gain=0.0,
+            Kp_rotational=0.0,
+            Kd_rotational=10.0,
+            Kp_translational=0.0,
+            Kd_translational=0.0,
             minimum_torque=-2.0,
             maximum_torque=2.0,
         )
@@ -317,10 +348,10 @@ class TestPDControllerControl:
 
     def test_only_torque_saturation_does_not_modify_force(self):
         controller = PDController(
-            attitude_proportional_gain=0.0,
-            attitude_derivative_gain=10.0,
-            translational_proportional_gain=2.0,
-            translational_derivative_gain=0.0,
+            Kp_rotational=0.0,
+            Kd_rotational=10.0,
+            Kp_translational=2.0,
+            Kd_translational=0.0,
             minimum_torque=-1.0,
             maximum_torque=1.0,
         )
@@ -354,10 +385,10 @@ class TestPDControllerControl:
 
     def test_actual_quaternion_is_normalized(self):
         controller = PDController(
-            attitude_proportional_gain=0.0,
-            attitude_derivative_gain=2.0,
-            translational_proportional_gain=0.0,
-            translational_derivative_gain=0.0,
+            Kp_rotational=0.0,
+            Kd_rotational=2.0,
+            Kp_translational=0.0,
+            Kd_translational=0.0,
         )
 
         navigation = MockNavigationOutput(
@@ -390,26 +421,32 @@ class TestPDAttitudeControllerInitialization:
 
     def test_initialization(self):
         controller = PDAttitudeController(
-            proportional_gain=2.0,
-            derivative_gain=0.5,
+            Kp=2.0,
+            Kd=0.5,
         )
 
-        assert controller.proportional_gain == 2.0
-        assert controller.derivative_gain == 0.5
+        np.testing.assert_array_equal(
+            controller.Kp,
+            np.array([2.0, 2.0, 2.0]),
+        )
+        np.testing.assert_array_equal(
+            controller.Kd,
+            np.array([0.5, 0.5, 0.5]),
+        )
         assert controller.minimum_torque is None
         assert controller.maximum_torque is None
 
     @pytest.mark.parametrize(
         "parameter",
         [
-            "proportional_gain",
-            "derivative_gain",
+            "Kp",
+            "Kd",
         ],
     )
     def test_gain_must_be_numeric(self, parameter):
         kwargs = {
-            "proportional_gain": 1.0,
-            "derivative_gain": 1.0,
+            "Kp": 1.0,
+            "Kd": 1.0,
         }
 
         kwargs[parameter] = "invalid"
@@ -447,8 +484,8 @@ class TestPDAttitudeControllerControl:
 
     def test_zero_attitude_error_and_zero_rate_produce_zero_torque(self):
         controller = PDAttitudeController(
-            proportional_gain=10.0,
-            derivative_gain=2.0,
+            Kp=10.0,
+            Kd=2.0,
         )
 
         navigation = MockNavigationOutput(
@@ -471,8 +508,8 @@ class TestPDAttitudeControllerControl:
 
     def test_derivative_term(self):
         controller = PDAttitudeController(
-            proportional_gain=0.0,
-            derivative_gain=2.0,
+            Kp=0.0,
+            Kd=2.0,
         )
 
         angular_velocity = np.array([1.0, -2.0, 3.0])
@@ -499,8 +536,8 @@ class TestPDAttitudeControllerControl:
 
     def test_force_is_always_zero(self):
         controller = PDAttitudeController(
-            proportional_gain=1.0,
-            derivative_gain=1.0,
+            Kp=1.0,
+            Kd=1.0,
         )
 
         navigation = MockNavigationOutput(
@@ -522,8 +559,8 @@ class TestPDAttitudeControllerControl:
 
     def test_torque_saturation(self):
         controller = PDAttitudeController(
-            proportional_gain=0.0,
-            derivative_gain=10.0,
+            Kp=0.0,
+            Kd=10.0,
             minimum_torque=-2.0,
             maximum_torque=2.0,
         )
