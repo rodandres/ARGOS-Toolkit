@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "argos-toolkit"
+version = "0.1.0"
+description = "ARGOS - Aerospace Research for GNC Operational Scenarios toolkit"
+readme = "README.md"
+requires-python = ">=3.14"
+
+authors = [
+    { name = "Andres Rodriguez" }
+]
+
+license = { file = "LICENSE" }
+
+keywords = [
+    "spacecraft",
+    "simulation",
+    "GNC",
+    "guidance",
+    "navigation",
+    "control",
+    "astrodynamics",
+    "cislunar",
+    "RPOD",
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+
+dependencies = [
+    "numpy>=2.5",
+    "scipy>=1.18",
+    "matplotlib>=3.11",
+    "pandas>=3.0",
+    "psutil>=7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
+[project.urls]
+Homepage = "https://rodandres.github.io/"
+Repository = "https://github.com/rodandres/ARGOS-Toolkit"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
