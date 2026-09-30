@@ -145,10 +145,10 @@ sensors = [abs_sensor_1]
 #               COMMON LAWS & PROPAGATORS
 # =======================================================
 
-control_law = PDController(attitude_proportional_gain=PD_KP_ATTITUDE,
-                            attitude_derivative_gain=PD_KD_ATTITUDE,
-                            translational_proportional_gain=PD_KP_TRANSLATIONAL,
-                            translational_derivative_gain=PD_KD_TRANSLATIONAL
+control_law = PDController(Kp_rotational=PD_KP_ATTITUDE,
+                            Kd_rotational=PD_KD_ATTITUDE,
+                            Kp_translational=PD_KP_TRANSLATIONAL,
+                            Kd_translational=PD_KD_TRANSLATIONAL
                         )
 actuator_allocator = MultiRCSAllocator()
 translational_propagator = NativeTranslationalPropagator(dynamics="CR3BP")

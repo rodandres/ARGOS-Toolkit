@@ -158,14 +158,14 @@ from argos.guidance.basic_laws import ConstantReferenceGuidance
 from argos.math import quaternion_from_euler
 objective_orientation = [0, 0, 0]  # Desired orientation in Euler angles (degrees)
 guidance_law = ConstantReferenceGuidance(
-    desired_quat = quaternion_from_euler(np.deg2rad(objective_orientation[0]), np.deg2rad(objective_orientation[1]), np.deg2rad(objective_orientation[2]))
+    desired_quaternion = quaternion_from_euler(np.deg2rad(objective_orientation[0]), np.deg2rad(objective_orientation[1]), np.deg2rad(objective_orientation[2]))
 )
 
 from argos.controllers.classic_controllers import PDAttitudeController
 
 control_law = PDAttitudeController(
-    proportional_gain= 1000,    
-    derivative_gain= 20000,
+    Kp= 1000,    
+    Kd= 20000,
     maximum_torque= 1000,
     minimum_torque= -1000
 )
