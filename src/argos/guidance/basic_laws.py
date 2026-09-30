@@ -17,17 +17,17 @@ class ConstantReferenceGuidance(GuidanceBase):
 
     Parameters
     ----------
-    desired_pos : np.ndarray, shape (3,), optional
+    desired_position : np.ndarray, shape (3,), optional
         Desired position [m].
-    desired_vel : np.ndarray, shape (3,), optional
+    desired_velocity : np.ndarray, shape (3,), optional
         Desired velocity [m/s].
-    desired_accel : np.ndarray, shape (3,), optional
+    desired_acceleration : np.ndarray, shape (3,), optional
         Desired acceleration [m/s²].
-    desired_quat : np.ndarray, shape (4,), optional
+    desired_quaternion : np.ndarray, shape (4,), optional
         Desired attitude quaternion.
-    desired_ang_vel : np.ndarray, shape (3,), optional
+    desired_angular_velocity : np.ndarray, shape (3,), optional
         Desired angular velocity [rad/s].
-    desired_ang_accel : np.ndarray, shape (3,), optional
+    desired_angular_acceleration : np.ndarray, shape (3,), optional
         Desired angular acceleration [rad/s²].
 
     Raises
@@ -39,36 +39,36 @@ class ConstantReferenceGuidance(GuidanceBase):
         If a provided state component is not a NumPy array.
     """
     def __init__(self,
-                 desired_pos: np.ndarray | None=None, desired_vel: np.ndarray | None=None, desired_accel: np.ndarray | None=None,
-                 desired_quat: np.ndarray | None=None, desired_ang_vel: np.ndarray | None=None, desired_ang_accel: np.ndarray | None=None):
-        self.desired_pos = desired_pos
-        self.desired_vel = desired_vel
-        self.desired_accel = desired_accel
-        self.desired_quat = desired_quat
-        self.desired_ang_vel = desired_ang_vel
-        self.desired_ang_accel = desired_ang_accel
+                 desired_position: np.ndarray | None=None, desired_velocity: np.ndarray | None=None, desired_acceleration: np.ndarray | None=None,
+                 desired_quaternion: np.ndarray | None=None, desired_angular_velocity: np.ndarray | None=None, desired_angular_acceleration: np.ndarray | None=None):
+        self.desired_position = desired_position
+        self.desired_velocity = desired_velocity
+        self.desired_acceleration = desired_acceleration
+        self.desired_quaternion = desired_quaternion
+        self.desired_angular_velocity = desired_angular_velocity
+        self.desired_angular_acceleration = desired_angular_acceleration
 
         self._check_initialization()
 
     def _check_initialization(self):
         if all(x is None for x in (
-            self.desired_pos,
-            self.desired_vel,
-            self.desired_accel,
-            self.desired_quat,
-            self.desired_ang_vel,
-            self.desired_ang_accel,
+            self.desired_position,
+            self.desired_velocity,
+            self.desired_acceleration,
+            self.desired_quaternion,
+            self.desired_angular_velocity,
+            self.desired_angular_acceleration,
         )):
             raise ValueError(
                 "At least one desired state must be provided for ConstantReferenceGuidance."
             )
         
         for attr in (
-            "desired_pos",
-            "desired_vel",
-            "desired_accel",
-            "desired_ang_vel",
-            "desired_ang_accel",
+            "desired_position",
+            "desired_velocity",
+            "desired_acceleration",
+            "desired_angular_velocity",
+            "desired_angular_acceleration",
         ):
             value = getattr(self, attr)
 
@@ -84,15 +84,15 @@ class ConstantReferenceGuidance(GuidanceBase):
                     f"{attr} must have shape (3,), but got {value.shape}."
                 )
 
-        if self.desired_quat is None:
-            self.desired_quat = np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
+        if self.desired_quaternion is None:
+            self.desired_quaternion = np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
         else:
-            if not isinstance(self.desired_quat, np.ndarray):
-                raise TypeError("desired_quat must be a numpy.ndarray.")
+            if not isinstance(self.desired_quaternion, np.ndarray):
+                raise TypeError("desired_quaternion must be a numpy.ndarray.")
 
-            if self.desired_quat.shape != (4,):
+            if self.desired_quaternion.shape != (4,):
                 raise ValueError(
-                    f"desired_quat must have shape (4,), but got {self.desired_quat.shape}."
+                    f"desired_quaternion must have shape (4,), but got {self.desired_quaternion.shape}."
                 )
 
     def compute_reference(self, navigation_data: NavigationOutput, simulation_data: SimulationData):
@@ -115,12 +115,12 @@ class ConstantReferenceGuidance(GuidanceBase):
         """
 
         state = StateVariables(
-            position = self.desired_pos,
-            velocity = self.desired_vel,
-            acceleration = self.desired_accel,
-            attitude = self.desired_quat,
-            angular_velocity = self.desired_ang_vel,
-            angular_acceleration = self.desired_ang_accel
+            position = self.desired_position,
+            velocity = self.desired_velocity,
+            acceleration = self.desired_acceleration,
+            attitude = self.desired_quaternion,
+            angular_velocity = self.desired_angular_velocity,
+            angular_acceleration = self.desired_angular_acceleration
         )
 
         return GuidanceOutput(

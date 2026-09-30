@@ -26,7 +26,7 @@ class GaussianStdSensor(SensorBase):
     ):
         self.noise_standard_deviation = noise_standard_deviation
         self.random_seed = random_seed
-        self.sensor_type = "TBD - GAUSSIAN_STD_SENSOR"  # Placeholder for sensor type, to be defined in subclasses
+        self.type = "TBD - GAUSSIAN_STD_SENSOR"  # Placeholder for sensor type, to be defined in subclasses
 
     def measure(self, true_state: np.ndarray) -> np.ndarray:
         """
@@ -128,7 +128,7 @@ class GaussianCovarianceSensor(SensorBase):
     ):
         self.noise_covariance = noise_covariance
         self.random_seed = random_seed
-        self.sensor_type = "TBD - GAUSSIAN_COV_SENSOR"  # Placeholder for sensor type, to be defined in subclasses
+        self.type = "TBD - GAUSSIAN_COV_SENSOR"  # Placeholder for sensor type, to be defined in subclasses
 
     def measure(self, true_state: np.ndarray) -> np.ndarray:
         """
@@ -231,9 +231,9 @@ class AbsoluteSensor(SensorBase):
                  verbose=False):
 
         super().__init__(
-            sensor_type="AbsoluteSensor",
-            sensor_pos=np.zeros(3),
-            sensor_rotation=np.zeros(3),
+            type="AbsoluteSensor",
+            position=np.zeros(3),
+            rotation=np.zeros(3),
             sample_rate_freq= sample_rate_freq,
             error_models=(),
             name=name,
