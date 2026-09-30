@@ -2,7 +2,7 @@
 
 **ARGOS Toolkit** is a modular Python framework for **spacecraft simulation, Guidance Navigation and Control (GNC) research, and astrodynamics analysis**.
 
-The toolkit is designed to make spacecraft simulations **composable, extensible, and configurable**, allowing different spacecraft subsystems, dynamics models, GNC algorithms, mission phases, and multi-spacecraft scenarios to be combined within a common simulation environment.
+The toolkit is designed around a **mission-oriented simulation architecture**, where spacecraft, physical components, GNC algorithms, propagation models, mission phases, and operational transitions can be configured and executed within a common simulation environment.
 
 ARGOS is being developed as a research-oriented platform for studying spacecraft behavior and GNC architectures, with a particular interest in **multi-spacecraft and cislunar applications**.
 
@@ -18,68 +18,56 @@ ARGOS is being developed as a research-oriented platform for studying spacecraft
 
 ## Overview
 
-Spacecraft simulations often require the integration of several independent disciplines:
+Spacecraft GNC simulations require the integration of several disciplines and computational models:
 
-- Orbital and attitude dynamics
+- Spacecraft dynamics
 - Sensors and measurement models
-- Navigation and state estimation
-- Guidance algorithms
-- Control laws
-- Actuator models
-- Mission logic
+- Navigation
+- Guidance
+- Control
+- Control allocation
+- Actuators
 - Numerical propagation
+- Mission logic
+- Fault injection
+- Astrodynamics
 - Data analysis and visualization
 
-ARGOS approaches this problem through a **modular spacecraft architecture**, where these elements can be developed and combined independently.
+ARGOS provides a common simulation architecture in which these elements can be developed independently and combined into executable spacecraft scenarios.
 
-A typical simulation can be structured as:
-
-```text
-Simulation
-    │
-    ├── Spacecraft
-    │     │
-    │     ├── Sensors
-    │     ├── Navigation
-    │     ├── Guidance
-    │     ├── Controller
-    │     ├── Control Allocation
-    │     ├── Actuators
-    │     └── Dynamics
-    │
-    └── Mission Manager
-            │
-            └── Mission Phases
-```
-
-During execution, the simulation coordinates the spacecraft subsystems through a common data flow:
-
-```text
-Sensors
-   ↓
-Navigation
-   ↓
-Guidance
-   ↓
-Control
-   ↓
-Control Allocation
-   ↓
-Actuators
-   ↓
-Spacecraft Dynamics
-   ↓
-Simulation State
-```
-
-This architecture makes it possible to replace or extend individual components without redesigning the entire simulation.
+A simulation can contain one or more spacecraft, each with its own physical and computational configuration, while sharing a common simulation environment.
 
 ## Why ARGOS?
 
 ARGOS is intended to reduce the amount of infrastructure required to investigate spacecraft GNC concepts.
 
-Instead of implementing every simulation from scratch, a user can assemble a spacecraft from reusable components and focus on the problem being investigated.
+Instead of implementing every simulation from scratch, a user can assemble a spacecraft from reusable components and focus on the problem being investigated. This is emphasize through its central concept of Mission-Oriented Simulation where the simulation configuration is not necessarily fixed for the entire mission.
 
+Therefore, a spacecraft can be represented through a sequence of mission phases:
+
+Mission Phase 1
+    │
+    ├── Navigation
+    ├── Guidance
+    ├── Control
+    ├── Control Allocation
+    └── Propagation
+    │
+    │ Transition Condition
+    ▼
+Mission Phase 2
+    │
+    ├── Navigation
+    ├── Guidance
+    ├── Control
+    ├── Control Allocation
+    └── Propagation
+    │
+    │ Transition Condition
+    ▼
+Mission Phase 3
+
+## Architecture
 The architecture emphasizes:
 
 - **Modularity —** GNC and simulation components are separated into well-defined interfaces.
@@ -90,118 +78,42 @@ The architecture emphasizes:
 - **Astrodynamics integration —** Spacecraft simulation capabilities are complemented by dedicated cislunar and CR3BP analysis tools.
 - **Reproducible analysis —** Simulation results are stored in structured history objects that can be analyzed and visualized after execution.
 
-The objective is not simply to provide a collection of equations or isolated algorithms, but to provide a common simulation framework in which spacecraft systems and GNC architectures can be investigated as integrated systems.
-
-## Current Capabilities
-
-| Area          | Capability                             | Status                |
-| ------------- | -------------------------------------- | --------------------- |
-| Simulation    | Modular simulation engine              | Implemented           |
-| Simulation    | Multiple spacecraft                    | Implemented           |
-| Simulation    | Individual spacecraft configurations   | Implemented           |
-| Mission       | Mission phases                         | Implemented           |
-| Mission       | Conditional phase transitions          | Implemented           |
-| Dynamics      | Translational dynamics                 | Implemented           |
-| Dynamics      | Rotational rigid-body dynamics         | Implemented           |
-| Propagation   | Two-body relative propagation          | Implemented           |
-| Propagation   | CR3BP propagation                      | Implemented           |
-| Propagation   | Native adaptive RK45 solver            | Implemented           |
-| Sensors       | Modular sensor architecture            | Implemented           |
-| Sensors       | Absolute state measurements            | Implemented           |
-| Sensors       | Sensor error/noise models              | Partially implemented |
-| Navigation    | Ideal navigation                       | Implemented           |
-| Navigation    | Custom navigation laws                 | Implemented           |
-| Guidance      | Constant-reference guidance            | Implemented           |
-| Guidance      | Custom guidance laws                   | Implemented           |
-| Control       | PD attitude control                    | Implemented           |
-| Control       | Custom controllers                     | Implemented           |
-| Control       | Control allocation                     | Implemented           |
-| Actuation     | RCS thruster model                     | Implemented           |
-| Actuation     | PWM / bang-bang behavior               | Implemented           |
-| Environment   | Environment abstraction                | Implemented           |
-| Environment   | Integrated environmental perturbations | Under development     |
-| Visualization | Trajectory visualization               | Implemented           |
-| Visualization | State and GNC plots                    | Implemented           |
-| Astrodynamics | CR3BP analysis                         | Implemented           |
-| Astrodynamics | Lagrange point computation             | Implemented           |
-| Astrodynamics | State Transition Matrix                | Implemented           |
-| Astrodynamics | Lyapunov orbit tools                   | Implemented           |
-| Astrodynamics | Halo orbit generation / continuation   | Implemented           |
-
-## Architecture
-The core architecture is organized around a small number of fundamental concepts.
+This is organized around a small number of fundamental concepts.
 ### Simulation
-`Simulation` is the top-level execution environment.
-
+`Simulation` provides the global simulation context.
 It manages:
-
 - Simulation time
 - Environment
 - Multiple spacecraft
-- Global execution timing
-- Simulation history
-- The overall simulation loop
+- Global execution
+- Simulation results
+
+> A simulation can contain multiple independent spacecraft:
 
 ### Spacecraft
-A `Spacecraft` represents an individual simulated vehicle and contains its physical state, GNC configuration, sensors, actuators, and dynamics models.
+A `Spacecraft` represents an individual simulated vehicle.
 
-```text
-Conceptually:
-Spacecraft
-│
-├── State
-│   ├── Position
-│   ├── Velocity
-│   ├── Attitude
-│   └── Angular velocity
-│
-├── Sensors
-├── Navigation
-├── Guidance
-├── Controller
-├── Control Allocator
-├── Actuators
-│
-└── Dynamics
-    ├── Translational
-    └── Rotational
-```
+It maintains its own:
+- Translational state
+- Rotational state
+- Sensors
+- Actuators
+- Mission configuration
+- GNC configuration
+- Propagation models
+- Fault configuration
+
+> Multiple spacecraft can therefore participate in the same simulation while maintaining independent configurations.
 
 ### Mission Manager
-The MissionManager controls the sequence of mission phases assigned to a spacecraft.
-A mission can therefore be represented as:
-```text
-Phase 1
-   │
-   ├── Navigation Law 1
-   ├── Guidance Law 1
-   ├── Control Law 1
-   └── Translational Dynamics Only
-   │
-   └── Transition condition
-            ↓
-Phase 2
-   │
-   ├── Navigation Law 2
-   ├── Guidance Law 1
-   ├── Control Law 2
-   └── Translational + Rotational Dynamics
-```
+`MissionManager` controls the active mission phase of a spacecraft.
+This provides a mechanism for representing phase-dependent spacecraft behavior without coupling the mission logic to individual GNC implementations.
 
-This allows different GNC configurations to become active depending on the state of the mission.
+> A mission can be defined by creating MissionPhase objects and associating transition conditions with them.
 
-### Modular GNC Components
-Most major GNC subsystems follow a common base-class architecture:
-
-```text
-Base Interface
-      │
-      ├── Default implementation
-      └── Custom implementation
-```
-
-This applies to areas such as:
-
+### Modular GNC Interfaces
+ARGOS exposes base interfaces for major simulation and GNC components.
+These include:
 - Sensors
 - Navigation
 - Guidance
@@ -210,155 +122,16 @@ This applies to areas such as:
 - Propagators
 - Environments
 
-The intent is to allow users to replace individual algorithms without modifying the simulation infrastructure around them.
+### Fault Injection
+The `FaultManager` coordinates user-defined fault events, while affected components implement the mechanisms required to modify their behavior.
 
-## Installation
-
-Clone the repository and install the required Python dependencies.
-
-```bash
-git clone https://github.com/rodandres/ARGOS-Toolkit.git
-cd ARGOS-Toolkit
-
-pip install -e .
-```
-
-## Quick Start
-
-The simplest way to become familiar with ARGOS is to run the provided examples.
-
-The examples are located under:
-```text
-examples/
-```
-
-and are provided both as Python scripts and Jupyter notebooks.
-
-### Examples
-The examples are organized to progressively introduce the framework.
-
-#### Example 1 — Attitude GNC
-Introduces the complete GNC execution chain:
-```text
-Sensor
-  ↓
-Navigation
-  ↓
-Guidance
-  ↓
-Controller
-  ↓
-Control Allocation
-  ↓
-RCS
-  ↓
-Rotational Dynamics
-```
-
-#### Example 2 — Multi-Spacecraft Simulation
-Demonstrates multiple spacecraft within the same simulation environment, including spacecraft-to-spacecraft state relationships.
-
-This provides the basis for scenarios where one spacecraft needs information about another spacecraft.
-
-#### Example 3 — CR3BP Propagation
-Demonstrates translational propagation using the Circular Restricted Three-Body Problem (CR3BP), including the Earth-Moon system.
-
-This example introduces the connection between the spacecraft simulation framework and the cislunar astrodynamics tools.
-
-#### Example 4 — Mission Phases
-Demonstrates how a spacecraft can change its active simulation and GNC configuration during a mission.
-
-The example illustrates:
-``` text
-Mission Phase
-      ↓
-Transition Condition
-      ↓
-New Mission Phase
-      ↓
-New GNC / Dynamics Configuration
-```
-### Simulation Results
-ARGOS stores simulation results in structured history objects.
-
-The recorded information can include:
-
-- True spacecraft state
-- Estimated state
-- Guidance references
-- Control outputs
-- Applied forces
-- Applied torques
-- Simulation time
-- Spacecraft-specific data
-
-This allows the simulation to be separated from the subsequent analysis and visualization workflow.
-
-Conceptually:
-```text
-Simulation
-     ↓
-SimulationHistory
-     ↓
- ┌──────────────────────┐
- ↓          ↓           ↓
-Plots  Analysis  Custom Processing
-```
-
-## Project Structure
-```text
-ARGOS-Toolkit/
-│
-├── src/
-│   │
-│   │
-│   ├── argos/
-│   │   │
-│   │   ├── actuators/
-│   │   ├── controllers/
-│   │   ├── enviroments/
-│   │   ├── frames/
-│   │   ├── guidance/
-│   │   ├── general/
-│   │   ├── navigation/
-│   │   ├── propagators/
-│   │   ├── sensors/
-│   │   ├── solvers/
-│   │   ├── visualization/
-│   │   │
-│   │   ├── cislunar_astrodynamics/
-│   │   │
-│   │   └── core/
-│   │       ├── simulation.py
-│   │       ├── spacecraft.py
-│   │       └── mission_manager.py
-│   │
-│   │
-│   └── examples/
-│       ├── src/
-│       └── ipynb/
-│
-├── LICENSE
-└── README.md
-``` 
-
-### Main Modules
-| Module                   | Purpose                                           |
-| ------------------------ | ------------------------------------------------- |
-| `general`                | Shared data structures and simulation history     |
-| `actuators`              | Spacecraft actuator models                        |
-| `controllers`            | Control laws and control allocation               |
-| `enviroments`            | Simulation environment and perturbation framework |
-| `frames`                 | Reference-frame utilities                         |
-| `guidance`               | Guidance laws                                     |
-| `navigation`             | Navigation and state estimation interfaces        |
-| `propagators`            | Translational and rotational state propagation    |
-| `sensors`                | Sensor models and measurement errors              |
-| `solvers`                | Numerical integration                             |
-| `visualization`          | Simulation and GNC visualization                  |
-| `cislunar_astrodynamics` | CR3BP and cislunar trajectory analysis            |
-| `new`                    | Current simulation architecture                   |
-| `examples`               | Demonstrations and usage examples                 |
+This architecture distinguishes between:
+- Nominal sensor error models
+- Injected component faults
+- Fault activation conditions
+- Fault deactivation conditions
+  
+> The architecture allows users to replace individual implementations while preserving the surrounding simulation configuration.
 
 ## Cislunar Astrodynamics
 
@@ -386,6 +159,253 @@ A more detail example of usage can be seen in:
 examples/xx/Continuation of Lyapunov and Halo Orbit Families.xx
 ``` 
 
+Where a demonstration of the cislunar astrodynamics capabilities of ARGOS is implemented through the computation and continuation of periodic orbit families in the Earth-Moon CR3BP.
+
+## MBSE Direction
+One of the long-term objectives of ARGOS is to investigate the connection between Model-Based Systems Engineering (MBSE) and executable spacecraft GNC simulation.
+
+The mission-oriented architecture provides explicit abstractions for:
+- Mission context
+- Mission phases
+- Spacecraft
+- System functions
+- Sensors
+- Actuators
+- GNC components
+- Propagation models
+- Operational configurations
+
+These abstractions provide a semantic basis for connecting system-level descriptions with executable simulation configurations.
+
+> The current research direction investigates the mapping between MBSE models and ARGOS configurations, particularly using Arcadia/Capella models.
+
+## Current Capabilities
+
+| Area          | Capability                            | Status      |
+| ------------- | ------------------------------------- | ----------- |
+| Simulation    | Modular simulation engine             | Implemented |
+| Simulation    | Multiple spacecraft                   | Implemented |
+| Simulation    | Independent spacecraft configurations | Implemented |
+| Mission       | Mission phases                        | Implemented |
+| Mission       | Conditional phase transitions         | Implemented |
+| Dynamics      | Translational dynamics                | Implemented |
+| Dynamics      | Rotational rigid-body dynamics        | Implemented |
+| Propagation   | Relative two-body propagation         | Implemented |
+| Propagation   | CR3BP propagation                     | Implemented |
+| Propagation   | Native adaptive RK45 solver           | Implemented |
+| Sensors       | Modular sensor architecture           | Implemented |
+| Sensors       | Absolute state measurements           | Implemented |
+| Sensors       | Measurement error models              | Implemented |
+| Navigation    | Ideal navigation                      | Implemented |
+| Navigation    | Custom navigation interfaces          | Implemented |
+| Guidance      | Constant-reference guidance           | Implemented |
+| Guidance      | Custom guidance interfaces            | Implemented |
+| Control       | PD attitude control                   | Implemented |
+| Control       | Custom controller interfaces          | Implemented |
+| Control       | Control allocation                    | Implemented |
+| Actuation     | RCS thruster model                    | Implemented |
+| Actuation     | PWM / bang-bang behavior              | Implemented |
+| Environment   | Environment abstraction               | Implemented |
+| Faults        | Fault manager and fault events        | Implemented |
+| Faults        | Sensor fault injection                | Implemented |
+| Visualization | State visualization                   | Implemented |
+| Visualization | GNC visualization                     | Implemented |
+| Visualization | Trajectory visualization              | Implemented |
+| Astrodynamics | CR3BP analysis                        | Implemented |
+| Astrodynamics | Lagrange point computation            | Implemented |
+| Astrodynamics | Linearized CR3BP analysis             | Implemented |
+| Astrodynamics | Eigenanalysis                         | Implemented |
+| Astrodynamics | Lyapunov orbit computation            | Implemented |
+| Astrodynamics | Halo orbit generation                 | Implemented |
+| Astrodynamics | Orbit-family continuation             | Implemented |
+
+
+## Examples
+ARGOS includes Python examples and Jupyter notebooks demonstrating different aspects of the toolkit.
+
+### Example 1 — Attitude GNC
+Introduces the complete GNC execution chain:
+```text
+Sensor
+  ↓
+Navigation
+  ↓
+Guidance
+  ↓
+Controller
+  ↓
+Control Allocation
+  ↓
+RCS
+  ↓
+Rotational Dynamics
+```
+
+### Example 2 — Multi-Spacecraft Simulation
+Demonstrates multiple spacecraft within the same simulation environment, including spacecraft-to-spacecraft state relationships.
+
+This provides the basis for scenarios where one spacecraft needs information about another spacecraft.
+
+### Example 3 — CR3BP Propagation
+Demonstrates translational propagation using the Circular Restricted Three-Body Problem (CR3BP), including the Earth-Moon system.
+
+This example introduces the connection between the spacecraft simulation framework and the cislunar astrodynamics tools.
+
+### Example 4 — Mission Phases
+Demonstrates how a spacecraft can change its active simulation and GNC configuration during a mission.
+
+The example illustrates:
+``` text
+Mission Phase
+      ↓
+Transition Condition
+      ↓
+New Mission Phase
+      ↓
+New GNC / Dynamics Configuration
+```
+
+### Simulation Results
+ARGOS records simulation results through the `SimulationHistory` system. History is maintained independently for each spacecraft and is progressively written to disk in fixed-size chunks, allowing long simulations to be recorded without keeping the complete history in memory.
+
+For each spacecraft, the recorded history can include:
+
+- Simulation time and simulation tick
+- True translational state:
+  - Position
+  - Velocity
+  - Acceleration
+- True rotational state:
+  - Attitude quaternion
+  - Angular velocity
+  - Angular acceleration
+- Estimated spacecraft state produced by the navigation system
+- Estimated target state, when applicable
+- Guidance references:
+  - Position
+  - Velocity
+  - Acceleration
+  - Attitude
+  - Angular velocity
+  - Angular acceleration
+- Control outputs:
+  - Force
+  - Torque
+- Forces and torques actually exerted on the spacecraft
+- Mission phase transition events
+- Target spacecraft information
+
+This allows the simulation to be separated from the subsequent analysis and visualization workflow.
+
+Conceptually:
+```text
+Simulation
+     ↓
+SimulationHistory
+     ↓
+ ┌──────────────────────┐
+ ↓          ↓           ↓
+Plots  Analysis  Custom Processing
+```
+
+## Installation
+
+> ARGOS currently requires Python 3.14 or newer.
+
+Clone the repository:
+
+```bash
+git clone https://github.com/rodandres/ARGOS-Toolkit.git
+cd ARGOS-Toolkit
+```
+
+Create and activate a virtual environment:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Install ARGOS in editable mode:
+```bash
+python -m pip install -e .
+```
+
+For development and testing:
+```bash
+python -m pip install -e ".[dev]"
+```
+
+Verify the installation:
+```bash
+python -c "import argos; print(argos.__file__)"
+```
+
+## Quick Start
+
+The simplest way to become familiar with ARGOS is to run the provided examples.
+
+The examples are located under:
+```text
+examples/
+```
+
+and are provided both as Python scripts and Jupyter notebooks.
+
+## Project Structure
+ARGOS-Toolkit/
+│
+├── src/
+│   └── argos/
+│       ├── actuators/
+│       ├── cislunar_astrodynamics/
+│       ├── controllers/
+│       ├── core/
+│       ├── enviroments/
+│       ├── faults/
+│       ├── frames/
+│       ├── general/
+│       ├── guidance/
+│       ├── navigation/
+│       ├── propagators/
+│       ├── sensors/
+│       ├── solvers/
+│       └── visualization/
+│
+├── examples/
+│   ├── ipynb/
+│   └── py/
+│
+├── tests/
+│
+├── docs/
+│   ├── api/
+│   └── index.md
+│
+├── mkdocs.yml
+├── script.py
+├── pyproject.toml
+├── README.md
+└── LICENSE
+
+### Main Modules
+| Package                  | Purpose                                         |
+| ------------------------ | ----------------------------------------------- |
+| `core`                   | Simulation, spacecraft, and mission management  |
+| `actuators`              | Spacecraft actuator models                      |
+| `controllers`            | Control laws and control allocation             |
+| `enviroments`            | Simulation environment models                   |
+| `faults`                 | Fault events, fault management, and fault modes |
+| `general`                | Shared data structures and simulation utilities |
+| `guidance`               | Guidance interfaces and algorithms              |
+| `navigation`             | Navigation interfaces and algorithms            |
+| `propagators`            | Translational and rotational propagation        |
+| `sensors`                | Sensor models and measurement errors            |
+| `solvers`                | Numerical integration methods                   |
+| `cislunar_astrodynamics` | CR3BP and cislunar trajectory analysis          |
+| `frames`                 | Reference-frame utilities                       |
+| `visualization`          | Simulation and GNC visualization                |
+
+
 ## Development Status
 
 ARGOS is under active development. The current architecture should be considered a research and development framework rather than flight-ready software.
@@ -393,43 +413,53 @@ ARGOS is under active development. The current architecture should be considered
 ### Implemented
 - Modular spacecraft simulation
 - Multi-spacecraft scenarios
-- Mission phases and transitions
-- Translational and rotational dynamics
-- Basic GNC pipeline
+- Mission phases and conditional transitions
+- Translational dynamics
+- Rotational rigid-body dynamics
+- Modular sensors
+- Navigation interfaces
+- Guidance interfaces
+- Controller interfaces
+- Control allocation
 - RCS actuator modeling
-- Custom GNC interfaces
-- Native numerical integration
+- Native numerical propagation
+- RK45 integration
+- Fault injection infrastructure
 - Simulation history
 - Visualization tools
 - CR3BP analysis
 - Lagrange point analysis
-- Lyapunov and Halo orbit tools
-- Under Development
-- More complete environmental modeling
-- Integration of environmental perturbations
-- Higher-fidelity sensor models
-- More complete actuator modeling
-- Expanded navigation capabilities
-- Additional dynamics models
-- Improved framework consistency and API stability
-- Planned Direction
+- Lyapunov orbit tools
+- Halo orbit generation and continuation
+- Automatic API documentation
   
-### The long-term development
-The objective with ARGOS is focused on increasing the fidelity and autonomy of spacecraft GNC simulations, particularly for multi-spacecraft and cislunar applications.
+### Under Development
+- Higher-fidelity environmental models
+- Expanded environmental perturbations
+- Higher-fidelity sensor models
+- Expanded actuator models
+- Additional navigation algorithms
+- Additional dynamics models
+- FDIR capabilities
+- MBSE model-to-simulation mapping
+- Simulation-based requirements verification
+- External simulation-tool integration
 
-### Potential development areas include:
 
-- Relative orbital dynamics
-- Relative navigation
-- RPOD-specific guidance and control
+## Research Direction
+The long-term objective with ARGOS is focused on increasing the fidelity and autonomy of spacecraft GNC simulations, particularly for multi-spacecraft and cislunar applications.
+
+- RPOD guidance and control
 - Advanced estimation
-- Additional spacecraft and environment models
 - Computer-vision-based navigation
+- Additional spacecraft and environment models
 - Hardware/software interfaces
 - Higher-fidelity simulation environments
-- Expanded autonomous spacecraft operations
+- MBSE-driven simulation configuration
+- Simulation-based requirements verification
+- Monte Carlo and experiment-generation capabilities
+- Coupling with specialized simulation environments
 
-These items represent development direction and should not be interpreted as currently implemented capabilities.
 
 ## Development
 
@@ -449,6 +479,23 @@ Standard interface
 Multiple simulation configurations
 ```
 
+## Testing
+
+ARGOS includes an automated test suite designed to verify both the structural integrity and the functional correctness of the toolkit.
+
+The testing strategy combines:
+
+- **Unit tests** to verify individual classes, functions, algorithms, and components in isolation.
+- **Integration tests** to verify the interaction between multiple ARGOS components and ensure that complete simulation workflows behave as expected.
+- **Structural tests** to verify that the package and its modules can be discovered and imported successfully.
+- **Example execution tests** to ensure that the provided Python examples remain executable as the codebase evolves.
+
+Run the complete test suite with:
+
+```bash
+pytest -q
+```
+
 ## Dependencies
 
 ARGOS is primarily built on the following Python libraries:
@@ -458,6 +505,12 @@ ARGOS is primarily built on the following Python libraries:
 - **Matplotlib** — Data visualization and simulation plotting.
 - **Pandas** — Data analysis and structured simulation results.
 - **psutil** — System and process information used by the simulation infrastructure.
+
+Development and testing additionally use:
+- pytest
+- MkDocs
+- Material for MkDocs
+- mkdocstrings
 
 ## Contributing
 
