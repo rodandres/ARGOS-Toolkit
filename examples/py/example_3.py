@@ -59,7 +59,7 @@ sim = Simulation(max_sim_time=0.75952417*2 * TIME_FACTOR_SEC * 10,
 from argos.propagators.native_propagator import NativeTranslationalPropagator
 from argos.sensors.generic_sensor import AbsoluteSensor
 
-translational_propagator = NativeTranslationalPropagator(dynamics="CR3BP", integration_method="NATIVE_RK45")
+translational_propagator = NativeTranslationalPropagator(orbital_model="CR3BP", integration_method="CPP_RK45")
 
 dt = 5e-4 * TIME_FACTOR_SEC 
 
@@ -111,10 +111,10 @@ result = sim.simulate()
 # %%
 from argos.visualization.trajectories import *
 
-#plot_trajectory("SC", result, show=True, body="Moon",body_position=np.array([(1-MU)*LENGTH_FACTOR, 0.0, 0.0]),)
+plot_trajectory("SC", result, show=True, body="Moon",body_position=np.array([(1-MU)*LENGTH_FACTOR, 0.0, 0.0]),)
 
 from argos.visualization.state_variables import plot_position
 
-#plot_position("SC", result)
+plot_position("SC", result)
 
 

@@ -31,9 +31,7 @@ def create_gnc_simulation(tmp_path, max_sim_time=1.0):
 
 
 def create_gnc_spacecraft(simulation):
-    translational_propagator = NativeTranslationalPropagator(
-        dynamics="NEWTON",
-    )
+    translational_propagator = NativeTranslationalPropagator()
 
     sensor = AbsoluteSensor(
         sample_rate_freq=10.0,

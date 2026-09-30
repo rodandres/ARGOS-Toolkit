@@ -16,6 +16,11 @@ class TranslationalPropagatorBase(ABC):
     """
     def __init__(self, integration_method: str = "NATIVE_RK45"):        
         self.integration_method = integration_method
+        self.using_cpp = False
+
+        if "cpp" in self.integration_method.lower():
+            self.using_cpp = True
+    
 
     def copy(self):
         """

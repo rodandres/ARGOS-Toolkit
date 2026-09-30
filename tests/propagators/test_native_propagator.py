@@ -7,6 +7,13 @@ from argos.propagators.native_propagator import (
     SUPPORTED_DYNAMICS,
 )
 
+from argos.propagators.dynamic_models import (
+    quaternion_dynamics,
+    cr3bp,
+    rel2bp,
+    newton,
+)
+
 
 # ============================================================================
 # NativeTranslationalPropagator - initialization
@@ -17,59 +24,81 @@ def test_translational_propagator_default_initialization():
     propagator = NativeTranslationalPropagator()
 
     assert propagator.integration_method == "NATIVE_RK45"
-    assert propagator.dynamics_function is None
-    assert propagator.arguments == ()
+    assert propagator.orbital_model is None
+    assert propagator.orbital_model_arguments == ()
+    assert propagator.dynamic_model == newton
 
 
-@pytest.mark.parametrize("dynamics", SUPPORTED_DYNAMICS)
-def test_translational_propagator_accepts_supported_dynamics(dynamics):
-    propagator = NativeTranslationalPropagator(dynamics)
+@pytest.mark.parametrize("orbital_model", SUPPORTED_DYNAMICS)
+def test_translational_propagator_accepts_supported_orbital_model(
+    orbital_model,
+):
+    propagator = NativeTranslationalPropagator(orbital_model)
 
-    assert propagator.dynamics_function is not None or dynamics == "NEWTON"
+    if orbital_model == "NEWTON":
+        assert propagator.orbital_model is None
+        assert propagator.orbital_model_arguments == ()
+        assert propagator.dynamic_model == newton
+
+    elif orbital_model == "REL2BP":
+        assert propagator.orbital_model == rel2bp
+        assert len(propagator.orbital_model_arguments) == 1
+
+    elif orbital_model == "CR3BP":
+        assert propagator.orbital_model == cr3bp
+        assert len(propagator.orbital_model_arguments) == 3
 
 
-def test_translational_propagator_rejects_unsupported_dynamics():
+def test_translational_propagator_rejects_unsupported_orbital_model():
     with pytest.raises(ValueError):
         NativeTranslationalPropagator("INVALID")
 
 
 # ============================================================================
-# NativeTranslationalPropagator - dynamic model selection
+# NativeTranslationalPropagator - orbital model selection
 # ============================================================================
 
 
-def test_set_dynamic_model_rel2bp():
+def test_set_orbital_model_rel2bp():
     propagator = NativeTranslationalPropagator()
 
-    propagator.set_dynamic_model("REL2BP")
+    propagator._set_orbital_model("REL2BP")
 
-    assert propagator.dynamics_function == propagator.rel2bp
-    assert len(propagator.arguments) == 1
-    assert propagator.arguments[0] > 0.0
+    assert propagator.orbital_model == rel2bp
+    assert len(propagator.orbital_model_arguments) == 1
+
+    mu = propagator.orbital_model_arguments[0]
+
+    assert mu > 0.0
 
 
-def test_set_dynamic_model_cr3bp():
+def test_set_orbital_model_cr3bp():
     propagator = NativeTranslationalPropagator()
 
-    propagator.set_dynamic_model("CR3BP")
+    propagator._set_orbital_model("CR3BP")
 
-    assert propagator.dynamics_function == propagator.cr3bp
-    assert len(propagator.arguments) == 3
+    assert propagator.orbital_model == cr3bp
+    assert len(propagator.orbital_model_arguments) == 3
 
-    mu, length_factor, time_factor = propagator.arguments
+    mu, length_factor, time_factor = propagator.orbital_model_arguments
 
     assert mu > 0.0
     assert length_factor > 0.0
     assert time_factor > 0.0
 
 
-def test_set_dynamic_model_newton():
-    propagator = NativeTranslationalPropagator("REL2BP")
+def test_newton_is_used_as_default_dynamic_model():
+    propagator = NativeTranslationalPropagator()
 
-    propagator.set_dynamic_model("NEWTON")
+    assert propagator.dynamic_model == newton
 
-    assert propagator.dynamics_function is None
-    assert propagator.arguments == ()
+
+def test_newton_is_used_with_newton_orbital_model():
+    propagator = NativeTranslationalPropagator("NEWTON")
+
+    assert propagator.orbital_model is None
+    assert propagator.orbital_model_arguments == ()
+    assert propagator.dynamic_model == newton
 
 
 # ============================================================================
@@ -80,7 +109,7 @@ def test_set_dynamic_model_newton():
 def test_rel2bp_returns_velocity_and_gravitational_acceleration():
     propagator = NativeTranslationalPropagator("REL2BP")
 
-    mu = propagator.arguments[0]
+    mu = propagator.orbital_model_arguments[0]
 
     radius = 7_000_000.0
     velocity_input = np.array([0.0, 7_500.0, 0.0])
@@ -92,7 +121,7 @@ def test_rel2bp_returns_velocity_and_gravitational_acceleration():
         )
     )
 
-    velocity, acceleration = propagator.rel2bp(
+    velocity, acceleration = rel2bp(
         0.0,
         state,
         mu,
@@ -116,7 +145,7 @@ def test_rel2bp_returns_velocity_and_gravitational_acceleration():
 def test_rel2bp_acceleration_points_toward_central_body():
     propagator = NativeTranslationalPropagator("REL2BP")
 
-    mu = propagator.arguments[0]
+    mu = propagator.orbital_model_arguments[0]
 
     state = np.array(
         [
@@ -129,7 +158,7 @@ def test_rel2bp_acceleration_points_toward_central_body():
         ]
     )
 
-    _, acceleration = propagator.rel2bp(
+    _, acceleration = rel2bp(
         0.0,
         state,
         mu,
@@ -159,12 +188,14 @@ def test_newton_dynamics_without_forces():
         ]
     )
 
-    result = propagator.dynamics(
-        t=0.0,
-        state=state,
-        mass=10.0,
-        applied_force=np.zeros(3),
-        disturbance_force=np.zeros(3),
+    result = newton(
+        0.0,
+        state,
+        10.0,
+        np.zeros(3),
+        np.zeros(3),
+        propagator.orbital_model,
+        propagator.orbital_model_arguments,
     )
 
     expected = np.array(
@@ -199,12 +230,14 @@ def test_newton_dynamics_with_external_forces():
     applied_force = np.array([10.0, 20.0, 30.0])
     disturbance_force = np.array([1.0, 2.0, 3.0])
 
-    result = propagator.dynamics(
-        t=0.0,
-        state=state,
-        mass=mass,
-        applied_force=applied_force,
-        disturbance_force=disturbance_force,
+    result = newton(
+        0.0,
+        state,
+        mass,
+        applied_force,
+        disturbance_force,
+        propagator.orbital_model,
+        propagator.orbital_model_arguments,
     )
 
     expected = np.array(
@@ -221,7 +254,7 @@ def test_newton_dynamics_with_external_forces():
     assert np.allclose(result, expected)
 
 
-def test_dynamics_with_non_positive_mass_ignores_external_forces():
+def test_newton_dynamics_with_non_positive_mass_ignores_external_forces():
     propagator = NativeTranslationalPropagator("NEWTON")
 
     state = np.array(
@@ -235,12 +268,14 @@ def test_dynamics_with_non_positive_mass_ignores_external_forces():
         ]
     )
 
-    result = propagator.dynamics(
-        t=0.0,
-        state=state,
-        mass=0.0,
-        applied_force=np.array([10.0, 20.0, 30.0]),
-        disturbance_force=np.array([1.0, 2.0, 3.0]),
+    result = newton(
+        0.0,
+        state,
+        0.0,
+        np.array([10.0, 20.0, 30.0]),
+        np.array([1.0, 2.0, 3.0]),
+        propagator.orbital_model,
+        propagator.orbital_model_arguments,
     )
 
     expected = np.array(
@@ -265,7 +300,7 @@ def test_dynamics_with_non_positive_mass_ignores_external_forces():
 def test_cr3bp_returns_velocity_and_acceleration():
     propagator = NativeTranslationalPropagator("CR3BP")
 
-    mu, length_factor, time_factor = propagator.arguments
+    mu, length_factor, time_factor = propagator.orbital_model_arguments
 
     state = np.array(
         [
@@ -278,7 +313,7 @@ def test_cr3bp_returns_velocity_and_acceleration():
         ]
     )
 
-    velocity, acceleration = propagator.cr3bp(
+    velocity, acceleration = cr3bp(
         0.0,
         state,
         mu,
@@ -302,12 +337,14 @@ def test_rotational_propagator_default_initialization():
     propagator = NativeRotationalPropagator()
 
     assert propagator.integration_method == "NATIVE_RK45"
+    assert propagator.dynamic_model == quaternion_dynamics
 
 
 def test_rotational_propagator_custom_integration_method():
     propagator = NativeRotationalPropagator("CUSTOM")
 
     assert propagator.integration_method == "CUSTOM"
+    assert propagator.dynamic_model == quaternion_dynamics
 
 
 # ============================================================================
@@ -326,13 +363,13 @@ def test_quaternion_dynamics_with_zero_angular_velocity():
 
     state = np.concatenate((quaternion, angular_velocity))
 
-    result = propagator.quaternion_dynamics(
-        t=0.0,
-        state=state,
-        inertia_matrix=inertia,
-        inverse_inertia_matrix=inverse_inertia,
-        applied_torque=np.zeros(3),
-        disturbance_torque=np.zeros(3),
+    result = quaternion_dynamics(
+        0.0,
+        state,
+        inertia,
+        inverse_inertia,
+        np.zeros(3),
+        np.zeros(3),
     )
 
     assert np.allclose(result, np.zeros(7))
@@ -358,13 +395,13 @@ def test_quaternion_dynamics_with_applied_torque():
 
     applied_torque = np.array([10.0, 20.0, 30.0])
 
-    result = propagator.quaternion_dynamics(
-        t=0.0,
-        state=state,
-        inertia_matrix=inertia,
-        inverse_inertia_matrix=inverse_inertia,
-        applied_torque=applied_torque,
-        disturbance_torque=np.zeros(3),
+    result = quaternion_dynamics(
+        0.0,
+        state,
+        inertia,
+        inverse_inertia,
+        applied_torque,
+        np.zeros(3),
     )
 
     expected_angular_acceleration = np.array(
@@ -406,13 +443,13 @@ def test_quaternion_dynamics_with_disturbance_torque():
 
     disturbance_torque = np.array([5.0, 10.0, 15.0])
 
-    result = propagator.quaternion_dynamics(
-        t=0.0,
-        state=state,
-        inertia_matrix=inertia,
-        inverse_inertia_matrix=inverse_inertia,
-        applied_torque=np.zeros(3),
-        disturbance_torque=disturbance_torque,
+    result = quaternion_dynamics(
+        0.0,
+        state,
+        inertia,
+        inverse_inertia,
+        np.zeros(3),
+        disturbance_torque,
     )
 
     expected_angular_acceleration = np.array(
@@ -444,13 +481,13 @@ def test_quaternion_dynamics_includes_gyroscopic_term():
         )
     )
 
-    result = propagator.quaternion_dynamics(
-        t=0.0,
-        state=state,
-        inertia_matrix=inertia,
-        inverse_inertia_matrix=inverse_inertia,
-        applied_torque=np.zeros(3),
-        disturbance_torque=np.zeros(3),
+    result = quaternion_dynamics(
+        0.0,
+        state,
+        inertia,
+        inverse_inertia,
+        np.zeros(3),
+        np.zeros(3),
     )
 
     expected_angular_acceleration = (
@@ -474,6 +511,7 @@ def test_quaternion_dynamics_normalizes_quaternion():
     inverse_inertia = np.eye(3)
 
     quaternion = np.array([0.0, 0.0, 0.0, 2.0])
+
     state = np.concatenate(
         (
             quaternion,
@@ -481,13 +519,13 @@ def test_quaternion_dynamics_normalizes_quaternion():
         )
     )
 
-    result = propagator.quaternion_dynamics(
-        t=0.0,
-        state=state,
-        inertia_matrix=inertia,
-        inverse_inertia_matrix=inverse_inertia,
-        applied_torque=np.zeros(3),
-        disturbance_torque=np.zeros(3),
+    result = quaternion_dynamics(
+        0.0,
+        state,
+        inertia,
+        inverse_inertia,
+        np.zeros(3),
+        np.zeros(3),
     )
 
     assert np.allclose(

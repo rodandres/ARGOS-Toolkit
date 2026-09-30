@@ -100,9 +100,7 @@ def test_basic_translational_simulation():
         simulation,
         initial_position=np.zeros(3),
         initial_velocity=np.array([1.0, 0.0, 0.0]),
-        translational_model=NativeTranslationalPropagator(
-            dynamics="NEWTON"
-        ),
+        translational_model=NativeTranslationalPropagator(),
         dt_propagation=1.0,
     )
 
@@ -207,9 +205,7 @@ def test_translational_and_rotational_simulation():
         initial_velocity=np.array([1.0, 0.0, 0.0]),
         initial_attitude=np.array([0.0, 0.0, 0.0, 1.0]),
         initial_angular_velocity=np.zeros(3),
-        translational_model=NativeTranslationalPropagator(
-            dynamics="NEWTON"
-        ),
+        translational_model=NativeTranslationalPropagator(),
         rotational_model=NativeRotationalPropagator(),
         dt_propagation=1.0,
     )
@@ -259,9 +255,7 @@ def test_simulation_dt_master_is_taken_from_spacecraft():
 
     phase = MissionPhase(
         name="initial",
-        translational_model=NativeTranslationalPropagator(
-            dynamics="NEWTON"
-        ),
+        translational_model=NativeTranslationalPropagator(),
         dt_propagation=2.0,
     )
 
@@ -312,9 +306,7 @@ def test_simulation_respects_max_sim_time():
         simulation,
         initial_position=np.zeros(3),
         initial_velocity=np.array([1.0, 0.0, 0.0]),
-        translational_model=NativeTranslationalPropagator(
-            dynamics="NEWTON"
-        ),
+        translational_model=NativeTranslationalPropagator(),
         dt_propagation=1.0,
     )
 
@@ -358,9 +350,7 @@ def test_multiple_spacecrafts_simulate_independently():
         name="SC1",
         initial_position=np.zeros(3),
         initial_velocity=np.array([1.0, 0.0, 0.0]),
-        translational_model=NativeTranslationalPropagator(
-            dynamics="NEWTON"
-        ),
+        translational_model=NativeTranslationalPropagator(),
         dt_propagation=1.0,
     )
 
@@ -369,9 +359,7 @@ def test_multiple_spacecrafts_simulate_independently():
         name="SC2",
         initial_position=np.zeros(3),
         initial_velocity=np.array([0.0, 2.0, 0.0]),
-        translational_model=NativeTranslationalPropagator(
-            dynamics="NEWTON"
-        ),
+        translational_model=NativeTranslationalPropagator(),
         dt_propagation=1.0,
     )
 
