@@ -273,152 +273,114 @@ PYBIND11_MODULE(_cpp, m)
     m.doc() =
         "ARGOS native C++ simulation backend";
 
+m.def(
+    "propagate_translational",
+    [](
+        py::array_t<double> state,
+        double t0,
+        double tf,
+        double mass,
+        py::array_t<double> applied_force,
+        py::array_t<double> disturbance_force,
+        const std::string& dynamics_model,
+        const std::string& orbital_model,
+        double mu,
+        double length_factor,
+        double time_factor,
+        double h0,
+        double h_min,
+        double h_max,
+        double rtol,
+        double atol,
+        bool adaptive,
+        std::size_t max_iter,
+        bool verbose
+    )
+    {        
+        // ------------------------------------------------------------
+        // Convert Python types to C++ types
+        // ------------------------------------------------------------
 
-    m.def(
-        "propagate_translational",
+        argos::State cpp_state =
+            numpy_to_state(state);
 
-        [](
-            py::array_t<double> state,
+        argos::Vector3 cpp_applied_force =
+            numpy_to_vector3(applied_force);
 
-            double t0,
-            double tf,
+        argos::Vector3 cpp_disturbance_force =
+            numpy_to_vector3(disturbance_force);
 
-            double mass,
+        // ------------------------------------------------------------
+        // Configure RK45
+        // ------------------------------------------------------------
 
-            py::array_t<double> applied_force,
-            py::array_t<double> disturbance_force,
+        argos::RK45Options options;
 
-            const std::string& dynamics_model,
-            const std::string& orbital_model,
+        options.h0 = h0;
+        options.h_min = h_min;
+        options.h_max = h_max;
+        options.rtol = rtol;
+        options.atol = atol;
+        options.adaptive = adaptive;
+        options.max_iter = max_iter;
+        options.verbose = verbose;
 
-            double mu,
-            double length_factor,
-            double time_factor,
+        // ------------------------------------------------------------
+        // Run C++ translational propagation
+        // ------------------------------------------------------------
 
-            double h0,
-            double h_min,
-            double h_max,
+        const auto result =
+            argos::propagate_translational(
+                cpp_state,
+                t0,
+                tf,
+                mass,
+                cpp_applied_force,
+                cpp_disturbance_force,
+                dynamics_model,
+                orbital_model,
+                mu,
+                length_factor,
+                time_factor,
+                options
+            );
 
-            double rtol,
-            double atol,
+        std::cout
+            << "Returned from argos::propagate_translational\n"
+            << std::endl;
 
-            bool adaptive,
+        // ------------------------------------------------------------
+        // Convert result back to Python
+        // ------------------------------------------------------------
 
-            std::size_t max_iter,
+        return rk45_result_to_python(result);
+    },
 
-            bool verbose
-        )
-        {
-            // -------------------------------------------------------------
-            // Convert Python inputs to native C++ representations
-            // -------------------------------------------------------------
+    // ------------------------------------------------------------
+    // Python argument names
+    // ------------------------------------------------------------
 
-            argos::State initial_state =
-                numpy_to_state(state);
+    py::arg("state"),
+    py::arg("t0"),
+    py::arg("tf"),
+    py::arg("mass"),
+    py::arg("applied_force"),
+    py::arg("disturbance_force"),
+    py::arg("dynamics_model"),
+    py::arg("orbital_model"),
+    py::arg("mu"),
+    py::arg("length_factor"),
+    py::arg("time_factor"),
+    py::arg("h0"),
+    py::arg("h_min"),
+    py::arg("h_max"),
+    py::arg("rtol"),
+    py::arg("atol"),
+    py::arg("adaptive"),
+    py::arg("max_iter"),
+    py::arg("verbose")
+);        
 
-            argos::Vector3 applied_force_cpp =
-                numpy_to_vector3(applied_force);
-
-            argos::Vector3 disturbance_force_cpp =
-                numpy_to_vector3(disturbance_force);
-
-
-            // -------------------------------------------------------------
-            // Configure RK45
-            // -------------------------------------------------------------
-
-            argos::RK45Options options;
-
-            options.h0 =
-                h0;
-
-            options.h_min =
-                h_min;
-
-            options.h_max =
-                h_max;
-
-            options.rtol =
-                rtol;
-
-            options.atol =
-                atol;
-
-            options.adaptive =
-                adaptive;
-
-            options.max_iter =
-                max_iter;
-
-            options.verbose =
-                verbose;
-
-
-            // -------------------------------------------------------------
-            // Native propagation
-            //
-            // No Python callable is passed into the solver.
-            // -------------------------------------------------------------
-
-            argos::RK45Result result =
-                argos::propagate_translational(
-                    initial_state,
-
-                    t0,
-                    tf,
-
-                    mass,
-
-                    applied_force_cpp,
-                    disturbance_force_cpp,
-
-                    dynamics_model,
-                    orbital_model,
-
-                    mu,
-                    length_factor,
-                    time_factor,
-
-                    options
-                );
-
-
-            // -------------------------------------------------------------
-            // Convert native result to Python representation
-            // -------------------------------------------------------------
-
-            return rk45_result_to_python(result);
-        },
-
-        py::arg("state"),
-        py::arg("t0"),
-        py::arg("tf"),
-
-        py::arg("mass"),
-
-        py::arg("applied_force"),
-        py::arg("disturbance_force"),
-
-        py::arg("dynamics_model"),
-        py::arg("orbital_model"),
-
-        py::arg("mu"),
-        py::arg("length_factor"),
-        py::arg("time_factor"),
-
-        py::arg("h0") = 0.1,
-        py::arg("h_min") = 1e-6,
-        py::arg("h_max") = 1.0,
-
-        py::arg("rtol") = 1e-6,
-        py::arg("atol") = 1e-9,
-
-        py::arg("adaptive") = true,
-
-        py::arg("max_iter") = 100000,
-
-        py::arg("verbose") = false
-    );
 
     m.def(
         "evaluate_translational_dynamics",

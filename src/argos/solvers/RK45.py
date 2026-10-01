@@ -102,6 +102,8 @@ def rk45(
     # Error control parameters
     safety = 0.9
     p = 5.0   # order
+    accepted_steps = 0
+    rejected_steps = 0
     
     # ===== Event handling setup =====
     terminated_by_event = False
@@ -201,6 +203,7 @@ def rk45(
 
                 ts.append(t)
                 Ys.append(Y.copy())
+                accepted_steps += 1
                 if verbose:
                     print("----- Step Accepted -----")
                     print("Iteration %d: t = %.6f, h = %.6f, err = %.6e" % (iter_count, t, h, err))
@@ -220,6 +223,7 @@ def rk45(
                     status = 1
                     message = f"Terminated by event {ev_id}"
                     terminated_by_event = True
+                    accepted_steps += 1
                     success = True
                     break
                 
@@ -227,6 +231,7 @@ def rk45(
                 # Reject
                 factor = safety * err**(-1/p)
                 h *= np.clip(factor, 0.1, 0.5)
+                rejected_steps += 1
 
             h = np.clip(h, h_min, h_max)
 
@@ -239,6 +244,7 @@ def rk45(
             Y = Y5
             ts.append(t)
             Ys.append(Y.copy())
+            accepted_steps += 1
             h = h0
 
             terminate, ev_id = handle_events(t, Y, t_prev, Y_prev)
@@ -279,5 +285,7 @@ def rk45(
     result.nlu = 0 # Not implemented
     result.t_events = [np.array(te) for te in t_events]
     result.y_events = [np.array(ye) for ye in y_events]
+    result.accepted_steps = accepted_steps
+    result.rejected_steps = rejected_steps
 
     return result

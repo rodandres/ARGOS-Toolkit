@@ -1,6 +1,7 @@
 #include "propagator.hpp"
 
 #include "dynamics_factory.hpp"
+#include "iostream"
 
 namespace argos {
 

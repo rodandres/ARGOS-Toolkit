@@ -368,6 +368,7 @@ void newton(
     derivative[3] = acceleration[0];
     derivative[4] = acceleration[1];
     derivative[5] = acceleration[2];
+
 }
 
 }  // namespace argos

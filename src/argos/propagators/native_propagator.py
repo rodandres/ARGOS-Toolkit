@@ -189,6 +189,12 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
                 mu = 0.0
                 length_factor = 1.0
                 time_factor = 1.0
+           
+
+            state_end = np.ascontiguousarray(
+                state_end,
+                dtype=np.float64,
+            )
 
             derivative = _cpp.evaluate_translational_dynamics(
                 state_end,
@@ -202,6 +208,8 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
                 length_factor,
                 time_factor,
             )
+
+            return derivative
 
         else:
 
@@ -265,12 +273,12 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
         spacecraft.spacecraft_data.true_state.velocity = state_end[3:6]
 
         
-        spacecraft.spacecraft_data.true_state.acceleration = (
-            self.evaluate_dynamics(
-                t_end,
-                state_end,
-                mass,
-                applied_force,
-                np.zeros(3),
-            )[3:6]
-        )
+        acceleration = self.evaluate_dynamics(
+            t_end,
+            state_end,
+            mass,
+            applied_force,
+            np.zeros(3),
+        )[3:6]        
+
+        spacecraft.spacecraft_data.true_state.acceleration = acceleration        
