@@ -8,6 +8,7 @@
 namespace argos {
 
 using Vector3 = std::array<double, 3>;
+using Matrix3 = std::array<std::array<double, 3>, 3>;
 
 DynamicsFunction make_translational_dynamics(
     const std::string& dynamics_model,
@@ -18,6 +19,14 @@ DynamicsFunction make_translational_dynamics(
     double mu,
     double length_factor,
     double time_factor
+);
+
+DynamicsFunction make_rotational_dynamics(
+    const std::string& dynamics_model,
+    const Matrix3& inertia_matrix,
+    const Matrix3& inverse_inertia_matrix,
+    const Vector3& applied_torque,
+    const Vector3& disturbance_torque
 );
 
 }  // namespace argos

@@ -9,6 +9,8 @@
 namespace argos {
 
 using Vector3 = std::array<double, 3>;
+using Vector4 = std::array<double, 4>;
+using Matrix3 = std::array<std::array<double, 3>, 3>;
 
 struct TranslationalModelResult {
     Vector3 velocity;
@@ -20,9 +22,6 @@ struct TranslationalModelResult {
  *
  * State ordering:
  * [x, y, z, vx, vy, vz]
- *
- * Position is expressed in meters and velocity in meters per second.
- * The gravitational parameter mu is expressed in m^3/s^2.
  */
 TranslationalModelResult rel2bp(
     double t,
@@ -37,9 +36,6 @@ TranslationalModelResult rel2bp(
  *
  * State ordering:
  * [x, y, z, vx, vy, vz]
- *
- * The input state is expressed in SI units and internally converted
- * to normalized CR3BP units.
  */
 TranslationalModelResult cr3bp(
     double t,
@@ -52,21 +48,6 @@ TranslationalModelResult cr3bp(
 
 /**
  * Compute the complete translational equations of motion.
- *
- * The total acceleration is the sum of:
- *
- *     a_total = a_orbital + a_external
- *
- * where a_orbital is obtained from the selected orbital model and
- * a_external is obtained from the applied and disturbance forces.
- *
- * Supported orbital models:
- *
- *     "REL2BP"
- *     "CR3BP"
- *     "NEWTON"
- *
- * For "NEWTON", no orbital acceleration is applied.
  */
 void newton(
     double t,
@@ -78,6 +59,44 @@ void newton(
     double mu,
     double length_factor,
     double time_factor,
+    State& derivative
+);
+
+
+/**
+ * Validate a rotational state.
+ */
+void validate_rotational_state(const State& state);
+
+
+/**
+ * Compute the complete rotational equations of motion.
+ *
+ * State ordering:
+ * [qx, qy, qz, qw, wx, wy, wz]
+ *
+ * Quaternion convention:
+ * [qx, qy, qz, qw]
+ *
+ * Rotational dynamics:
+ *
+ *     omega_dot =
+ *         I^-1 * (
+ *             tau
+ *             - omega x (I * omega)
+ *         )
+ *
+ * Quaternion kinematics:
+ *
+ *     q_dot = 0.5 * Omega(q) * omega
+ */
+void quaternion_dynamics(
+    double t,
+    const State& state,
+    const Matrix3& inertia_matrix,
+    const Matrix3& inverse_inertia_matrix,
+    const Vector3& applied_torque,
+    const Vector3& disturbance_torque,
     State& derivative
 );
 

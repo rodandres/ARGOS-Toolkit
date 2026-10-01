@@ -61,6 +61,32 @@ argos::Vector3 numpy_to_vector3(
     };
 }
 
+argos::Matrix3 numpy_to_matrix3(
+    const py::array_t<double>& array
+)
+{
+    auto buffer = array.request();
+
+    if (
+        buffer.ndim != 2
+        || buffer.shape[0] != 3
+        || buffer.shape[1] != 3
+    ) {
+        throw std::invalid_argument(
+            "Matrix3 input must be a two-dimensional NumPy array "
+            "with shape (3, 3)."
+        );
+    }
+
+    const auto* data =
+        static_cast<const double*>(buffer.ptr);
+
+    return {{
+        {data[0], data[1], data[2]},
+        {data[3], data[4], data[5]},
+        {data[6], data[7], data[8]}
+    }};
+}
 
 py::array_t<double> vector_to_numpy(
     const std::vector<double>& values
@@ -273,114 +299,210 @@ PYBIND11_MODULE(_cpp, m)
     m.doc() =
         "ARGOS native C++ simulation backend";
 
-m.def(
-    "propagate_translational",
-    [](
-        py::array_t<double> state,
-        double t0,
-        double tf,
-        double mass,
-        py::array_t<double> applied_force,
-        py::array_t<double> disturbance_force,
-        const std::string& dynamics_model,
-        const std::string& orbital_model,
-        double mu,
-        double length_factor,
-        double time_factor,
-        double h0,
-        double h_min,
-        double h_max,
-        double rtol,
-        double atol,
-        bool adaptive,
-        std::size_t max_iter,
-        bool verbose
-    )
-    {        
+    m.def(
+        "propagate_translational",
+        [](
+            py::array_t<double> state,
+            double t0,
+            double tf,
+            double mass,
+            py::array_t<double> applied_force,
+            py::array_t<double> disturbance_force,
+            const std::string& dynamics_model,
+            const std::string& orbital_model,
+            double mu,
+            double length_factor,
+            double time_factor,
+            double h0,
+            double h_min,
+            double h_max,
+            double rtol,
+            double atol,
+            bool adaptive,
+            std::size_t max_iter,
+            bool verbose
+        )
+        {        
+            // ------------------------------------------------------------
+            // Convert Python types to C++ types
+            // ------------------------------------------------------------
+
+            argos::State cpp_state =
+                numpy_to_state(state);
+
+            argos::Vector3 cpp_applied_force =
+                numpy_to_vector3(applied_force);
+
+            argos::Vector3 cpp_disturbance_force =
+                numpy_to_vector3(disturbance_force);
+
+            // ------------------------------------------------------------
+            // Configure RK45
+            // ------------------------------------------------------------
+
+            argos::RK45Options options;
+
+            options.h0 = h0;
+            options.h_min = h_min;
+            options.h_max = h_max;
+            options.rtol = rtol;
+            options.atol = atol;
+            options.adaptive = adaptive;
+            options.max_iter = max_iter;
+            options.verbose = verbose;
+
+            // ------------------------------------------------------------
+            // Run C++ translational propagation
+            // ------------------------------------------------------------
+
+            const auto result =
+                argos::propagate_translational(
+                    cpp_state,
+                    t0,
+                    tf,
+                    mass,
+                    cpp_applied_force,
+                    cpp_disturbance_force,
+                    dynamics_model,
+                    orbital_model,
+                    mu,
+                    length_factor,
+                    time_factor,
+                    options
+                );        
+
+            // ------------------------------------------------------------
+            // Convert result back to Python
+            // ------------------------------------------------------------
+
+            return rk45_result_to_python(result);
+        },
+
         // ------------------------------------------------------------
-        // Convert Python types to C++ types
+        // Python argument names
         // ------------------------------------------------------------
 
-        argos::State cpp_state =
-            numpy_to_state(state);
+        py::arg("state"),
+        py::arg("t0"),
+        py::arg("tf"),
+        py::arg("mass"),
+        py::arg("applied_force"),
+        py::arg("disturbance_force"),
+        py::arg("dynamics_model"),
+        py::arg("orbital_model"),
+        py::arg("mu"),
+        py::arg("length_factor"),
+        py::arg("time_factor"),
+        py::arg("h0"),
+        py::arg("h_min"),
+        py::arg("h_max"),
+        py::arg("rtol"),
+        py::arg("atol"),
+        py::arg("adaptive"),
+        py::arg("max_iter"),
+        py::arg("verbose")
+    );    
 
-        argos::Vector3 cpp_applied_force =
-            numpy_to_vector3(applied_force);
+    m.def(
+        "propagate_rotational",
+        [](
+            py::array_t<double> state,
+            double t0,
+            double tf,
+            py::array_t<double> inertia_matrix,
+            py::array_t<double> inverse_inertia_matrix,
+            py::array_t<double> applied_torque,
+            py::array_t<double> disturbance_torque,
+            const std::string& dynamics_model,
+            double h0,
+            double h_min,
+            double h_max,
+            double rtol,
+            double atol,
+            bool adaptive,
+            std::size_t max_iter,
+            bool verbose
+        )
+        {
+            // ------------------------------------------------------------
+            // Convert Python types to C++ types
+            // ------------------------------------------------------------
 
-        argos::Vector3 cpp_disturbance_force =
-            numpy_to_vector3(disturbance_force);
+            argos::State cpp_state =
+                numpy_to_state(state);
+
+            argos::Matrix3 cpp_inertia_matrix =
+                numpy_to_matrix3(inertia_matrix);
+
+            argos::Matrix3 cpp_inverse_inertia_matrix =
+                numpy_to_matrix3(inverse_inertia_matrix);
+
+            argos::Vector3 cpp_applied_torque =
+                numpy_to_vector3(applied_torque);
+
+            argos::Vector3 cpp_disturbance_torque =
+                numpy_to_vector3(disturbance_torque);
+
+            // ------------------------------------------------------------
+            // Configure RK45
+            // ------------------------------------------------------------
+
+            argos::RK45Options options;
+
+            options.h0 = h0;
+            options.h_min = h_min;
+            options.h_max = h_max;
+            options.rtol = rtol;
+            options.atol = atol;
+            options.adaptive = adaptive;
+            options.max_iter = max_iter;
+            options.verbose = verbose;
+
+            // ------------------------------------------------------------
+            // Run C++ rotational propagation
+            // ------------------------------------------------------------
+
+            const auto result =
+                argos::propagate_rotational(
+                    cpp_state,
+                    t0,
+                    tf,
+                    cpp_inertia_matrix,
+                    cpp_inverse_inertia_matrix,
+                    cpp_applied_torque,
+                    cpp_disturbance_torque,
+                    dynamics_model,
+                    options
+                );
+
+            // ------------------------------------------------------------
+            // Convert result back to Python
+            // ------------------------------------------------------------
+
+            return rk45_result_to_python(result);
+        },
 
         // ------------------------------------------------------------
-        // Configure RK45
+        // Python argument names
         // ------------------------------------------------------------
 
-        argos::RK45Options options;
-
-        options.h0 = h0;
-        options.h_min = h_min;
-        options.h_max = h_max;
-        options.rtol = rtol;
-        options.atol = atol;
-        options.adaptive = adaptive;
-        options.max_iter = max_iter;
-        options.verbose = verbose;
-
-        // ------------------------------------------------------------
-        // Run C++ translational propagation
-        // ------------------------------------------------------------
-
-        const auto result =
-            argos::propagate_translational(
-                cpp_state,
-                t0,
-                tf,
-                mass,
-                cpp_applied_force,
-                cpp_disturbance_force,
-                dynamics_model,
-                orbital_model,
-                mu,
-                length_factor,
-                time_factor,
-                options
-            );
-
-        std::cout
-            << "Returned from argos::propagate_translational\n"
-            << std::endl;
-
-        // ------------------------------------------------------------
-        // Convert result back to Python
-        // ------------------------------------------------------------
-
-        return rk45_result_to_python(result);
-    },
-
-    // ------------------------------------------------------------
-    // Python argument names
-    // ------------------------------------------------------------
-
-    py::arg("state"),
-    py::arg("t0"),
-    py::arg("tf"),
-    py::arg("mass"),
-    py::arg("applied_force"),
-    py::arg("disturbance_force"),
-    py::arg("dynamics_model"),
-    py::arg("orbital_model"),
-    py::arg("mu"),
-    py::arg("length_factor"),
-    py::arg("time_factor"),
-    py::arg("h0"),
-    py::arg("h_min"),
-    py::arg("h_max"),
-    py::arg("rtol"),
-    py::arg("atol"),
-    py::arg("adaptive"),
-    py::arg("max_iter"),
-    py::arg("verbose")
-);        
-
+        py::arg("state"),
+        py::arg("t0"),
+        py::arg("tf"),
+        py::arg("inertia_matrix"),
+        py::arg("inverse_inertia_matrix"),
+        py::arg("applied_torque"),
+        py::arg("disturbance_torque"),
+        py::arg("dynamics_model"),
+        py::arg("h0"),
+        py::arg("h_min"),
+        py::arg("h_max"),
+        py::arg("rtol"),
+        py::arg("atol"),
+        py::arg("adaptive"),
+        py::arg("max_iter"),
+        py::arg("verbose")
+    );
 
     m.def(
         "evaluate_translational_dynamics",
@@ -430,4 +552,54 @@ m.def(
         py::arg("length_factor"),
         py::arg("time_factor")
     );
+
+    m.def(
+        "evaluate_rotational_dynamics",
+        [](
+            py::array_t<double> state,
+            double t,
+            py::array_t<double> inertia_matrix,
+            py::array_t<double> inverse_inertia_matrix,
+            py::array_t<double> applied_torque,
+            py::array_t<double> disturbance_torque,
+            const std::string& dynamics_model
+        )
+        {
+            argos::State cpp_state =
+                numpy_to_state(state);
+
+            argos::Matrix3 cpp_inertia_matrix =
+                numpy_to_matrix3(inertia_matrix);
+
+            argos::Matrix3 cpp_inverse_inertia_matrix =
+                numpy_to_matrix3(inverse_inertia_matrix);
+
+            argos::Vector3 cpp_applied_torque =
+                numpy_to_vector3(applied_torque);
+
+            argos::Vector3 cpp_disturbance_torque =
+                numpy_to_vector3(disturbance_torque);
+
+            argos::State derivative =
+                argos::evaluate_rotational_dynamics(
+                    cpp_state,
+                    t,
+                    cpp_inertia_matrix,
+                    cpp_inverse_inertia_matrix,
+                    cpp_applied_torque,
+                    cpp_disturbance_torque,
+                    dynamics_model
+                );
+
+            return state_to_numpy(derivative);
+        },
+
+        py::arg("state"),
+        py::arg("t"),
+        py::arg("inertia_matrix"),
+        py::arg("inverse_inertia_matrix"),
+        py::arg("applied_torque"),
+        py::arg("disturbance_torque"),
+        py::arg("dynamics_model")
+    ); 
 }

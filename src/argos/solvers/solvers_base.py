@@ -93,24 +93,30 @@ def scipy_rk45(f, t_span, y0, **kwargs):
 
 def cpp_rk45(f, t_span, y0, **kwargs):
     """
-    Integrate translational dynamics using the native C++ RK45 solver.
+    Integrate spacecraft dynamics using the native C++ RK45 solver.
 
     The callable ``f`` is used only to identify the native dynamics model.
     The C++ backend evaluates the dynamics internally and does not call
     the Python callable during integration.
 
-    Required ``args``
-    -----------------
-    args : tuple
-        Must contain:
+    Translational ``args``
+    ----------------------
+    (
+        mass,
+        applied_force,
+        disturbance_force,
+        orbital_model,
+        orbital_model_arguments,
+    )
 
-        (
-            mass,
-            applied_force,
-            disturbance_force,
-            orbital_model,
-            orbital_model_arguments,
-        )
+    Rotational ``args``
+    -------------------
+    (
+        inertia_matrix,
+        inverse_inertia_matrix,
+        applied_torque,
+        disturbance_torque,
+    )
 
     Optional RK45 parameters
     ------------------------
@@ -156,80 +162,20 @@ def cpp_rk45(f, t_span, y0, **kwargs):
 
     args = kwargs.pop("args", ())
 
-    if len(args) != 5:
-        raise ValueError(
-            "CPP_RK45 expects args to contain: "
-            "(mass, applied_force, disturbance_force, "
-            "orbital_model, orbital_model_arguments)."
-        )
-
-    (
-        mass,
-        applied_force,
-        disturbance_force,
-        orbital_model,
-        orbital_model_arguments,
-    ) = args
-
-    if orbital_model_arguments is None:
-        orbital_model_arguments = ()
-
-    orbital_model_arguments = tuple(orbital_model_arguments)
-
-    # Normalize model name once.
-    orbital_model = (
-        None
-        if orbital_model is None
-        else str(orbital_model).upper()
-    )
-
-    # ------------------------------------------------------------------------
-    # Orbital model parameters
-    # ------------------------------------------------------------------------
-
-    if orbital_model == "REL2BP":
-
-        if len(orbital_model_arguments) != 1:
-            raise ValueError(
-                "REL2BP requires one orbital model argument: mu."
-            )
-
-        mu = orbital_model_arguments[0]
-        length_factor = 1.0
-        time_factor = 1.0
-
-    elif orbital_model == "CR3BP":
-
-        if len(orbital_model_arguments) != 3:
-            raise ValueError(
-                "CR3BP requires three orbital model arguments: "
-                "(mu, length_factor, time_factor)."
-            )
-
-        (
-            mu,
-            length_factor,
-            time_factor,
-        ) = orbital_model_arguments
-
-    elif orbital_model in (None, ""):
-
-        mu = 0.0
-        length_factor = 1.0
-        time_factor = 1.0
-
-    else:
-
-        raise ValueError(
-            f"Unsupported orbital model: '{orbital_model}'."
-        )
-
-    # ------------------------------------------------------------------------
-    # RK45 parameters
-    # ------------------------------------------------------------------------
-
     h0 = kwargs.pop("h0", 0.1)
     h_min = kwargs.pop("h_min", 1e-6)
+    # h_max = kwargs.pop(
+    #     "h_max",
+    #     abs(float(t_span[1]) - float(t_span[0])),
+    # )
+    h_max = kwargs.pop(
+        "h_max",
+        max(
+            abs(float(t_span[1]) - float(t_span[0])),
+            float(h0),
+            float(h_min),
+        ),
+    )
     rtol = kwargs.pop("rtol", 1e-6)
     atol = kwargs.pop("atol", 1e-9)
     adaptive = kwargs.pop("h_adaptative", True)
@@ -249,54 +195,221 @@ def cpp_rk45(f, t_span, y0, **kwargs):
         )
 
     # ------------------------------------------------------------------------
-    # Convert inputs
+    # Convert common inputs
     # ------------------------------------------------------------------------
 
-    y0 = np.asarray(y0, dtype=float)
-    applied_force = np.asarray(applied_force, dtype=float)
-    disturbance_force = np.asarray(disturbance_force, dtype=float)
-    t_span = np.asarray(t_span, dtype=float)
-
-    t_span = np.asarray(t_span, dtype=float)
-    
-    h_max = kwargs.pop(
-        "h_max",
-        abs(t_span[1] - t_span[0]),
+    y0 = np.ascontiguousarray(
+        y0,
+        dtype=np.float64,
     )
 
-    # ------------------------------------------------------------------------
-    # C++ propagation
-    # ------------------------------------------------------------------------
-
-    start = time.perf_counter()
-
-    result = _cpp.propagate_translational(
-        state=y0,
-        t0=float(t_span[0]),
-        tf=float(t_span[1]),
-        mass=float(mass),
-        applied_force=applied_force,
-        disturbance_force=disturbance_force,
-        dynamics_model=dynamics_model,
-        orbital_model=orbital_model or "",
-        mu=float(mu),
-        length_factor=float(length_factor),
-        time_factor=float(time_factor),
-        h0=float(h0),
-        h_min=float(h_min),
-        h_max=float(h_max),
-        rtol=float(rtol),
-        atol=float(atol),
-        adaptive=bool(adaptive),
-        max_iter=int(max_iter),
-        verbose=bool(verbose),
+    t_span = np.asarray(
+        t_span,
+        dtype=np.float64,
     )
 
-    elapsed = time.perf_counter() - start
+    if t_span.size != 2:
+        raise ValueError(
+            "t_span must contain exactly two time values."
+        )
 
-    # ------------------------------------------------------------------------
-    # Record solver statistics
-    # ------------------------------------------------------------------------
+    # =========================================================================
+    # ROTATIONAL DYNAMICS
+    # =========================================================================
+
+    if dynamics_model == "QUATERNION_DYNAMICS":
+
+        if len(args) != 4:
+            raise ValueError(
+                "CPP_RK45 with QUATERNION_DYNAMICS expects args to contain: "
+                "(inertia_matrix, inverse_inertia_matrix, "
+                "applied_torque, disturbance_torque)."
+            )
+
+        (
+            inertia_matrix,
+            inverse_inertia_matrix,
+            applied_torque,
+            disturbance_torque,
+        ) = args
+
+        # --------------------------------------------------------------------
+        # Convert rotational inputs
+        # --------------------------------------------------------------------
+
+        inertia_matrix = np.ascontiguousarray(
+            inertia_matrix,
+            dtype=np.float64,
+        )
+
+        inverse_inertia_matrix = np.ascontiguousarray(
+            inverse_inertia_matrix,
+            dtype=np.float64,
+        )
+
+        applied_torque = np.ascontiguousarray(
+            applied_torque,
+            dtype=np.float64,
+        )
+
+        disturbance_torque = np.ascontiguousarray(
+            disturbance_torque,
+            dtype=np.float64,
+        )
+
+        # --------------------------------------------------------------------
+        # C++ rotational propagation
+        # --------------------------------------------------------------------
+
+        start = time.perf_counter()
+
+        result = _cpp.propagate_rotational(
+            state=y0,
+            t0=float(t_span[0]),
+            tf=float(t_span[1]),
+            inertia_matrix=inertia_matrix,
+            inverse_inertia_matrix=inverse_inertia_matrix,
+            applied_torque=applied_torque,
+            disturbance_torque=disturbance_torque,
+            dynamics_model=dynamics_model,
+            h0=float(h0),
+            h_min=float(h_min),
+            h_max=float(h_max),
+            rtol=float(rtol),
+            atol=float(atol),
+            adaptive=bool(adaptive),
+            max_iter=int(max_iter),
+            verbose=bool(verbose),
+        )
+
+        elapsed = time.perf_counter() - start
+
+    # =========================================================================
+    # TRANSLATIONAL DYNAMICS
+    # =========================================================================
+
+    else:
+
+        if len(args) != 5:
+            raise ValueError(
+                "CPP_RK45 expects translational args to contain: "
+                "(mass, applied_force, disturbance_force, "
+                "orbital_model, orbital_model_arguments)."
+            )
+
+        (
+            mass,
+            applied_force,
+            disturbance_force,
+            orbital_model,
+            orbital_model_arguments,
+        ) = args
+
+        # --------------------------------------------------------------------
+        # Orbital model arguments
+        # --------------------------------------------------------------------
+
+        if orbital_model_arguments is None:
+            orbital_model_arguments = ()
+
+        orbital_model_arguments = tuple(
+            orbital_model_arguments
+        )
+
+        orbital_model = (
+            None
+            if orbital_model is None
+            else str(orbital_model).upper()
+        )
+
+        # --------------------------------------------------------------------
+        # Orbital model parameters
+        # --------------------------------------------------------------------
+
+        if orbital_model == "REL2BP":
+
+            if len(orbital_model_arguments) != 1:
+                raise ValueError(
+                    "REL2BP requires one orbital model argument: mu."
+                )
+
+            mu = orbital_model_arguments[0]
+            length_factor = 1.0
+            time_factor = 1.0
+
+        elif orbital_model == "CR3BP":
+
+            if len(orbital_model_arguments) != 3:
+                raise ValueError(
+                    "CR3BP requires three orbital model arguments: "
+                    "(mu, length_factor, time_factor)."
+                )
+
+            (
+                mu,
+                length_factor,
+                time_factor,
+            ) = orbital_model_arguments
+
+        elif orbital_model in (None, ""):
+
+            mu = 0.0
+            length_factor = 1.0
+            time_factor = 1.0
+
+        else:
+
+            raise ValueError(
+                f"Unsupported orbital model: '{orbital_model}'."
+            )
+
+        # --------------------------------------------------------------------
+        # Convert translational inputs
+        # --------------------------------------------------------------------
+
+        applied_force = np.ascontiguousarray(
+            applied_force,
+            dtype=np.float64,
+        )
+
+        disturbance_force = np.ascontiguousarray(
+            disturbance_force,
+            dtype=np.float64,
+        )
+
+        # --------------------------------------------------------------------
+        # C++ translational propagation
+        # --------------------------------------------------------------------
+
+        start = time.perf_counter()
+
+        result = _cpp.propagate_translational(
+            state=y0,
+            t0=float(t_span[0]),
+            tf=float(t_span[1]),
+            mass=float(mass),
+            applied_force=applied_force,
+            disturbance_force=disturbance_force,
+            dynamics_model=dynamics_model,
+            orbital_model=orbital_model or "",
+            mu=float(mu),
+            length_factor=float(length_factor),
+            time_factor=float(time_factor),
+            h0=float(h0),
+            h_min=float(h_min),
+            h_max=float(h_max),
+            rtol=float(rtol),
+            atol=float(atol),
+            adaptive=bool(adaptive),
+            max_iter=int(max_iter),
+            verbose=bool(verbose),
+        )
+
+        elapsed = time.perf_counter() - start
+
+    # =========================================================================
+    # Common result handling
+    # =========================================================================
 
     CPP_RK45_STATS.add(
         nfev=int(result["nfev"]),
@@ -304,10 +417,6 @@ def cpp_rk45(f, t_span, y0, **kwargs):
         rejected_steps=int(result["rejected_steps"]),
         elapsed_time=elapsed,
     )
-
-    # ------------------------------------------------------------------------
-    # Convert C++ result to OdeResult
-    # ------------------------------------------------------------------------
 
     return OdeResult(
         t=np.asarray(result["t"]),

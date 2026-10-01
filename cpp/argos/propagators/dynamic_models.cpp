@@ -6,16 +6,17 @@
 namespace argos {
 namespace {
 
-constexpr std::size_t STATE_SIZE = 6;
+constexpr std::size_t TRANSLATIONAL_STATE_SIZE = 6;
+constexpr std::size_t ROTATIONAL_STATE_SIZE = 7;
 constexpr std::size_t VECTOR_SIZE = 3;
-
+constexpr std::size_t QUATERNION_SIZE = 4;
 
 /**
  * Validate a translational state.
  */
 void validate_state(const State& state)
 {
-    if (state.size() != STATE_SIZE) {
+    if (state.size() != TRANSLATIONAL_STATE_SIZE) {
         throw std::invalid_argument(
             "Translational dynamics requires a state of size 6."
         );
@@ -359,7 +360,7 @@ void newton(
     //     d/dt [r, v] = [v, a]
     // ------------------------------------------------------------------------
 
-    derivative.resize(STATE_SIZE);
+    derivative.resize(TRANSLATIONAL_STATE_SIZE);
 
     derivative[0] = state[3];
     derivative[1] = state[4];
@@ -369,6 +370,191 @@ void newton(
     derivative[4] = acceleration[1];
     derivative[5] = acceleration[2];
 
+}
+
+/**
+ * Validate a rotational state.
+ */
+void validate_rotational_state(const State& state)
+{
+    if (state.size() != ROTATIONAL_STATE_SIZE) {
+        throw std::invalid_argument(
+            "Rotational dynamics requires a state of size 7."
+        );
+    }
+}
+
+// ============================================================================
+// QUATERNION ROTATIONAL DYNAMICS
+// ============================================================================
+
+void quaternion_dynamics(
+    double /*t*/,
+    const State& state,
+    const Matrix3& inertia_matrix,
+    const Matrix3& inverse_inertia_matrix,
+    const Vector3& applied_torque,
+    const Vector3& disturbance_torque,
+    State& derivative
+)
+{
+    validate_rotational_state(state);
+    validate_vector(applied_torque);
+    validate_vector(disturbance_torque);
+
+    // ------------------------------------------------------------------------
+    // State
+    //
+    // q = [qx, qy, qz, qw]
+    // omega = [wx, wy, wz]
+    // ------------------------------------------------------------------------
+
+    double qx = state[0];
+    double qy = state[1];
+    double qz = state[2];
+    double qw = state[3];
+
+    const double omega_x = state[4];
+    const double omega_y = state[5];
+    const double omega_z = state[6];
+
+    // ------------------------------------------------------------------------
+    // Normalize quaternion
+    // ------------------------------------------------------------------------
+
+    const double q_norm = std::sqrt(
+        qx * qx
+        + qy * qy
+        + qz * qz
+        + qw * qw
+    );
+
+    if (q_norm == 0.0) {
+        throw std::invalid_argument(
+            "Quaternion norm cannot be zero."
+        );
+    }
+
+    qx /= q_norm;
+    qy /= q_norm;
+    qz /= q_norm;
+    qw /= q_norm;
+
+    // ------------------------------------------------------------------------
+    // I * omega
+    // ------------------------------------------------------------------------
+
+    const Vector3 I_omega = {
+        inertia_matrix[0][0] * omega_x
+            + inertia_matrix[0][1] * omega_y
+            + inertia_matrix[0][2] * omega_z,
+
+        inertia_matrix[1][0] * omega_x
+            + inertia_matrix[1][1] * omega_y
+            + inertia_matrix[1][2] * omega_z,
+
+        inertia_matrix[2][0] * omega_x
+            + inertia_matrix[2][1] * omega_y
+            + inertia_matrix[2][2] * omega_z
+    };
+
+    // ------------------------------------------------------------------------
+    // omega x (I * omega)
+    // ------------------------------------------------------------------------
+
+    const Vector3 omega_cross_Iomega = {
+        omega_y * I_omega[2]
+            - omega_z * I_omega[1],
+
+        omega_z * I_omega[0]
+            - omega_x * I_omega[2],
+
+        omega_x * I_omega[1]
+            - omega_y * I_omega[0]
+    };
+
+    // ------------------------------------------------------------------------
+    // Total applied torque
+    // ------------------------------------------------------------------------
+
+    const Vector3 total_torque = {
+        applied_torque[0] + disturbance_torque[0],
+        applied_torque[1] + disturbance_torque[1],
+        applied_torque[2] + disturbance_torque[2]
+    };
+
+    // ------------------------------------------------------------------------
+    // Euler rotational dynamics
+    //
+    // omega_dot =
+    //     I^-1 * (
+    //         tau
+    //         - omega x (I * omega)
+    //     )
+    // ------------------------------------------------------------------------
+
+    const Vector3 torque_term = {
+        total_torque[0] - omega_cross_Iomega[0],
+        total_torque[1] - omega_cross_Iomega[1],
+        total_torque[2] - omega_cross_Iomega[2]
+    };
+
+    const Vector3 angular_acceleration = {
+        inverse_inertia_matrix[0][0] * torque_term[0]
+            + inverse_inertia_matrix[0][1] * torque_term[1]
+            + inverse_inertia_matrix[0][2] * torque_term[2],
+
+        inverse_inertia_matrix[1][0] * torque_term[0]
+            + inverse_inertia_matrix[1][1] * torque_term[1]
+            + inverse_inertia_matrix[1][2] * torque_term[2],
+
+        inverse_inertia_matrix[2][0] * torque_term[0]
+            + inverse_inertia_matrix[2][1] * torque_term[1]
+            + inverse_inertia_matrix[2][2] * torque_term[2]
+    };
+
+    // ------------------------------------------------------------------------
+    // Quaternion kinematics
+    // ------------------------------------------------------------------------
+
+    const double q_dot_x = 0.5 * (
+        qw * omega_x
+        + qy * omega_z
+        - qz * omega_y
+    );
+
+    const double q_dot_y = 0.5 * (
+        qw * omega_y
+        + qz * omega_x
+        - qx * omega_z
+    );
+
+    const double q_dot_z = 0.5 * (
+        qw * omega_z
+        + qx * omega_y
+        - qy * omega_x
+    );
+
+    const double q_dot_w = 0.5 * (
+        -qx * omega_x
+        - qy * omega_y
+        - qz * omega_z
+    );
+
+    // ------------------------------------------------------------------------
+    // State derivative
+    // ------------------------------------------------------------------------
+
+    derivative.resize(ROTATIONAL_STATE_SIZE);
+
+    derivative[0] = q_dot_x;
+    derivative[1] = q_dot_y;
+    derivative[2] = q_dot_z;
+    derivative[3] = q_dot_w;
+
+    derivative[4] = angular_acceleration[0];
+    derivative[5] = angular_acceleration[1];
+    derivative[6] = angular_acceleration[2];
 }
 
 }  // namespace argos

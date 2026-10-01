@@ -652,4 +652,11 @@ class Simulation:
 
             print("=" * 70)
 
+
+            for sc in self.simulation_data.spacecrafts:
+                if sc.mission_manager.current_phase.translational_model is not None:
+                    sc.mission_manager.current_phase.translational_model.print_profile()
+                if sc.mission_manager.current_phase.rotational_model is not None:
+                    sc.mission_manager.current_phase.rotational_model.print_profile()
+
         return metadata    

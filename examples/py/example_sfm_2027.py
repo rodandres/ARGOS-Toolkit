@@ -27,7 +27,7 @@ PD_KD_TRANSLATIONAL = 740
 
 TIME_FACTOR_SEC = 27.321661 / (2.0 * np.pi) * 24 * 3600     # time unit unidad -> sideral lunar month (days)
 
-SIM_MAX_TIME = 0.75952417*2 * TIME_FACTOR_SEC #60*13
+SIM_MAX_TIME = 60*15 #0.75952417*2 * TIME_FACTOR_SEC #60*13
 print("SIM_MAX_TIME: ", SIM_MAX_TIME)
 
 TARGET_DOCKING_AXIS_WRT_TARGET_FRAME = np.array([0.0, 0.0, 1.0])  # Docking axis of the target in the target frame
@@ -151,8 +151,8 @@ control_law = PDController(Kp_rotational=PD_KP_ATTITUDE,
                             Kd_translational=PD_KD_TRANSLATIONAL
                         )
 actuator_allocator = MultiRCSAllocator()
-translational_propagator = NativeTranslationalPropagator(dynamics="CR3BP")
-rotational_propagator = NativeRotationalPropagator()
+translational_propagator = NativeTranslationalPropagator(orbital_model="CR3BP", integration_method="CPP_RK45")
+rotational_propagator = NativeRotationalPropagator(integration_method="CPP_RK45")
 
 # ========================================================
 #           PHASE 1 - Docking Axis Acquistion
@@ -462,7 +462,7 @@ target_initial_attitude_quat = quaternion_from_euler(
 
 target_initial_phase=MissionPhase(
     name="Target Motion",
-    translational_model=NativeTranslationalPropagator(dynamics="CR3BP"),
+    translational_model=NativeTranslationalPropagator(orbital_model="CR3BP", integration_method="CPP_RK45"),
     navigation=IdealNavigation(),
     dt_nav=1,
     dt_propagation=0.01

@@ -105,4 +105,42 @@ DynamicsFunction make_translational_dynamics(
     );
 }
 
+DynamicsFunction make_rotational_dynamics(
+    const std::string& dynamics_model,
+    const Matrix3& inertia_matrix,
+    const Matrix3& inverse_inertia_matrix,
+    const Vector3& applied_torque,
+    const Vector3& disturbance_torque
+)
+{
+    if (dynamics_model == "QUATERNION_DYNAMICS") {
+
+        return [
+            inertia_matrix,
+            inverse_inertia_matrix,
+            applied_torque,
+            disturbance_torque
+        ](
+            double t,
+            const State& state,
+            State& derivative
+        ) {
+            quaternion_dynamics(
+                t,
+                state,
+                inertia_matrix,
+                inverse_inertia_matrix,
+                applied_torque,
+                disturbance_torque,
+                derivative
+            );
+        };
+    }
+
+    throw std::invalid_argument(
+        "Unsupported rotational dynamics model: "
+        + dynamics_model
+    );
+}
+
 }  // namespace argos

@@ -194,7 +194,7 @@ sensors = [AbsoluteSensor(100, verbose=False)]  # Sample rate of 100 Hz
 # %%
 from argos.propagators.native_propagator import NativeRotationalPropagator
 
-rot_propagator = NativeRotationalPropagator(integration_method="NATIVE_RK45")
+rot_propagator = NativeRotationalPropagator(integration_method="CPP_RK45")
 
 # %% [markdown]
 # ##### Guidance
