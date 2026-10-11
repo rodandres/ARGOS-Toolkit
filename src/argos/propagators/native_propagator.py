@@ -9,6 +9,8 @@ from argos.propagators.dynamic_models import (
     newton
 )
 
+from argos.frames.frames import ECI_frame, CR3BP_ROTATING_frame, NONE_frame
+
 from argos import _cpp
 
 from typing import TYPE_CHECKING
@@ -16,6 +18,9 @@ if TYPE_CHECKING:
     from argos.core.spacecraft import Spacecraft
     from argos.general.dataclasses import SimulationData
     from argos.enviroments.environment_base import EnvironmentBase
+
+from argos.general.dataclasses import PerturbationData
+from argos.general_tools import compare_frames
 
 class NativeRotationalPropagator(RotationalPropagatorBase):
     """
@@ -27,17 +32,20 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
 
     Parameters
     ----------
-    integration_method : str, optional
-        Numerical integration method used by the solver.
-        Defaults to ``"NATIVE_RK45"``.
+    TO BE UPDATED.
     """
-    def __init__(self, integration_method: str = "NATIVE_RK45"):
+    def __init__(self, integration_method: str = "CPP_RK45", propagation_frame: str | None=None):
         super().__init__(integration_method)
 
         if self.using_cpp:
             self.dynamic_model = "QUATERNION_DYNAMICS"
         else:
             self.dynamic_model = quaternion_dynamics
+
+        self.propagation_frame = None
+
+        self._set_propagation_frame(propagation_frame)
+
 
         # ================================================================
         # Profiling
@@ -53,6 +61,18 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
             "calls": 0,
         }
 
+    def _set_propagation_frame(self, frame_name):
+        if frame_name is None:
+            self.propagation_frame = NONE_frame
+        elif frame_name == "ECI_frame":
+            self.propagation_frame = ECI_frame
+        elif frame_name == "CR3BP_ROTATING_frame":
+            self.propagation_frame = CR3BP_ROTATING_frame
+        else:
+            raise ValueError(
+                f"Unsupported propagation frame: {frame_name}. "
+                f"Supported frames are: 'ECI_frame', 'CR3BP_ROTATING_frame', or None."
+            )
 
     def evaluate_dynamics(
         self,
@@ -60,7 +80,7 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
         state_end,
         I,
         I_inv,
-        applied_torque,
+        exerted_torque,
         disturbance_torque,
     ):
         """
@@ -83,7 +103,7 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
                 t_end,
                 I,
                 I_inv,
-                applied_torque,
+                exerted_torque,
                 disturbance_torque,
                 self.dynamic_model,
             )
@@ -97,7 +117,7 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
                 state_end,
                 I,
                 I_inv,
-                applied_torque,
+                exerted_torque,
                 disturbance_torque,
             )
 
@@ -147,7 +167,28 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
 
         I = spacecraft.inertia_tensor
         I_inv = spacecraft.inertia_tensor_inv
-        applied_torque = spacecraft.spacecraft_data.current_torque_exerted
+        exerted_torque = spacecraft.spacecraft_data.exerted_data.torque
+        exerted_torque_frame = spacecraft.spacecraft_data.exerted_data.frame
+
+
+        # included explicitly in the preparation measurement.
+        perturbation = PerturbationData()
+        disturbance_torque = perturbation.torque
+        disturbance_frame = self.propagation_frame
+
+        # Make transformations
+        exerted_torque_transformed = spacecraft.transforms_manager.transform_vector(
+            exerted_torque,
+            source_frame=exerted_torque_frame,
+            target_frame=self.propagation_frame,
+        )
+
+        disturbance_torque_transformed = spacecraft.transforms_manager.transform_vector(
+            disturbance_torque,
+            source_frame=disturbance_frame,
+            target_frame=self.propagation_frame,
+        )        
+
         disturbance_torque = environment.get_perturbation_torque()
 
         state = np.concatenate(
@@ -182,8 +223,8 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
             args=(
                 I,
                 I_inv,
-                applied_torque,
-                disturbance_torque,
+                exerted_torque_transformed,
+                disturbance_torque_transformed,
             ),
             h0=spacecraft.spacecraft_data.current_propagation_dt,
             h_adaptative=False,
@@ -234,7 +275,7 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
             state_end,
             I,
             I_inv,
-            applied_torque,
+            exerted_torque,
             disturbance_torque,
         )[4:7]
 
@@ -377,24 +418,21 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
 
     Parameters
     ----------
-    orbital_model : str, optional
-        Orbital dynamics model. Supported values are ``"REL2BP"``,
-        ``"CR3BP"``, and ``"NEWTON"``.
-    integration_method : str, optional
-        Numerical integration method used by the solver.
-        Defaults to ``"NATIVE_RK45"``.
+    NEEDS TO BE UPDATED
     """
 
     def __init__(
         self,
         orbital_model: str | None = None,
-        integration_method: str = "NATIVE_RK45",
+        integration_method: str = "CPP_RK45",
+        propagation_frame: str | None = None
     ):
         super().__init__(integration_method)
 
         self.dynamic_model = None
         self.orbital_model = None
         self.orbital_model_arguments = ()
+        self.propagation_frame = None
 
         self._set_orbital_model(orbital_model)
         self._set_dynamics()
@@ -451,6 +489,7 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
             mu = 6.67430e-11 * 5.972e24
 
             self.orbital_model_arguments = (mu,)
+            self.propagation_frame = ECI_frame
 
         elif orbital_model == "CR3BP":
 
@@ -472,6 +511,12 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
                 time_factor,
             )
 
+            self.propagation_frame = CR3BP_ROTATING_frame
+
+        else:
+            self.propagation_frame = NONE_frame
+            
+
     def _set_dynamics(self):
 
         if self.using_cpp:
@@ -488,7 +533,7 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
         t_end,
         state_end,
         mass,
-        applied_force,
+        exerted_force,
         disturbance_force,
     ):
         """
@@ -528,7 +573,7 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
                 state_end,
                 t_end,
                 mass,
-                applied_force,
+                exerted_force,
                 disturbance_force,
                 self.dynamic_model,
                 self.orbital_model,
@@ -545,7 +590,7 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
                 t_end,
                 state_end,
                 mass,
-                applied_force,
+                exerted_force,
                 disturbance_force,
                 self.orbital_model,
                 self.orbital_model_arguments,
@@ -594,9 +639,11 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
 
         position = spacecraft.spacecraft_data.true_state.position
         velocity = spacecraft.spacecraft_data.true_state.velocity
+        state_frame = spacecraft.spacecraft_data.true_state.translational_frame
 
         mass = spacecraft.mass
-        applied_force = spacecraft.spacecraft_data.current_force_exerted
+        exerted_force = spacecraft.spacecraft_data.exerted_data.force
+        exerted_force_frame = spacecraft.spacecraft_data.exerted_data.frame
 
         state = np.concatenate(
             (
@@ -613,7 +660,23 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
 
         # Keep this outside the solver call so that the allocation is
         # included explicitly in the preparation measurement.
-        disturbance_force = np.zeros(3)
+        perturbation = PerturbationData()
+        disturbance_force = perturbation.force
+        disturbance_frame = self.propagation_frame
+
+        # Make transformations
+        exerted_force_transformed = spacecraft.transforms_manager.transform_vector(
+            exerted_force,
+            source_frame=exerted_force_frame,
+            target_frame=self.propagation_frame,
+        )
+
+        disturbance_force_transformed = spacecraft.transforms_manager.transform_vector(
+            disturbance_force,
+            source_frame=disturbance_frame,
+            target_frame=self.propagation_frame,
+        )        
+        
 
         t1 = perf_counter()
 
@@ -633,8 +696,8 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
             self.integration_method,
             args=(
                 mass,
-                applied_force,
-                disturbance_force,
+                exerted_force_transformed,
+                disturbance_force_transformed,
                 self.orbital_model,
                 self.orbital_model_arguments,
             ),
@@ -680,7 +743,7 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
             t_end,
             state_end,
             mass,
-            applied_force,
+            exerted_force,
             disturbance_force,
         )[3:6]
 

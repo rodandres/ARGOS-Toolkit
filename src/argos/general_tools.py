@@ -8,7 +8,7 @@ from argos.general.dataclasses import StateVariables
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from argos.general.data_save import SimulationHistory
-
+    from argos.frames.frames_base import Frame
 
 def _as_3d_array(value: float | np.ndarray, name: str) -> np.ndarray:
     """
@@ -50,6 +50,271 @@ import numpy as np
 
 # NOTE: The quaternion interpolation shall be change to linear interpolation (LERP) for simplicity.
 
+# def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
+#     """
+#     Retrieve the true spacecraft state at a requested simulation time.
+
+#     If the requested time matches a recorded sample, the corresponding state
+#     is returned directly. Otherwise, the state is obtained by linear
+#     interpolation between the two neighboring samples. If the requested time
+#     lies outside the recorded history range, linear extrapolation based on
+#     the nearest two samples is performed.
+
+#     Parameters
+#     ----------
+#     history : SimulationHistory
+#         Simulation history containing the spacecraft data and stored history
+#         chunks.
+#     spacecraft_name : str
+#         Name of the spacecraft whose state is requested.
+#     t : float
+#         Requested simulation time [s].
+
+#     Returns
+#     -------
+#     StateVariables
+#         Deep copy of the true spacecraft state at the requested time.
+
+#     Raises
+#     ------
+#     ValueError
+#         If the spacecraft is not present in the history.
+#     ValueError
+#         If no event is available at or before the requested time.
+#     ValueError
+#         If no history samples are available for the spacecraft.
+#     ValueError
+#         If fewer than two history samples are available for interpolation
+#         or extrapolation.
+#     """
+
+#     # Get spacecraft history
+#     if spacecraft_name not in history.spacecraft_names:
+#         raise ValueError(
+#             f"Spacecraft '{spacecraft_name}' not found in history."
+#         )
+
+#     spacecraft_history = history.spacecrafts_history[spacecraft_name]
+
+#     # Get current events from the spacecraft history
+#     current_events = spacecraft_history.events
+#     event_at_time_t = None
+
+#     for event in current_events:
+#         if event.time <= t:
+#             event_at_time_t = event
+#         else:
+#             break
+
+#     if event_at_time_t is None:
+#         raise ValueError(
+#             f"No events found in history for spacecraft "
+#             f"'{spacecraft_name}' at or before time {t}."
+#         )
+
+#     # Analyze tick from that phase time to actual t
+#     time_since_event = t - event_at_time_t.time
+#     dt_master = event_at_time_t.dt_master
+
+#     ticks_since_event = time_since_event / dt_master
+
+#     tick_base = event_at_time_t.tick
+#     tick_at_t = tick_base + round(ticks_since_event)
+
+#     # Find tick in chunk
+#     current_chunk_index = spacecraft_history.chunk_index
+#     current_index = spacecraft_history.index
+#     chunk_size = spacecraft_history.chunk_size
+
+#     total_samples = (
+#         current_chunk_index * chunk_size
+#         + current_index
+#     )
+
+#     if total_samples == 0:
+#         raise ValueError(
+#             f"No history available for spacecraft '{spacecraft_name}'."
+#         )
+
+#     if total_samples < 2:
+#         raise ValueError(
+#             f"At least two states are required to interpolate or "
+#             f"extrapolate spacecraft '{spacecraft_name}'."
+#         )
+
+#     # ---------------------------------------------------------
+#     # Determine the two ticks needed
+#     # ---------------------------------------------------------
+
+#     if tick_at_t <= 0:
+
+#         # Extrapolation before first sample
+#         tick_need_0 = 0
+#         tick_need_1 = 1
+
+#     elif tick_at_t >= total_samples - 1:
+
+#         # Extrapolation after last sample
+#         tick_need_0 = total_samples - 2
+#         tick_need_1 = total_samples - 1
+
+#     else:
+
+#         # Interpolation between neighboring samples
+#         tick_need_0 = tick_at_t - 1
+#         tick_need_1 = tick_at_t
+
+#     # ---------------------------------------------------------
+#     # Find chunk and index for tick 0
+#     # ---------------------------------------------------------
+
+#     chunk_index_0 = tick_need_0 // chunk_size
+#     index_0 = tick_need_0 % chunk_size
+
+#     # ---------------------------------------------------------
+#     # Find chunk and index for tick 1
+#     # ---------------------------------------------------------
+
+#     chunk_index_1 = tick_need_1 // chunk_size
+#     index_1 = tick_need_1 % chunk_size
+
+#     # ---------------------------------------------------------
+#     # Load state 0
+#     # ---------------------------------------------------------
+
+#     if chunk_index_0 == current_chunk_index:
+
+#         # State is in current chunk
+#         t0 = spacecraft_history.t[index_0]
+
+#         state0 = StateVariables(
+#             position=spacecraft_history.true_position[index_0],
+#             velocity=spacecraft_history.true_velocity[index_0],
+#             acceleration=spacecraft_history.true_acceleration[index_0],
+#             attitude=spacecraft_history.true_attitude[index_0],
+#             angular_velocity=spacecraft_history.true_angular_velocity[
+#                 index_0
+#             ],
+#             angular_acceleration=(
+#                 spacecraft_history.true_angular_acceleration[index_0]
+#             ),
+#         )
+
+#     else:
+
+#         # State is in a previous chunk
+#         chunk_file_0 = os.path.join(
+#             history.data_file_path,
+#             f"{spacecraft_name}_history_chunk_{chunk_index_0}.npz"
+#         )
+
+#         with np.load(chunk_file_0) as chunk_data_0:
+
+#             t0 = chunk_data_0["t"][index_0]
+
+#             state0 = StateVariables(
+#                 position=chunk_data_0["true_position"][index_0],
+#                 velocity=chunk_data_0["true_velocity"][index_0],
+#                 acceleration=chunk_data_0["true_acceleration"][index_0],
+#                 attitude=chunk_data_0["true_attitude"][index_0],
+#                 angular_velocity=chunk_data_0[
+#                     "true_angular_velocity"
+#                 ][index_0],
+#                 angular_acceleration=chunk_data_0[
+#                     "true_angular_acceleration"
+#                 ][index_0],
+#             )
+
+#     # ---------------------------------------------------------
+#     # Load state 1
+#     # ---------------------------------------------------------
+
+#     if chunk_index_1 == current_chunk_index:
+
+#         # State is in current chunk
+#         t1 = spacecraft_history.t[index_1]
+
+#         state1 = StateVariables(
+#             position=spacecraft_history.true_position[index_1],
+#             velocity=spacecraft_history.true_velocity[index_1],
+#             acceleration=spacecraft_history.true_acceleration[index_1],
+#             attitude=spacecraft_history.true_attitude[index_1],
+#             angular_velocity=spacecraft_history.true_angular_velocity[
+#                 index_1
+#             ],
+#             angular_acceleration=(
+#                 spacecraft_history.true_angular_acceleration[index_1]
+#             ),
+#         )
+
+#     else:
+
+#         # State is in a previous chunk
+#         chunk_file_1 = os.path.join(
+#             history.data_file_path,
+#             f"{spacecraft_name}_history_chunk_{chunk_index_1}.npz"
+#         )
+
+#         with np.load(chunk_file_1) as chunk_data_1:
+
+#             t1 = chunk_data_1["t"][index_1]
+
+#             state1 = StateVariables(
+#                 position=chunk_data_1["true_position"][index_1],
+#                 velocity=chunk_data_1["true_velocity"][index_1],
+#                 acceleration=chunk_data_1["true_acceleration"][index_1],
+#                 attitude=chunk_data_1["true_attitude"][index_1],
+#                 angular_velocity=chunk_data_1[
+#                     "true_angular_velocity"
+#                 ][index_1],
+#                 angular_acceleration=chunk_data_1[
+#                     "true_angular_acceleration"
+#                 ][index_1],
+#             )
+
+#     # ---------------------------------------------------------
+#     # Exact match
+#     # ---------------------------------------------------------
+
+#     if np.isclose(t0, t):
+#         return copy.deepcopy(state0)
+
+#     if np.isclose(t1, t):
+#         return copy.deepcopy(state1)
+
+#     # ---------------------------------------------------------
+#     # Interpolation / extrapolation coefficient
+#     # ---------------------------------------------------------
+
+#     alpha = (t - t0) / (t1 - t0)
+
+#     # ---------------------------------------------------------
+#     # Interpolate StateVariables
+#     # ---------------------------------------------------------
+
+#     result = copy.deepcopy(state0)
+
+#     for field_name in state0.__dataclass_fields__:
+
+#         value0 = getattr(state0, field_name)
+#         value1 = getattr(state1, field_name)
+
+#         if value0 is None or value1 is None:
+#             setattr(result, field_name, None)
+#             continue
+
+#         value = value0 + alpha * (
+#             value1 - value0
+#         )
+
+#         setattr(
+#             result,
+#             field_name,
+#             value
+#         )
+
+#     return result
+
 def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
     """
     Retrieve the true spacecraft state at a requested simulation time.
@@ -59,6 +324,10 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
     interpolation between the two neighboring samples. If the requested time
     lies outside the recorded history range, linear extrapolation based on
     the nearest two samples is performed.
+
+    Numerical state variables are interpolated linearly. Reference frames
+    are discrete objects and are taken from the first state used for
+    interpolation or extrapolation.
 
     Parameters
     ----------
@@ -88,7 +357,10 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
         or extrapolation.
     """
 
+    # ==========================================================================
     # Get spacecraft history
+    # ==========================================================================
+
     if spacecraft_name not in history.spacecraft_names:
         raise ValueError(
             f"Spacecraft '{spacecraft_name}' not found in history."
@@ -96,7 +368,10 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
 
     spacecraft_history = history.spacecrafts_history[spacecraft_name]
 
-    # Get current events from the spacecraft history
+    # ==========================================================================
+    # Determine the tick corresponding to time t
+    # ==========================================================================
+
     current_events = spacecraft_history.events
     event_at_time_t = None
 
@@ -112,7 +387,6 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
             f"'{spacecraft_name}' at or before time {t}."
         )
 
-    # Analyze tick from that phase time to actual t
     time_since_event = t - event_at_time_t.time
     dt_master = event_at_time_t.dt_master
 
@@ -121,7 +395,10 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
     tick_base = event_at_time_t.tick
     tick_at_t = tick_base + round(ticks_since_event)
 
-    # Find tick in chunk
+    # ==========================================================================
+    # Determine available history samples
+    # ==========================================================================
+
     current_chunk_index = spacecraft_history.chunk_index
     current_index = spacecraft_history.index
     chunk_size = spacecraft_history.chunk_size
@@ -142,19 +419,19 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
             f"extrapolate spacecraft '{spacecraft_name}'."
         )
 
-    # ---------------------------------------------------------
-    # Determine the two ticks needed
-    # ---------------------------------------------------------
+    # ==========================================================================
+    # Determine the two samples required
+    # ==========================================================================
 
     if tick_at_t <= 0:
 
-        # Extrapolation before first sample
+        # Extrapolation before the first sample
         tick_need_0 = 0
         tick_need_1 = 1
 
     elif tick_at_t >= total_samples - 1:
 
-        # Extrapolation after last sample
+        # Extrapolation after the last sample
         tick_need_0 = total_samples - 2
         tick_need_1 = total_samples - 1
 
@@ -164,117 +441,88 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
         tick_need_0 = tick_at_t - 1
         tick_need_1 = tick_at_t
 
-    # ---------------------------------------------------------
-    # Find chunk and index for tick 0
-    # ---------------------------------------------------------
+    # ==========================================================================
+    # Helper to retrieve a state from a history sample
+    # ==========================================================================
 
-    chunk_index_0 = tick_need_0 // chunk_size
-    index_0 = tick_need_0 % chunk_size
+    def get_sample(sample_index):
 
-    # ---------------------------------------------------------
-    # Find chunk and index for tick 1
-    # ---------------------------------------------------------
+        chunk_index = sample_index // chunk_size
+        index = sample_index % chunk_size
 
-    chunk_index_1 = tick_need_1 // chunk_size
-    index_1 = tick_need_1 % chunk_size
+        # ----------------------------------------------------------------------
+        # Sample in the current in-memory chunk
+        # ----------------------------------------------------------------------
 
-    # ---------------------------------------------------------
-    # Load state 0
-    # ---------------------------------------------------------
+        if chunk_index == current_chunk_index:
 
-    if chunk_index_0 == current_chunk_index:
+            t_sample = spacecraft_history.t[index]
 
-        # State is in current chunk
-        t0 = spacecraft_history.t[index_0]
-
-        state0 = StateVariables(
-            position=spacecraft_history.true_position[index_0],
-            velocity=spacecraft_history.true_velocity[index_0],
-            acceleration=spacecraft_history.true_acceleration[index_0],
-            attitude=spacecraft_history.true_attitude[index_0],
-            angular_velocity=spacecraft_history.true_angular_velocity[
-                index_0
-            ],
-            angular_acceleration=(
-                spacecraft_history.true_angular_acceleration[index_0]
-            ),
-        )
-
-    else:
-
-        # State is in a previous chunk
-        chunk_file_0 = os.path.join(
-            history.data_file_path,
-            f"{spacecraft_name}_history_chunk_{chunk_index_0}.npz"
-        )
-
-        with np.load(chunk_file_0) as chunk_data_0:
-
-            t0 = chunk_data_0["t"][index_0]
-
-            state0 = StateVariables(
-                position=chunk_data_0["true_position"][index_0],
-                velocity=chunk_data_0["true_velocity"][index_0],
-                acceleration=chunk_data_0["true_acceleration"][index_0],
-                attitude=chunk_data_0["true_attitude"][index_0],
-                angular_velocity=chunk_data_0[
-                    "true_angular_velocity"
-                ][index_0],
-                angular_acceleration=chunk_data_0[
-                    "true_angular_acceleration"
-                ][index_0],
+            state = StateVariables(
+                position=spacecraft_history.true_position[index],
+                velocity=spacecraft_history.true_velocity[index],
+                acceleration=spacecraft_history.true_acceleration[index],
+                attitude=spacecraft_history.true_attitude[index],
+                angular_velocity=(
+                    spacecraft_history.true_angular_velocity[index]
+                ),
+                angular_acceleration=(
+                    spacecraft_history.true_angular_acceleration[index]
+                ),
+                translational_frame=(
+                    spacecraft_history.true_translational_frame[index]
+                ),
+                rotational_frame=(
+                    spacecraft_history.true_rotational_frame[index]
+                ),
             )
 
-    # ---------------------------------------------------------
-    # Load state 1
-    # ---------------------------------------------------------
+        # ----------------------------------------------------------------------
+        # Sample stored in a previous chunk
+        # ----------------------------------------------------------------------
 
-    if chunk_index_1 == current_chunk_index:
+        else:
 
-        # State is in current chunk
-        t1 = spacecraft_history.t[index_1]
-
-        state1 = StateVariables(
-            position=spacecraft_history.true_position[index_1],
-            velocity=spacecraft_history.true_velocity[index_1],
-            acceleration=spacecraft_history.true_acceleration[index_1],
-            attitude=spacecraft_history.true_attitude[index_1],
-            angular_velocity=spacecraft_history.true_angular_velocity[
-                index_1
-            ],
-            angular_acceleration=(
-                spacecraft_history.true_angular_acceleration[index_1]
-            ),
-        )
-
-    else:
-
-        # State is in a previous chunk
-        chunk_file_1 = os.path.join(
-            history.data_file_path,
-            f"{spacecraft_name}_history_chunk_{chunk_index_1}.npz"
-        )
-
-        with np.load(chunk_file_1) as chunk_data_1:
-
-            t1 = chunk_data_1["t"][index_1]
-
-            state1 = StateVariables(
-                position=chunk_data_1["true_position"][index_1],
-                velocity=chunk_data_1["true_velocity"][index_1],
-                acceleration=chunk_data_1["true_acceleration"][index_1],
-                attitude=chunk_data_1["true_attitude"][index_1],
-                angular_velocity=chunk_data_1[
-                    "true_angular_velocity"
-                ][index_1],
-                angular_acceleration=chunk_data_1[
-                    "true_angular_acceleration"
-                ][index_1],
+            chunk_file = os.path.join(
+                history.data_file_path,
+                f"{spacecraft_name}_history_chunk_{chunk_index}.npz",
             )
 
-    # ---------------------------------------------------------
+            with np.load(chunk_file, allow_pickle=False) as chunk_data:
+
+                t_sample = chunk_data["t"][index]
+
+                state = StateVariables(
+                    position=chunk_data["true_position"][index],
+                    velocity=chunk_data["true_velocity"][index],
+                    acceleration=chunk_data["true_acceleration"][index],
+                    attitude=chunk_data["true_attitude"][index],
+                    angular_velocity=(
+                        chunk_data["true_angular_velocity"][index]
+                    ),
+                    angular_acceleration=(
+                        chunk_data["true_angular_acceleration"][index]
+                    ),
+                    translational_frame=(
+                        chunk_data["true_translational_frame"][index]
+                    ),
+                    rotational_frame=(
+                        chunk_data["true_rotational_frame"][index]
+                    ),
+                )
+
+        return t_sample, state
+
+    # ==========================================================================
+    # Load the two states
+    # ==========================================================================
+
+    t0, state0 = get_sample(tick_need_0)
+    t1, state1 = get_sample(tick_need_1)
+
+    # ==========================================================================
     # Exact match
-    # ---------------------------------------------------------
+    # ==========================================================================
 
     if np.isclose(t0, t):
         return copy.deepcopy(state0)
@@ -282,35 +530,80 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
     if np.isclose(t1, t):
         return copy.deepcopy(state1)
 
-    # ---------------------------------------------------------
+    # ==========================================================================
     # Interpolation / extrapolation coefficient
-    # ---------------------------------------------------------
+    # ==========================================================================
+
+    if np.isclose(t1, t0):
+        raise ValueError(
+            f"Cannot interpolate spacecraft '{spacecraft_name}': "
+            f"the selected samples have identical times ({t0})."
+        )
 
     alpha = (t - t0) / (t1 - t0)
 
-    # ---------------------------------------------------------
+    # ==========================================================================
     # Interpolate StateVariables
-    # ---------------------------------------------------------
+    # ==========================================================================
 
     result = copy.deepcopy(state0)
+
+    frame_fields = {
+        "translational_frame",
+        "rotational_frame",
+    }
 
     for field_name in state0.__dataclass_fields__:
 
         value0 = getattr(state0, field_name)
         value1 = getattr(state1, field_name)
 
+        # ----------------------------------------------------------------------
+        # Preserve reference frames as discrete objects
+        # ----------------------------------------------------------------------
+
+        if field_name in frame_fields:
+            setattr(result, field_name, copy.deepcopy(value0))
+            continue
+
+        # ----------------------------------------------------------------------
+        # Handle missing values
+        # ----------------------------------------------------------------------
+
         if value0 is None or value1 is None:
             setattr(result, field_name, None)
             continue
 
-        value = value0 + alpha * (
-            value1 - value0
-        )
+        # ----------------------------------------------------------------------
+        # Interpolate numerical fields
+        # ----------------------------------------------------------------------
 
-        setattr(
-            result,
-            field_name,
-            value
-        )
+        value = value0 + alpha * (value1 - value0)
+
+        setattr(result, field_name, value)
 
     return result
+
+def compare_frames(frame1: Frame, frame2: Frame) -> bool:
+    """
+    Compare two frames for equality.
+
+    Parameters
+    ----------
+    frame1 : Frame
+        First frame to compare.
+    frame2 : Frame
+        Second frame to compare.
+
+    Returns
+    -------
+    bool
+        True if the frames are equal, False otherwise.
+    """
+    if frame1== frame2:
+        return True
+    else:
+        raise ValueError(
+            f"Frames are not equal: {frame1.name} != {frame2.name}"
+        )
+        

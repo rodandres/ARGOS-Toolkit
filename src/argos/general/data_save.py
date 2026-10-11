@@ -1,5 +1,6 @@
 import numpy as np
 
+import csv
 import json
 import os
 import time
@@ -10,6 +11,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from argos.general.dataclasses import SpacecraftData
 
+FRAME_NAME_DTYPE = "<U128"
 
 @dataclass
 class SimulationHistoryMetadata:
@@ -327,6 +329,8 @@ class SpacecraftHistory:
         self.true_attitude = np.empty((self.chunk_size, 4), dtype=np.float64)  # Quaternion
         self.true_angular_velocity = np.empty((self.chunk_size, 3), dtype=np.float64)
         self.true_angular_acceleration = np.empty((self.chunk_size, 3), dtype=np.float64)
+        self.true_state_translational_frame = np.empty(self.chunk_size, dtype=FRAME_NAME_DTYPE)
+        self.true_state_rotational_frame = np.empty(self.chunk_size, dtype=FRAME_NAME_DTYPE)
 
         # Estimated data
         self.estimated_sc_position = np.empty((self.chunk_size, 3), dtype=np.float64)
@@ -335,6 +339,8 @@ class SpacecraftHistory:
         self.estimated_sc_attitude = np.empty((self.chunk_size, 4), dtype=np.float64)  # Quaternion
         self.estimated_sc_angular_velocity = np.empty((self.chunk_size, 3), dtype=np.float64)
         self.estimated_sc_angular_acceleration = np.empty((self.chunk_size, 3), dtype=np.float64)
+        self.estimated_sc_translational_frame = np.empty(self.chunk_size, dtype=FRAME_NAME_DTYPE)
+        self.estimated_sc_rotational_frame = np.empty(self.chunk_size, dtype=FRAME_NAME_DTYPE)
 
         self.estimated_target_position = np.empty((self.chunk_size, 3), dtype=np.float64)
         self.estimated_target_velocity = np.empty((self.chunk_size, 3), dtype=np.float64)
@@ -342,6 +348,8 @@ class SpacecraftHistory:
         self.estimated_target_attitude = np.empty((self.chunk_size, 4), dtype=np.float64)  # Quaternion
         self.estimated_target_angular_velocity = np.empty((self.chunk_size, 3), dtype=np.float64)
         self.estimated_target_angular_acceleration = np.empty((self.chunk_size, 3), dtype=np.float64)
+        self.estimated_target_translational_frame = np.empty(self.chunk_size, dtype=FRAME_NAME_DTYPE)
+        self.estimated_target_rotational_frame = np.empty(self.chunk_size, dtype=FRAME_NAME_DTYPE)
 
         # Guidance data
         self.guidance_position = np.empty((self.chunk_size, 3), dtype=np.float64)
@@ -350,14 +358,18 @@ class SpacecraftHistory:
         self.guidance_attitude = np.empty((self.chunk_size, 4), dtype=np.float64)  # Quaternion
         self.guidance_angular_velocity = np.empty((self.chunk_size, 3), dtype=np.float64)
         self.guidance_angular_acceleration = np.empty((self.chunk_size, 3), dtype=np.float64)
+        self.guidance_translational_frame = np.empty(self.chunk_size, dtype=FRAME_NAME_DTYPE)
+        self.guidance_rotational_frame = np.empty(self.chunk_size, dtype=FRAME_NAME_DTYPE)
 
         # Control output data
         self.control_force = np.empty((self.chunk_size, 3), dtype=np.float64)
         self.control_torque = np.empty((self.chunk_size, 3), dtype=np.float64)
+        self.control_frame = np.empty(self.chunk_size, dtype=FRAME_NAME_DTYPE)
 
         # Excerted forces and torques
         self.current_force_exerted = np.empty((self.chunk_size, 3), dtype=np.float64)
         self.current_torque_exerted = np.empty((self.chunk_size, 3), dtype=np.float64)
+        self.exerted_data_frame = np.empty(self.chunk_size, dtype=FRAME_NAME_DTYPE)
 
         # Events
         self.events = []  # List of TransitionEventInfo objects
@@ -382,6 +394,8 @@ class SpacecraftHistory:
         self.true_attitude[self.index] = data.true_state.attitude
         self.true_angular_velocity[self.index] = data.true_state.angular_velocity
         self.true_angular_acceleration[self.index] = data.true_state.angular_acceleration
+        self.true_state_translational_frame[self.index] = data.true_state.translational_frame.name
+        self.true_state_rotational_frame[self.index] = data.true_state.rotational_frame.name
 
         # Estimated data
         self.estimated_sc_position[self.index] = data.navigation_data.spacecraft_state.position
@@ -390,6 +404,8 @@ class SpacecraftHistory:
         self.estimated_sc_attitude[self.index] = data.navigation_data.spacecraft_state.attitude
         self.estimated_sc_angular_velocity[self.index] = data.navigation_data.spacecraft_state.angular_velocity
         self.estimated_sc_angular_acceleration[self.index] = data.navigation_data.spacecraft_state.angular_acceleration
+        self.estimated_sc_translational_frame[self.index] = data.navigation_data.spacecraft_state.translational_frame.name
+        self.estimated_sc_rotational_frame[self.index] = data.navigation_data.spacecraft_state.rotational_frame.name
 
         self.estimated_target_position[self.index] = data.navigation_data.target_state.position
         self.estimated_target_velocity[self.index] = data.navigation_data.target_state.velocity
@@ -397,6 +413,8 @@ class SpacecraftHistory:
         self.estimated_target_attitude[self.index] = data.navigation_data.target_state.attitude
         self.estimated_target_angular_velocity[self.index] = data.navigation_data.target_state.angular_velocity
         self.estimated_target_angular_acceleration[self.index] = data.navigation_data.target_state.angular_acceleration
+        self.estimated_target_translational_frame[self.index] = data.navigation_data.target_state.translational_frame.name
+        self.estimated_target_rotational_frame[self.index] = data.navigation_data.target_state.rotational_frame.name
 
         # Guidance data
         self.guidance_position[self.index] = data.guidance_data.state.position
@@ -405,14 +423,18 @@ class SpacecraftHistory:
         self.guidance_attitude[self.index] = data.guidance_data.state.attitude
         self.guidance_angular_velocity[self.index] = data.guidance_data.state.angular_velocity
         self.guidance_angular_acceleration[self.index] = data.guidance_data.state.angular_acceleration
+        self.guidance_translational_frame[self.index] = data.guidance_data.state.translational_frame.name
+        self.guidance_rotational_frame[self.index] = data.guidance_data.state.rotational_frame.name
 
         # Control output data
         self.control_force[self.index] = data.control_data.force
         self.control_torque[self.index] = data.control_data.torque
+        self.control_frame[self.index] = data.control_data.frame.name
 
         # Excerted forces and torques
-        self.current_force_exerted[self.index] = data.current_force_exerted
-        self.current_torque_exerted[self.index] = data.current_torque_exerted
+        self.current_force_exerted[self.index] = data.exerted_data.force
+        self.current_torque_exerted[self.index] = data.exerted_data.torque
+        self.exerted_data_frame[self.index] = data.exerted_data.frame.name
 
         self.t[self.index] = data.t
         self.tick[self.index] = data.tick
@@ -479,6 +501,8 @@ class SpacecraftHistory:
             true_attitude=self.true_attitude[:self.index],
             true_angular_velocity=self.true_angular_velocity[:self.index],
             true_angular_acceleration=self.true_angular_acceleration[:self.index],
+            true_translational_frame=self.true_state_translational_frame[:self.index],
+            true_rotational_frame=self.true_state_rotational_frame[:self.index],
 
             # Estimated spacecraft state
             estimated_sc_position=self.estimated_sc_position[:self.index],
@@ -487,6 +511,8 @@ class SpacecraftHistory:
             estimated_sc_attitude=self.estimated_sc_attitude[:self.index],
             estimated_sc_angular_velocity=self.estimated_sc_angular_velocity[:self.index],
             estimated_sc_angular_acceleration=self.estimated_sc_angular_acceleration[:self.index],
+            estimated_sc_translational_frame=self.estimated_sc_translational_frame[:self.index],
+            estimated_sc_rotational_frame=self.estimated_sc_rotational_frame[:self.index],
 
             # Estimated target state
             estimated_target_position=self.estimated_target_position[:self.index],
@@ -495,6 +521,8 @@ class SpacecraftHistory:
             estimated_target_attitude=self.estimated_target_attitude[:self.index],
             estimated_target_angular_velocity=self.estimated_target_angular_velocity[:self.index],
             estimated_target_angular_acceleration=self.estimated_target_angular_acceleration[:self.index],
+            estimated_target_translational_frame=self.estimated_target_translational_frame[:self.index],
+            estimated_target_rotational_frame=self.estimated_target_rotational_frame[:self.index],
 
             # Guidance
             guidance_position=self.guidance_position[:self.index],
@@ -503,14 +531,18 @@ class SpacecraftHistory:
             guidance_attitude=self.guidance_attitude[:self.index],
             guidance_angular_velocity=self.guidance_angular_velocity[:self.index],
             guidance_angular_acceleration=self.guidance_angular_acceleration[:self.index],
+            guidance_translational_frame=self.guidance_translational_frame[:self.index],
+            guidance_rotational_frame=self.guidance_rotational_frame[:self.index],
 
             # Control
             control_force=self.control_force[:self.index],
             control_torque=self.control_torque[:self.index],
+            control_frame=self.control_frame[:self.index],
 
             # Exerted
             current_force_exerted=self.current_force_exerted[:self.index],
             current_torque_exerted=self.current_torque_exerted[:self.index],
+            exerted_data_frame=self.exerted_data_frame[:self.index]
         )
 
         self.chunk_index += 1
@@ -525,12 +557,19 @@ def save_simulation_history_csv(
     """
     Convert simulation history NPZ chunks into one CSV file per spacecraft.
 
+    Each spacecraft's history chunks are processed sequentially, avoiding
+    the need to load the complete simulation history into memory.
+
+    Both numerical data and string data, such as reference frame names,
+    are supported.
+
     Parameters
     ----------
     metadata_file : str
-        Path to the simulation metadata JSON file.
+        Path to the simulation history metadata JSON file.
     main_directory : str, optional
-        Main directory where the CSV simulation directory will be created.
+        Directory where the CSV simulation directory will be created.
+        Defaults to "sim_data".
 
     Returns
     -------
@@ -542,17 +581,6 @@ def save_simulation_history_csv(
     FileNotFoundError
         If a history chunk referenced by the metadata file does not exist.
     """
-    """
-    Convert simulation history NPZ chunks into one CSV file per spacecraft.
-
-    Parameters
-    ----------
-    metadata_file : str
-        Path to the simulation metadata.json file.
-
-    main_directory : str
-        Main directory where the CSV simulation directory will be created.
-    """
 
     # ==========================================================================
     # Load metadata
@@ -563,7 +591,6 @@ def save_simulation_history_csv(
         "r",
         encoding="utf-8",
     ) as file:
-
         metadata = json.load(file)
 
     data_file_path = metadata["data_file_path"]
@@ -600,6 +627,8 @@ def save_simulation_history_csv(
         "true_attitude",
         "true_angular_velocity",
         "true_angular_acceleration",
+        "true_translational_frame",
+        "true_rotational_frame",
 
         # Estimated spacecraft state
         "estimated_sc_position",
@@ -608,6 +637,8 @@ def save_simulation_history_csv(
         "estimated_sc_attitude",
         "estimated_sc_angular_velocity",
         "estimated_sc_angular_acceleration",
+        "estimated_sc_translational_frame",
+        "estimated_sc_rotational_frame",
 
         # Estimated target state
         "estimated_target_position",
@@ -616,6 +647,8 @@ def save_simulation_history_csv(
         "estimated_target_attitude",
         "estimated_target_angular_velocity",
         "estimated_target_angular_acceleration",
+        "estimated_target_translational_frame",
+        "estimated_target_rotational_frame",
 
         # Guidance
         "guidance_position",
@@ -624,14 +657,18 @@ def save_simulation_history_csv(
         "guidance_attitude",
         "guidance_angular_velocity",
         "guidance_angular_acceleration",
+        "guidance_translational_frame",
+        "guidance_rotational_frame",
 
         # Control
         "control_force",
         "control_torque",
+        "control_frame",
 
-        # Exerted
+        # Exerted forces and torques
         "current_force_exerted",
         "current_torque_exerted",
+        "exerted_data_frame",
     ]
 
     # ==========================================================================
@@ -650,7 +687,7 @@ def save_simulation_history_csv(
         first_chunk = True
 
         # ======================================================================
-        # Process chunks
+        # Process history chunks
         # ======================================================================
 
         for chunk_index in range(number_of_chunks):
@@ -661,7 +698,6 @@ def save_simulation_history_csv(
             )
 
             if not os.path.exists(chunk_file):
-
                 raise FileNotFoundError(
                     f"History chunk not found: '{chunk_file}'"
                 )
@@ -676,7 +712,7 @@ def save_simulation_history_csv(
                 columns = []
 
                 # ==============================================================
-                # Extract variables
+                # Extract variables and generate column names
                 # ==============================================================
 
                 for variable in variables:
@@ -687,22 +723,15 @@ def save_simulation_history_csv(
                     data = chunk[variable]
 
                     # ----------------------------------------------------------
-                    # 1D data
+                    # One-dimensional data
                     # ----------------------------------------------------------
 
                     if data.ndim == 1:
 
-                        data = data.reshape(
-                            -1,
-                            1,
-                        )
-
-                        variable_columns = [
-                            variable
-                        ]
+                        variable_columns = [variable]
 
                     # ----------------------------------------------------------
-                    # 2D or higher-dimensional data
+                    # Multidimensional data
                     # ----------------------------------------------------------
 
                     else:
@@ -728,12 +757,16 @@ def save_simulation_history_csv(
                     continue
 
                 # ==============================================================
-                # Combine variables horizontally
+                # Validate row counts
                 # ==============================================================
 
-                chunk_data = np.column_stack(
-                    arrays
-                )
+                number_of_records = len(arrays[0])
+
+                if any(len(array) != number_of_records for array in arrays):
+                    raise ValueError(
+                        f"Inconsistent record counts in chunk "
+                        f"'{chunk_file}'."
+                    )
 
                 # ==============================================================
                 # Write CSV
@@ -741,32 +774,38 @@ def save_simulation_history_csv(
 
                 with open(
                     output_file,
-                    "ab" if not first_chunk else "wb",
+                    "a" if not first_chunk else "w",
+                    newline="",
+                    encoding="utf-8",
                 ) as file:
+
+                    writer = csv.writer(file)
 
                     # ----------------------------------------------------------
                     # Header
                     # ----------------------------------------------------------
 
                     if first_chunk:
-
-                        header = ",".join(
-                            columns
-                        ) + "\n"
-
-                        file.write(
-                            header.encode("utf-8")
-                        )
+                        writer.writerow(columns)
 
                     # ----------------------------------------------------------
-                    # Data
+                    # Data rows
                     # ----------------------------------------------------------
 
-                    np.savetxt(
-                        file,
-                        chunk_data,
-                        delimiter=",",
-                    )
+                    for row_index in range(number_of_records):
+
+                        row = []
+
+                        for array in arrays:
+
+                            values = array[row_index]
+
+                            if np.ndim(values) == 0:
+                                row.append(values.item())
+                            else:
+                                row.extend(values.tolist())
+
+                        writer.writerow(row)
 
             first_chunk = False
 
