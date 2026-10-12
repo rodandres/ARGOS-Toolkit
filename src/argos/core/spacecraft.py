@@ -8,8 +8,9 @@ from argos.actuators.actuators_base import ActuatorBase
 from argos.faults.fault_manager import FaultManager
 from argos.general.data_save import TransitionEventInfo
 from argos.frames.frames import NONE_frame, BODY_frame
-from argos.frames.rotation_manager import TransformsManager
-from argos.math import quaternion_to_DCM
+from argos.frames.frames_base import Frame
+from argos.frames.transform_manager import TransformsManager
+from argos.math import quaternion_from_euler, quaternion_to_DCM
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:    
@@ -102,7 +103,8 @@ class Spacecraft():
         self._init_state_variables(initial_state)
         self._set_sensors_names()
         self._set_actuators_names()
-        self._set_transform_manager()
+        self._set_sensors_frames()
+        self._update_propagator_transforms()
 
         self.fault_manager = FaultManager(self)
 
@@ -178,6 +180,7 @@ class Spacecraft():
             self.rotational_model = phase.rotational_model
 
         self._update_true_state_frames()
+        self._update_propagator_transforms()
 
         self.spacecraft_data.current_propagation_dt = phase.dt_propagation
         
@@ -278,7 +281,11 @@ class Spacecraft():
                     "its propagation frame."
                 )
 
-            state.rotational_frame = frame       
+            state.rotational_frame = frame
+
+
+        # TO BE DELETED LATER:
+        self.spacecraft_data.perturbation_data.frame = state.rotational_frame
 
         print("[DEBUG] True state frames updated:")
         print(f"  Translational frame: {state.translational_frame.name}")
@@ -311,19 +318,53 @@ class Spacecraft():
                 actuator.name = f"Actuator_{actuators_count}"
                 actuators_count += 1
 
-    def _set_transform_manager(self):
-        # Create frames for each sensor, assign them to the sensor, and register them in the transforms manager
-        pass
+    def _set_sensors_frames(self):
+        if not self.has_sensors:
+            return
 
+        for sensor in self.sensors:
+            sensor.spacecraft_transform_manager = self.transforms_manager
+            sensor.parent_spacecraft = self
+            sensor.spacecraft_data = self.spacecraft_data
+            if sensor.frame is None:
+                sensor.frame = Frame(
+                    name=sensor.name + "_frame",
+                    inertial=False,
+                    origin= "Sensor position in body frame",                    
+                )                
+                rotation_matrix = quaternion_to_DCM(sensor.rotation_quat)
+
+                self.transforms_manager.register_static(
+                    source_frame=sensor.frame,
+                    target_frame=BODY_frame,
+                    matrix=rotation_matrix,
+                    translation=sensor.position
+                )
+
+    def _update_propagator_transforms(self):        
         def get_quaternion_propagator_from_body():
-            return quaternion_to_DCM(self.spacecraft_data.true_state.attitude)
+            return quaternion_to_DCM(self.spacecraft_data.true_state.attitude)        
 
-        # Register current propagator to body
-        self.transforms_manager.register_dynamic(
-            source_frame=self.spacecraft_data.true_state.translational_frame,
-            target_frame=BODY_frame,
-            provider=get_quaternion_propagator_from_body
-        )
+        # Register current propagator to body - translational            
+        translation_frame = None
+        if self.has_translational_model and self.current_phase.translational_model.propagation_frame is not NONE_frame:            
+            translation_frame = self.spacecraft_data.true_state.translational_frame
+            self.transforms_manager.register_dynamic(
+                source_frame=translation_frame,
+                target_frame=BODY_frame,
+                provider=get_quaternion_propagator_from_body
+            )            
+
+        # Register current propagator to body - rotational
+        if self.has_rotational_model and self.current_phase.rotational_model.propagation_frame is not NONE_frame:
+            rotational_frame = self.spacecraft_data.true_state.rotational_frame            
+
+            if translation_frame != rotational_frame:
+                self.transforms_manager.register_dynamic(
+                    source_frame=rotational_frame,
+                    target_frame=BODY_frame,
+                    provider=get_quaternion_propagator_from_body
+                )
 
     def update_sensor_name(self, current_name: str, new_name: str):
         '''
@@ -391,7 +432,7 @@ class Spacecraft():
             return
     
         for sensor in self.sensors:            
-            sensor.update(self.spacecraft_data, simulation_data)
+            sensor.update()
     
     def update_navigation(self, simulation_data):
         if self.has_navigation_law is False:

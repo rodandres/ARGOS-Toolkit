@@ -215,46 +215,28 @@ class Gyroscope(SensorBase):
             name=name,
             verbose=verbose)
 
-    def transform_to_sensor_frame(self, gyro, simulation_data) -> np.ndarray:
-        """
-        Transform angular velocity into the gyroscope frame.
-
-        Parameters
-        ----------
-        gyro : np.ndarray, shape (3,)
-            Angular velocity in the inertial frame [rad/s].
-        simulation_data : SimulationData
-            Current simulation data containing the inertial-to-body DCM.
-
-        Returns
-        -------
-        np.ndarray, shape (3,)
-            Angular velocity expressed in the sensor frame [rad/s].
-        """
-        # Correction of the gyro in the inertial frame to the body frame
-        gyro_body = simulation_data.DCM_inertial_to_body @ gyro        
-    
-        return self.DCM_sensor_to_body.T @ gyro_body
-
     def get_ideal_measurement(
-        self,
-        spacecraft_data,
-        simulation_data,
+        self        
     ) -> np.ndarray:
         """
-        Compute the ideal gyroscope measurement.
-
-        Parameters
-        ----------
-        spacecraft_data : SpacecraftData
-            Current spacecraft state.
-        simulation_data : SimulationData
-            Current simulation data.
+        Compute the ideal gyroscope measurement.        
 
         Returns
         -------
         np.ndarray, shape (3,)
             Spacecraft angular velocity expressed in the sensor frame [rad/s].
         """
-        # Gyroscope ideally measures the angular velocity of the spacecraft in the body frame
-        return self.transform_to_sensor_frame(spacecraft_data.true_omega, simulation_data)
+
+        true_state = self.spacecraft_data.true_state
+        rotational_frame = true_state.rotational_frame
+
+        if rotational_frame == NONE_frame:
+            return np.zeros(3)
+
+        omega_sensor = self.spacecraft_transform_manager.transform_vector(
+            true_state.angular_velocity,
+            rotational_frame,
+            self.frame,
+        )
+
+        return omega_sensor
