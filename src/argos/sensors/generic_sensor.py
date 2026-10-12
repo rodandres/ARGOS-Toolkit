@@ -64,38 +64,9 @@ class GaussianStdSensor(SensorBase):
 
         return true_state + measurement_noise
 
-    def get_output(
-        self,
-        true_state: np.ndarray,
-        true_ref_state: np.ndarray | None = None,
-    ) -> np.ndarray:
-        """
-        Generate the sensor output from the true state.
-
-        Parameters
-        ----------
-        true_state : np.ndarray
-            True state or measurement quantity.
-        true_ref_state : np.ndarray, optional
-            Reference state. Currently not used by this sensor model.
-
-        Returns
-        -------
-        np.ndarray
-            Noisy sensor output.
-        """
-        return self.measure(true_state)
-
-    def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:
+    def get_ideal_measurement(self) -> np.ndarray:
         """
         Compute the ideal measurement for the sensor.
-
-        Parameters
-        ----------
-        spacecraft_data : SpacecraftData
-            Current spacecraft state.
-        simulation_data : SimulationData
-            Current simulation data.
 
         Raises
         ------
@@ -165,30 +136,8 @@ class GaussianCovarianceSensor(SensorBase):
         )
 
         return true_state + measurement_noise
-    
-    def get_output(
-        self,
-        true_state: np.ndarray,
-        true_ref_state: np.ndarray | None = None,
-    ) -> np.ndarray:
-        """
-        Generate the sensor output from the true state.
-
-        Parameters
-        ----------
-        true_state : np.ndarray
-            True state or measurement quantity.
-        true_ref_state : np.ndarray, optional
-            Reference state. Currently not used by this sensor model.
-
-        Returns
-        -------
-        np.ndarray
-            Noisy sensor output.
-        """
-        return self.measure(true_state)
-
-    def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:
+       
+    def get_ideal_measurement(self) -> np.ndarray:
         """
         Get the ideal sensor measurement without any noise or errors.
 
@@ -240,20 +189,13 @@ class AbsoluteSensor(SensorBase):
             verbose=verbose
         )            
 
-    def get_ideal_measurement(self, spacecraft_data, simulation_data) -> tuple:
+    def get_ideal_measurement(self) -> tuple:
         """
         Generate the ideal absolute measurement.
 
         The returned measurement contains the current spacecraft true state
         followed by the state of the configured target spacecraft. If no target
-        is configured, a zero/default reference state is returned.
-
-        Parameters
-        ----------
-        spacecraft_data : SpacecraftData
-            Current spacecraft state and target configuration.
-        simulation_data : SimulationData
-            Current simulation data and simulation history.
+        is configured, a zero/default reference state is returned.        
 
         Returns
         -------
@@ -264,12 +206,12 @@ class AbsoluteSensor(SensorBase):
             acceleration.
         """
         parent_spacecraft_data_to_return = (            
-            spacecraft_data.true_state.position,
-            spacecraft_data.true_state.velocity,
-            spacecraft_data.true_state.acceleration,
-            spacecraft_data.true_state.attitude,
-            spacecraft_data.true_state.angular_velocity,
-            spacecraft_data.true_state.angular_acceleration
+            self.spacecraft_data.true_state.position,
+            self.spacecraft_data.true_state.velocity,
+            self.spacecraft_data.true_state.acceleration,
+            self.spacecraft_data.true_state.attitude,
+            self.spacecraft_data.true_state.angular_velocity,
+            self.spacecraft_data.true_state.angular_acceleration
         )
 
         # reference_spacecraft_data_to_return = None
@@ -293,15 +235,14 @@ class AbsoluteSensor(SensorBase):
 
 
         reference_spacecraft_data_to_return = None
-
-        reference_spacecraft_name = spacecraft_data.target_name
+        reference_spacecraft_name = self.spacecraft_data.target_name
 
         if reference_spacecraft_name is not None:
 
             reference_state = get_state_at(
-                history=simulation_data.simulation_history,
+                history=self.simulation_data.simulation_history,
                 spacecraft_name=reference_spacecraft_name,
-                t=spacecraft_data.t
+                t=self.spacecraft_data.t
             )
 
             reference_spacecraft_data_to_return = (

@@ -322,10 +322,7 @@ class Spacecraft():
         if not self.has_sensors:
             return
 
-        for sensor in self.sensors:
-            sensor.spacecraft_transform_manager = self.transforms_manager
-            sensor.parent_spacecraft = self
-            sensor.spacecraft_data = self.spacecraft_data
+        for sensor in self.sensors:            
             if sensor.frame is None:
                 sensor.frame = Frame(
                     name=sensor.name + "_frame",
@@ -415,6 +412,13 @@ class Spacecraft():
         dt_master = self.spacecraft_data.current_master_dt
 
         return tick % int(dt_component / dt_master) == 0
+
+    def init_sensors_parameters(self, simulation_data):
+        for sensor in self.sensors:
+            sensor.spacecraft_transform_manager = self.transforms_manager
+            sensor.parent_spacecraft = self
+            sensor.spacecraft_data = self.spacecraft_data
+            sensor.simulation_data = simulation_data
 
     def update_mission_manager(self, simulation_data):
         if self.has_mission_manager is False:

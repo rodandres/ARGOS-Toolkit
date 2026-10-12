@@ -470,10 +470,10 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
                     spacecraft_history.true_angular_acceleration[index]
                 ),
                 translational_frame=(
-                    spacecraft_history.true_translational_frame[index]
+                    spacecraft_history.true_state_translational_frame[index]
                 ),
                 rotational_frame=(
-                    spacecraft_history.true_rotational_frame[index]
+                    spacecraft_history.true_state_rotational_frame[index]
                 ),
             )
 

@@ -247,6 +247,7 @@ class Simulation:
 
         # Record initial states of all spacecrafts in the simulation history
         for spacecraft in self.simulation_data.spacecrafts:
+            spacecraft.init_sensors_parameters(self.simulation_data)
             self.simulation_data.simulation_history.record_spacecraft(spacecraft.name, spacecraft.spacecraft_data)
 
         if self.verbose:
