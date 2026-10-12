@@ -1,6 +1,6 @@
 from argos.propagators.propagator_base import TranslationalPropagatorBase, RotationalPropagatorBase
 import numpy as np
-
+from time import perf_counter
 from argos.solvers.solvers_base import solve
 from argos.propagators.dynamic_models import (
     quaternion_dynamics,
@@ -10,10 +10,11 @@ from argos.propagators.dynamic_models import (
 )
 
 from argos.frames.frames import ECI_frame, CR3BP_ROTATING_frame, NONE_frame
+from argos.frames.frames_base import Frame
 
 from argos import _cpp
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 if TYPE_CHECKING:
     from argos.core.spacecraft import Spacecraft
     from argos.general.dataclasses import SimulationData
@@ -34,7 +35,7 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
     ----------
     TO BE UPDATED.
     """
-    def __init__(self, integration_method: str = "CPP_RK45", propagation_frame: str | None=None):
+    def __init__(self, integration_method: str = "CPP_RK45", propagation_frame: Frame = NONE_frame):
         super().__init__(integration_method)
 
         if self.using_cpp:
@@ -42,9 +43,9 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
         else:
             self.dynamic_model = quaternion_dynamics
 
-        self.propagation_frame = None
+        self._check_propagation_frame(propagation_frame)
 
-        self._set_propagation_frame(propagation_frame)
+        self.propagation_frame = propagation_frame
 
 
         # ================================================================
@@ -61,17 +62,13 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
             "calls": 0,
         }
 
-    def _set_propagation_frame(self, frame_name):
-        if frame_name is None:
-            self.propagation_frame = NONE_frame
-        elif frame_name == "ECI_frame":
-            self.propagation_frame = ECI_frame
-        elif frame_name == "CR3BP_ROTATING_frame":
-            self.propagation_frame = CR3BP_ROTATING_frame
+    def _check_propagation_frame(self, frame):
+        if isinstance(frame, Frame):
+            return
         else:
-            raise ValueError(
-                f"Unsupported propagation frame: {frame_name}. "
-                f"Supported frames are: 'ECI_frame', 'CR3BP_ROTATING_frame', or None."
+            raise TypeError(
+                f"Invalid propagation frame: {frame}. "
+                f"Expected a Frame object."
             )
 
     def evaluate_dynamics(
@@ -401,9 +398,6 @@ class NativeRotationalPropagator(RotationalPropagatorBase):
         # Implement any initialization logic needed for the native rotational propagator
         pass
 
-import numpy as np
-from time import perf_counter
-
 SUPPORTED_DYNAMICS = ["REL2BP", "CR3BP", "NEWTON"]
 
 
@@ -516,7 +510,6 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
         else:
             self.propagation_frame = NONE_frame
             
-
     def _set_dynamics(self):
 
         if self.using_cpp:
@@ -743,8 +736,8 @@ class NativeTranslationalPropagator(TranslationalPropagatorBase):
             t_end,
             state_end,
             mass,
-            exerted_force,
-            disturbance_force,
+            exerted_force_transformed,
+            disturbance_force_transformed,
         )[3:6]
 
         t5 = perf_counter()

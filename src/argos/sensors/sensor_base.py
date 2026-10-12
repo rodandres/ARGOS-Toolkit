@@ -1,9 +1,15 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-from argos.math import quaternion_from_euler, quaternion_to_DCM
+from argos.math import quaternion_from_euler
 from argos.general_tools import _as_3d_array
 from argos.faults.fault_manager import FaultInjector
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from argos.general.dataclasses import SimulationData, SpacecraftData
+    from argos.core.spacecraft import Spacecraft
+    from argos.frames.transform_manager import TransformsManager
 
 class SensorBase(ABC):
     """
@@ -37,7 +43,7 @@ class SensorBase(ABC):
                  sample_rate_freq: float = 100.0,
                  error_models: tuple = (),
                  name: str = None,
-                 verbose: bool = False):        
+                 verbose: bool = False):
         
         self.type = type
         self.position = _as_3d_array(position, "position") # Position of the sensor in the spacecraft body frame (numpy array of shape (3,))
@@ -51,10 +57,12 @@ class SensorBase(ABC):
 
         position = _as_3d_array(position, "position")
         rotation = _as_3d_array(rotation, "rotation")
+
+        self.frame = None
+        
         rotation_rad = np.radians(rotation)
 
         self.rotation_quat = quaternion_from_euler(rotation_rad[0], rotation_rad[1], rotation_rad[2])  # Quaternion representing the sensor rotation in the body frame
-        self.DCM_sensor_to_body = quaternion_to_DCM(self.rotation_quat)  # Direction Cosine Matrix from sensor frame to body frame
 
         self.old_measurement = np.zeros(3)
         self.last_measurement_time = -self.sample_rate_sec  # Initialize to ensure the first measurement is taken at t=0
@@ -62,6 +70,11 @@ class SensorBase(ABC):
         self.measurement = np.zeros(3)
 
         self.fault_injector = FaultInjector()
+
+        self.parent_spacecraft:Spacecraft = None  # Reference to the parent spacecraft, set during spacecraft initialization
+        self.spacecraft_data: SpacecraftData = None  # Reference to the spacecraft data object, set during spacecraft initialization
+        self.spacecraft_transform_manager: TransformsManager = None  # Reference to the spacecraft transform manager, set during spacecraft initialization
+        self.simulation_data: SimulationData = None  # Reference to the simulation data object, set during spacecraft initialization
 
         if self.verbose:
             self.print_info()
@@ -90,49 +103,40 @@ class SensorBase(ABC):
         """        
         return self.type
     
-    def update(self, spacecraft_data, simulation_data):
+    def update(self):
         """
         Update the sensor measurement according to its sampling rate.
 
         When a measurement is due, the ideal measurement is generated, sensor
         error models are applied sequentially, and active fault modes are then
         applied. Between sampling instants, the previous measurement is
-        retained.
+        retained.        
+        """        
 
-        Parameters
-        ----------
-        spacecraft_data : SpacecraftData
-            Current spacecraft state and simulation timing information.
-        simulation_data : SimulationData
-            Current simulation data.
-        """
+        if self.verbose: print("Sensor Update: ", self.type, " at time: ", self.spacecraft_data.t)
+        if self.spacecraft_data.t - self.last_measurement_time >= self.sample_rate_sec:
+            if self.verbose: print("Sensor Sampling: ", self.type, " at time: ", self.spacecraft_data.t)
 
-        if self.verbose: print("Sensor Update: ", self.type, " at time: ", spacecraft_data.t)
-        if spacecraft_data.t - self.last_measurement_time >= self.sample_rate_sec:
-            if self.verbose: print("Sensor Sampling: ", self.type, " at time: ", spacecraft_data.t)
-
-            measurement = self.get_ideal_measurement(spacecraft_data, simulation_data)
-            
+            measurement = self.get_ideal_measurement()
             for error_model in self.error_models:
-                measurement = error_model.apply(measurement, dt=spacecraft_data.current_propagation_dt)
+                measurement = error_model.apply(measurement, dt=self.spacecraft_data.current_propagation_dt)
 
 
             context = {
-                "spacecraft_data": spacecraft_data,
-                "simulation_data": simulation_data,
+                "spacecraft_data": self.spacecraft_data,
+                "simulation_data": self.simulation_data,
                 "type": self.type,                
             }
 
             measurement = self.fault_injector.apply(measurement,
                                                     context=context)
-
-
+    
             self.old_measurement = measurement
-            self.last_measurement_time = spacecraft_data.t
+            self.last_measurement_time = self.spacecraft_data.t
     
             self.measurement = measurement
         else:
-            if self.verbose: print("Sensor Not Sampling: ", self.type, " at time: ", spacecraft_data.t)
+            if self.verbose: print("Sensor Not Sampling: ", self.type, " at time: ", self.spacecraft_data.t)
             self.should_sample = False
             self.measurement = self.old_measurement
         
@@ -142,16 +146,9 @@ class SensorBase(ABC):
         
 
     @abstractmethod
-    def get_ideal_measurement(self, spacecraft_data, simulation_data) -> np.ndarray:
+    def get_ideal_measurement(self) -> np.ndarray:
         """
-        Compute the ideal sensor measurement before error and fault injection.
-
-        Parameters
-        ----------
-        spacecraft_data : SpacecraftData
-            Current spacecraft state.
-        simulation_data : SimulationData
-            Current simulation data.
+        Compute the ideal sensor measurement before error and fault injection.        
 
         Returns
         -------

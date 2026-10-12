@@ -300,4 +300,6 @@ class SpacecraftData:
     #current_torque_exerted: np.ndarray = field(default_factory=lambda: np.zeros(3))
     exerted_data: ExertedData = field(default_factory=ExertedData)
 
+    perturbation_data: PerturbationData = field(default_factory=PerturbationData)
+
     target_name: str | None = None  # Name of the reference spacecraft, if any

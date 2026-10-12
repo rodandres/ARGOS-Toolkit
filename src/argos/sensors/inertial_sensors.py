@@ -1,8 +1,14 @@
+import warnings
 import numpy as np
 from argos.sensors.sensor_base import SensorBase
 from argos.general_tools import _as_3d_array
 
 from argos.sensors.error_models import *
+from argos.frames.frames import BODY_frame, NONE_frame
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from argos.general.dataclasses import SimulationData, SpacecraftData    
 
 class Accelerometer(SensorBase):
     """
@@ -11,6 +17,12 @@ class Accelerometer(SensorBase):
     The accelerometer computes specific force, transforms it from the
     inertial frame to the sensor frame, and applies the configured bias,
     white-noise, random-walk, saturation, and quantization models.
+
+    NOTE: The current accelerometer implementation assumes that the angular velocity
+    and angular acceleration provided by the propagation state correspond to the
+    body's rotation relative to an inertial frame. It does not explicitly account
+    for the corrections required if these quantities are defined relative to a
+    non-inertial propagation frame.
 
     Parameters
     ----------
@@ -64,71 +76,47 @@ class Accelerometer(SensorBase):
             name=name,
             verbose=verbose)        
 
-    def compute_specific_accel(self, spacecraft_data, simulation_data) -> np.ndarray:
+    def compute_specific_accel(self) -> np.ndarray:
         """
-        Compute the specific acceleration measured by the accelerometer.
+        Compute the specific acceleration measured in the body frame.
 
-        Specific acceleration is computed as spacecraft acceleration minus the
-        gravitational acceleration provided by the simulation.
-
-        Parameters
-        ----------
-        spacecraft_data : SpacecraftData
-            Current spacecraft state.
-        simulation_data : SimulationData
-            Current simulation data containing gravitational acceleration.
+        Specific acceleration is computed based on exerted forces from actuators and
+        perturbations.
 
         Returns
         -------
         np.ndarray, shape (3,)
             Specific acceleration [m/s²].
-        """
-        spacecraft_accel = spacecraft_data.true_accel
-        gravity_accel = simulation_data.gravity_accel
+        """        
 
-        specific_accel = spacecraft_accel - gravity_accel
-        return specific_accel
-    
-    def transform_to_sensor_frame(
-        self,
-        accel,
-        spacecraft_data,
-        simulation_data,
-    ) -> np.ndarray:
-        """
-        Transform an acceleration vector into the accelerometer frame.
+        exerted_data = self.spacecraft_data.exerted_data
+        exerted_force = exerted_data.force
+        exerted_frame = exerted_data.frame
 
-        The transformation accounts for the spacecraft attitude and the
-        accelerometer position relative to the spacecraft center of mass.
+        perturbation_data = self.spacecraft_data.perturbation_data
+        perturbation_force = perturbation_data.force
+        perturbation_frame = perturbation_data.frame
 
-        Parameters
-        ----------
-        accel : np.ndarray, shape (3,)
-            Acceleration vector in the inertial frame [m/s²].
-        spacecraft_data : SpacecraftData
-            Current spacecraft rotational state.
-        simulation_data : SimulationData
-            Current simulation data containing the inertial-to-body DCM.
-
-        Returns
-        -------
-        np.ndarray, shape (3,)
-            Acceleration expressed in the sensor frame [m/s²].
-        """
+        # Transform to body frame:
+        exerted_force_body_frame = self.spacecraft_transform_manager.transform_vector(exerted_force, exerted_frame, BODY_frame)
+        perturbation_force_body_frame = self.spacecraft_transform_manager.transform_vector(perturbation_force, perturbation_frame, BODY_frame)
         
-        # Correction of the accel in the inertial frame to the body frame
-        accel_body = simulation_data.DCM_inertial_to_body @ accel
+        # Compute specific acceleration in the body frame
+        sc_mass = self.parent_spacecraft.mass
 
-        # Correction of the accel in the body frame to the sensor frame
-        accel_body += (np.cross(spacecraft_data.true_alpha, self.position) + np.cross(spacecraft_data.true_omega, np.cross(spacecraft_data.true_omega, self.position)))
+        if sc_mass <= 0:
+            warnings.warn(
+                f"Spacecraft mass is non-positive ({sc_mass} kg). "
+                "Specific acceleration will be set to zero."
+            )
+            return np.zeros(3)
+
+        specific_accel_in_body = (exerted_force_body_frame + perturbation_force_body_frame) / sc_mass
         
-
-        return self.DCM_sensor_to_body.T @ accel_body
-            
+        return specific_accel_in_body
+           
     def get_ideal_measurement(
         self,
-        spacecraft_data,
-        simulation_data,
     ) -> np.ndarray:
         """
         Compute the ideal accelerometer measurement.
@@ -145,8 +133,26 @@ class Accelerometer(SensorBase):
         np.ndarray, shape (3,)
             Specific acceleration expressed in the sensor frame [m/s²].
         """
-        specific_accel = self.compute_specific_accel(spacecraft_data, simulation_data)
-        corrected_accel = self.transform_to_sensor_frame(specific_accel, spacecraft_data, simulation_data)
+        specific_accel_in_body = self.compute_specific_accel()
+
+        # Transform the specific acceleration from the body frame to the sensor frame
+        true_state_data = self.spacecraft_data.true_state
+        rotational_propagation_frame = true_state_data.rotational_frame
+
+        if rotational_propagation_frame != NONE_frame:
+            # Transform specific acceleration from the propagation frame to the body frame
+            omega_body = self.spacecraft_transform_manager.transform_vector(self.spacecraft_data.true_state.angular_velocity, rotational_propagation_frame, BODY_frame)
+            alpha_body = self.spacecraft_transform_manager.transform_vector(self.spacecraft_data.true_state.angular_acceleration, rotational_propagation_frame, BODY_frame)
+
+            tangential_accel_body = np.cross(alpha_body, self.position)
+            centripetal_accel_body = np.cross(omega_body, np.cross(omega_body, self.position))
+
+            specific_accel_in_body_from_propagation = specific_accel_in_body + tangential_accel_body + centripetal_accel_body
+        else:
+            specific_accel_in_body_from_propagation = specific_accel_in_body
+
+        corrected_accel = self.spacecraft_transform_manager.transform_vector(specific_accel_in_body_from_propagation, BODY_frame, self.frame)
+        
         return corrected_accel
 
 class Gyroscope(SensorBase):

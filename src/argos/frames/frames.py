@@ -1,5 +1,29 @@
 from argos.frames.frames_base import Frame
 
+ENU_inertial_frame = Frame(
+    name="ENU",
+    inertial=True,
+    origin="Local Tangent Plane"
+)
+
+NED_inertial_frame = Frame(
+    name="NED",
+    inertial=True,
+    origin="Local Tangent Plane"
+)
+
+ENU_frame = Frame(
+    name="ENU",
+    inertial=False,
+    origin="Local Tangent Plane"
+)
+
+NED_frame = Frame(
+    name="NED",
+    inertial=False,
+    origin="Local Tangent Plane"
+)
+
 ECI_frame = Frame(
     name="ECI",
     inertial=True,
