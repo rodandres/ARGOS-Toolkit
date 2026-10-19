@@ -285,17 +285,13 @@ class Spacecraft():
 
 
         # TO BE DELETED LATER:
-        self.spacecraft_data.perturbation_data.frame = state.rotational_frame
-
-        print("[DEBUG] True state frames updated:")
-        print(f"  Translational frame: {state.translational_frame.name}")
-        print(f"  Rotational frame: {state.rotational_frame.name}")
+        self.spacecraft_data.perturbation_data.frame = state.rotational_frame        
 
     def _init_state_variables(self, initial_state: np.ndarray):
         self.spacecraft_data.true_state.position = initial_state[0:3]
         self.spacecraft_data.true_state.velocity = initial_state[3:6]
         self.spacecraft_data.true_state.attitude = initial_state[6:10]
-        self.spacecraft_data.true_state.angular_velocity = initial_state[10:13]
+        self.spacecraft_data.true_state.angular_velocity = initial_state[10:]        
 
     def _set_sensors_names(self):
         if not self.has_sensors:
@@ -414,6 +410,9 @@ class Spacecraft():
         return tick % int(dt_component / dt_master) == 0
 
     def init_sensors_parameters(self, simulation_data):
+        if self.has_sensors is False:
+            return
+        
         for sensor in self.sensors:
             sensor.spacecraft_transform_manager = self.transforms_manager
             sensor.parent_spacecraft = self
@@ -431,11 +430,11 @@ class Spacecraft():
 
         return
     
-    def update_sensors(self, simulation_data):        
-        if self.has_sensors is False:            
+    def update_sensors(self):
+        if self.has_sensors is False:
             return
     
-        for sensor in self.sensors:            
+        for sensor in self.sensors:
             sensor.update()
     
     def update_navigation(self, simulation_data):
@@ -453,7 +452,7 @@ class Spacecraft():
 
         if self._should_compute(simulation_data, self.current_guidance_dt):            
             self.spacecraft_data.guidance_data = self.current_guidance_law.compute_reference(
-                self.spacecraft_data.navigation_data, simulation_data
+                self.spacecraft_data.navigation_data
             )
 
     def update_control(self, simulation_data):

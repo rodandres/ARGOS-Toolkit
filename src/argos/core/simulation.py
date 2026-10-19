@@ -246,7 +246,7 @@ class Simulation:
         self._set_dt_master()
 
         # Record initial states of all spacecrafts in the simulation history
-        for spacecraft in self.simulation_data.spacecrafts:
+        for spacecraft in self.simulation_data.spacecrafts:            
             spacecraft.init_sensors_parameters(self.simulation_data)
             self.simulation_data.simulation_history.record_spacecraft(spacecraft.name, spacecraft.spacecraft_data)
 
@@ -428,8 +428,7 @@ class Simulation:
 
                 timed_call(
                     "sensors",
-                    spacecraft.update_sensors,
-                    self.simulation_data
+                    spacecraft.update_sensors                    
                 )
 
                 # -------------------------------------------------
