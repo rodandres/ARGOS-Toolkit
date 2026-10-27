@@ -9,3 +9,5 @@
 - [ ] Add gravity / environments
 - [ ] Implement fault modes
 - [ ] Couple / decouple thrusters / actuators
+- [ ] Ignorar sensores por nombre (por tanto no tener en cuenta su update freq) p cambiar el update freq desde el mission phase
+- [ ] Thrusters auto (dependiendo de la freq de propagacion y de control se actualiza el min on time y mod window)

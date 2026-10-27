@@ -1,0 +1,38 @@
+| Tipo       | Cuándo usarlo                                        | Ejemplo                                     |
+| ---------- | ---------------------------------------------------- | ------------------------------------------- |
+| `feat`     | Nueva funcionalidad                                  | `feat: add halo orbit generation`           |
+| `fix`      | Corrección de un error                               | `fix: correct CR3BP state normalization`    |
+| `docs`     | Solo documentación                                   | `docs: add API documentation`               |
+| `refactor` | Cambio interno sin cambiar comportamiento            | `refactor: simplify fault injection flow`   |
+| `test`     | Añadir/modificar tests                               | `test: add import validation`               |
+| `chore`    | Mantenimiento que no es propiamente código funcional | `chore: configure development dependencies` |
+| `perf`     | Mejora de rendimiento                                | `perf: reduce simulation memory usage`      |
+| `style`    | Formato/estilo sin cambio de comportamiento          | `style: format controller modules`          |
+| `build`    | Sistema de build/dependencias                        | `build: configure Python package`           |
+| `ci`       | CI/CD                                                | `ci: add GitHub Actions workflow`           |
+
+
+rm -rf build
+
+cmake \
+  -S . \
+  -B build \
+  -Dpybind11_DIR=$(python -m pybind11 --cmakedir)
+
+cmake --build build
+
+
+
+cmake --build build
+
+.venv/lib/python3.14/site-packages/argos/
+
+cp \
+build/_cpp.cpython-314-x86_64-linux-gnu.so \
+.venv/lib/python3.14/site-packages/argos/_cpp.cpython-314-x86_64-linux-gnu.so
+
+cmp -s \
+build/_cpp.cpython-314-x86_64-linux-gnu.so \
+.venv/lib/python3.14/site-packages/argos/_cpp.cpython-314-x86_64-linux-gnu.so \
+&& echo "IDENTICAL" \
+|| echo "DIFFERENT"

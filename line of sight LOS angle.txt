@@ -1,0 +1,34 @@
+line-of-sight (LOS) angle data measured by the onboard visible cameras and range data
+
+Then the minimum maneuver intervals during the mid-range ren-
+dezvous phase are set to 1800s. The guidance is based on the an-
+alytical solution of the ﬁxed arrival time represented by the lin-
+earized state transition matrix derived for the relative gravitational
+motion of the Earth and Moon at solar reference LVLH
+
+---
+t to docking, 6h
+
+Uncertainities associated with insertion: (proposed)
+Nominal
+3_sigma_pos = 100m
+3_sigma_vel = 1cm/s
+Medium case
+3_sigma_pos = 500m
+3_sigma_vel = 2cm/s
+Disperse Case
+3_sigma_pos = 1km
+3_sigma_vel = 3cm/s
+
+Congelar el baseline ahora mismo, usaría 6 h de RPOD, RS = 10 km y una dispersión inicial de \(3\sigma = 500\) m / \(2\) cm/s, dejando 100 m/1 cm/s y 1 km/3 cm/s como sensibilidad.
+---
+
+RS → AS: dos maniobras impulsivas + coast, con trayectoria pasivamente segura.
+
+AS: relative hold / decision point.
+
+AS → KOS: closed-loop docking-axis acquisition.
+
+KOS → 20 m: 6-DOF PD de bajo bandwidth.
+
+20 m → docking: 6-DOF PD de alto bandwidth.

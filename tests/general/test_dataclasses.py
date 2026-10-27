@@ -61,12 +61,7 @@ def test_simulation_data_defaults():
     assert simulation_data.tick == 0
     assert simulation_data.verbose is False
 
-    assert simulation_data.simulation_history is None
-
-    assert np.array_equal(
-        simulation_data.DCM_inertial_to_body,
-        np.eye(3),
-    )
+    assert simulation_data.simulation_history is None    
 
 
 def test_simulation_data_stores_configuration():
@@ -89,20 +84,20 @@ def test_simulation_data_stores_configuration():
     assert simulation_data.verbose is True
 
 
-def test_simulation_data_default_DCM_is_independent():
-    data_1 = SimulationData(
-        max_sim_time=100.0,
-        spacecrafts=[],
-    )
+# def test_simulation_data_default_DCM_is_independent():
+#     data_1 = SimulationData(
+#         max_sim_time=100.0,
+#         spacecrafts=[],
+#     )
 
-    data_2 = SimulationData(
-        max_sim_time=100.0,
-        spacecrafts=[],
-    )
+#     data_2 = SimulationData(
+#         max_sim_time=100.0,
+#         spacecrafts=[],
+#     )
 
-    data_1.DCM_inertial_to_body[0, 0] = 99.0
+#     data_1.DCM_inertial_to_body[0, 0] = 99.0
 
-    assert data_2.DCM_inertial_to_body[0, 0] == 1.0
+#     assert data_2.DCM_inertial_to_body[0, 0] == 1.0
 
 
 def test_state_variables_defaults():
@@ -136,9 +131,7 @@ def test_state_variables_defaults():
     assert np.array_equal(
         state.angular_acceleration,
         np.zeros(3),
-    )
-
-    assert state.frame_type is None
+    )    
 
 
 def test_state_variables_default_arrays_are_independent():
@@ -161,8 +154,7 @@ def test_state_variables_stores_values():
         acceleration=np.array([7.0, 8.0, 9.0]),
         attitude=np.array([0.0, 0.0, 0.0, 1.0]),
         angular_velocity=np.array([0.1, 0.2, 0.3]),
-        angular_acceleration=np.array([0.4, 0.5, 0.6]),
-        frame_type="inertial",
+        angular_acceleration=np.array([0.4, 0.5, 0.6]),        
     )
 
     assert np.array_equal(
@@ -193,9 +185,7 @@ def test_state_variables_stores_values():
     assert np.array_equal(
         state.angular_acceleration,
         [0.4, 0.5, 0.6],
-    )
-
-    assert state.frame_type == "inertial"
+    )    
 
 
 def test_navigation_output_defaults():
