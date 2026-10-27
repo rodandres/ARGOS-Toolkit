@@ -261,7 +261,7 @@ class SimulationHistory:
             with open(events_file_path, 'w') as f:
                 json.dump(events_data, f, indent=4)
 
-        if self.auto_convert_to_csv:
+        if self.auto_convert_to_csv :
             metadata.csv_folder_path = self.csv_folder_path
 
             save_simulation_history_csv(metadata_file_path, self.csv_folder_path)
@@ -271,6 +271,23 @@ class SimulationHistory:
             os.makedirs(os.path.dirname(csv_metadata_file_path), exist_ok=True)
             with open(csv_metadata_file_path, 'w') as f:
                 json.dump(metadata.__dict__, f, indent=4)
+
+            # Save transition events files in the CSV folder as well
+            for spacecraft_name, spacecraft_history in self.spacecrafts_history.items():
+
+                events_file_path = os.path.join(
+                    self.csv_folder_path,
+                    f"simulation_{self.unique_id}",
+                    f"{spacecraft_name}_transition_events.json"
+                )
+
+                os.makedirs(os.path.dirname(events_file_path), exist_ok=True)
+
+                events_data = [event.__dict__ for event in spacecraft_history.events]
+
+                with open(events_file_path, 'w') as f:
+                    json.dump(events_data, f, indent=4)
+
 
         return metadata
 
