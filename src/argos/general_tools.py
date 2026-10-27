@@ -319,47 +319,14 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
     """
     Retrieve the true spacecraft state at a requested simulation time.
 
-    If the requested time matches a recorded sample, the corresponding state
-    is returned directly. Otherwise, the state is obtained by linear
-    interpolation between the two neighboring samples. If the requested time
-    lies outside the recorded history range, linear extrapolation based on
-    the nearest two samples is performed.
-
-    Numerical state variables are interpolated linearly. Reference frames
-    are discrete objects and are taken from the first state used for
-    interpolation or extrapolation.
-
-    Parameters
-    ----------
-    history : SimulationHistory
-        Simulation history containing the spacecraft data and stored history
-        chunks.
-    spacecraft_name : str
-        Name of the spacecraft whose state is requested.
-    t : float
-        Requested simulation time [s].
-
-    Returns
-    -------
-    StateVariables
-        Deep copy of the true spacecraft state at the requested time.
-
-    Raises
-    ------
-    ValueError
-        If the spacecraft is not present in the history.
-    ValueError
-        If no event is available at or before the requested time.
-    ValueError
-        If no history samples are available for the spacecraft.
-    ValueError
-        If fewer than two history samples are available for interpolation
-        or extrapolation.
+    The recorded samples are searched by time (binary search), so no
+    assumption is made about the sampling period or about the master dt.
+    Exact matches are returned directly; otherwise linear interpolation
+    (or extrapolation outside the recorded range) is used.
+    Reference frames are taken from the first state used.
     """
 
-    # ==========================================================================
-    # Get spacecraft history
-    # ==========================================================================
+    TIME_TOL = 1e-9  # absolute tolerance [s]; rtol deliberately 0
 
     if spacecraft_name not in history.spacecraft_names:
         raise ValueError(
@@ -368,219 +335,149 @@ def get_state_at(history: SimulationHistory, spacecraft_name: str, t: float):
 
     spacecraft_history = history.spacecrafts_history[spacecraft_name]
 
-    # ==========================================================================
-    # Determine the tick corresponding to time t
-    # ==========================================================================
-
-    current_events = spacecraft_history.events
-    event_at_time_t = None
-
-    for event in current_events:
-        if event.time <= t:
-            event_at_time_t = event
-        else:
-            break
-
-    if event_at_time_t is None:
-        raise ValueError(
-            f"No events found in history for spacecraft "
-            f"'{spacecraft_name}' at or before time {t}."
-        )
-
-    time_since_event = t - event_at_time_t.time
-    dt_master = event_at_time_t.dt_master
-
-    ticks_since_event = time_since_event / dt_master
-
-    tick_base = event_at_time_t.tick
-    tick_at_t = tick_base + round(ticks_since_event)
-
-    # ==========================================================================
-    # Determine available history samples
-    # ==========================================================================
-
     current_chunk_index = spacecraft_history.chunk_index
     current_index = spacecraft_history.index
     chunk_size = spacecraft_history.chunk_size
 
-    total_samples = (
-        current_chunk_index * chunk_size
-        + current_index
-    )
+    total_samples = current_chunk_index * chunk_size + current_index
 
     if total_samples == 0:
         raise ValueError(
             f"No history available for spacecraft '{spacecraft_name}'."
         )
 
-    if total_samples < 2:
-        raise ValueError(
-            f"At least two states are required to interpolate or "
-            f"extrapolate spacecraft '{spacecraft_name}'."
+    def chunk_path(chunk_index):
+        return os.path.join(
+            history.data_file_path,
+            f"{spacecraft_name}_history_chunk_{chunk_index}.npz",
         )
 
-    # ==========================================================================
-    # Determine the two samples required
-    # ==========================================================================
+    # --------------------------------------------------------------------------
+    # Lightweight time lookup (reads only "t")
+    # --------------------------------------------------------------------------
 
-    if tick_at_t <= 0:
-
-        # Extrapolation before the first sample
-        tick_need_0 = 0
-        tick_need_1 = 1
-
-    elif tick_at_t >= total_samples - 1:
-
-        # Extrapolation after the last sample
-        tick_need_0 = total_samples - 2
-        tick_need_1 = total_samples - 1
-
-    else:
-
-        # Interpolation between neighboring samples
-        tick_need_0 = tick_at_t - 1
-        tick_need_1 = tick_at_t
-
-    # ==========================================================================
-    # Helper to retrieve a state from a history sample
-    # ==========================================================================
-
-    def get_sample(sample_index):
-
-        chunk_index = sample_index // chunk_size
-        index = sample_index % chunk_size
-
-        # ----------------------------------------------------------------------
-        # Sample in the current in-memory chunk
-        # ----------------------------------------------------------------------
+    def get_time(k):
+        chunk_index, index = divmod(k, chunk_size)
 
         if chunk_index == current_chunk_index:
+            return float(spacecraft_history.t[index])
 
-            t_sample = spacecraft_history.t[index]
+        with np.load(chunk_path(chunk_index), allow_pickle=False) as data:
+            return float(data["t"][index])
 
-            state = StateVariables(
-                position=spacecraft_history.true_position[index],
-                velocity=spacecraft_history.true_velocity[index],
-                acceleration=spacecraft_history.true_acceleration[index],
-                attitude=spacecraft_history.true_attitude[index],
-                angular_velocity=(
-                    spacecraft_history.true_angular_velocity[index]
-                ),
-                angular_acceleration=(
-                    spacecraft_history.true_angular_acceleration[index]
-                ),
-                translational_frame=(
-                    spacecraft_history.true_state_translational_frame[index]
-                ),
-                rotational_frame=(
-                    spacecraft_history.true_state_rotational_frame[index]
-                ),
+    # --------------------------------------------------------------------------
+    # Full state lookup
+    # --------------------------------------------------------------------------
+
+    def get_state(k):
+        chunk_index, index = divmod(k, chunk_size)
+
+        if chunk_index == current_chunk_index:
+            h = spacecraft_history
+            return StateVariables(
+                position=h.true_position[index],
+                velocity=h.true_velocity[index],
+                acceleration=h.true_acceleration[index],
+                attitude=h.true_attitude[index],
+                angular_velocity=h.true_angular_velocity[index],
+                angular_acceleration=h.true_angular_acceleration[index],
+                translational_frame=h.true_state_translational_frame[index],
+                rotational_frame=h.true_state_rotational_frame[index],
             )
 
-        # ----------------------------------------------------------------------
-        # Sample stored in a previous chunk
-        # ----------------------------------------------------------------------
-
-        else:
-
-            chunk_file = os.path.join(
-                history.data_file_path,
-                f"{spacecraft_name}_history_chunk_{chunk_index}.npz",
+        with np.load(chunk_path(chunk_index), allow_pickle=False) as d:
+            return StateVariables(
+                position=d["true_position"][index],
+                velocity=d["true_velocity"][index],
+                acceleration=d["true_acceleration"][index],
+                attitude=d["true_attitude"][index],
+                angular_velocity=d["true_angular_velocity"][index],
+                angular_acceleration=d["true_angular_acceleration"][index],
+                translational_frame=d["true_translational_frame"][index],
+                rotational_frame=d["true_rotational_frame"][index],
             )
 
-            with np.load(chunk_file, allow_pickle=False) as chunk_data:
+    # --------------------------------------------------------------------------
+    # Binary search: last sample i with t_i <= t (within tolerance)
+    # --------------------------------------------------------------------------
 
-                t_sample = chunk_data["t"][index]
+    if get_time(0) > t + TIME_TOL:
+        i = -1  # requested time is before the first sample
+    else:
+        lo, hi = 0, total_samples - 1
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if get_time(mid) <= t + TIME_TOL:
+                lo = mid
+            else:
+                hi = mid - 1
+        i = lo
 
-                state = StateVariables(
-                    position=chunk_data["true_position"][index],
-                    velocity=chunk_data["true_velocity"][index],
-                    acceleration=chunk_data["true_acceleration"][index],
-                    attitude=chunk_data["true_attitude"][index],
-                    angular_velocity=(
-                        chunk_data["true_angular_velocity"][index]
-                    ),
-                    angular_acceleration=(
-                        chunk_data["true_angular_acceleration"][index]
-                    ),
-                    translational_frame=(
-                        chunk_data["true_translational_frame"][index]
-                    ),
-                    rotational_frame=(
-                        chunk_data["true_rotational_frame"][index]
-                    ),
-                )
-
-        return t_sample, state
-
-    # ==========================================================================
-    # Load the two states
-    # ==========================================================================
-
-    t0, state0 = get_sample(tick_need_0)
-    t1, state1 = get_sample(tick_need_1)
-
-    # ==========================================================================
+    # --------------------------------------------------------------------------
     # Exact match
-    # ==========================================================================
+    # --------------------------------------------------------------------------
 
-    if np.isclose(t0, t):
-        return copy.deepcopy(state0)
+    if i >= 0 and abs(get_time(i) - t) <= TIME_TOL:
+        return copy.deepcopy(get_state(i))
 
-    if np.isclose(t1, t):
-        return copy.deepcopy(state1)
+    # --------------------------------------------------------------------------
+    # Choose the two samples (always with distinct times)
+    # --------------------------------------------------------------------------
 
-    # ==========================================================================
-    # Interpolation / extrapolation coefficient
-    # ==========================================================================
+    if i == -1:
+        # Extrapolation before the first sample
+        idx0 = 0
+        t0 = get_time(0)
+        idx1 = None
+        for k in range(1, total_samples):
+            if get_time(k) > t0 + TIME_TOL:
+                idx1 = k
+                break
 
-    if np.isclose(t1, t0):
+    elif i < total_samples - 1:
+        # Interpolation: t_i < t < t_{i+1}
+        idx0, idx1 = i, i + 1
+
+    else:
+        # Extrapolation after the last sample
+        idx1 = i
+        t1_last = get_time(i)
+        idx0 = None
+        for k in range(i - 1, -1, -1):
+            if get_time(k) < t1_last - TIME_TOL:
+                idx0 = k
+                break
+
+    if idx0 is None or idx1 is None:
         raise ValueError(
-            f"Cannot interpolate spacecraft '{spacecraft_name}': "
-            f"the selected samples have identical times ({t0})."
+            f"Cannot interpolate or extrapolate spacecraft "
+            f"'{spacecraft_name}' at t={t}: fewer than two samples with "
+            f"distinct times are available."
         )
+
+    t0, state0 = get_time(idx0), get_state(idx0)
+    t1, state1 = get_time(idx1), get_state(idx1)
 
     alpha = (t - t0) / (t1 - t0)
 
-    # ==========================================================================
+    # --------------------------------------------------------------------------
     # Interpolate StateVariables
-    # ==========================================================================
+    # --------------------------------------------------------------------------
 
     result = copy.deepcopy(state0)
-
-    frame_fields = {
-        "translational_frame",
-        "rotational_frame",
-    }
+    frame_fields = {"translational_frame", "rotational_frame"}
 
     for field_name in state0.__dataclass_fields__:
 
         value0 = getattr(state0, field_name)
         value1 = getattr(state1, field_name)
 
-        # ----------------------------------------------------------------------
-        # Preserve reference frames as discrete objects
-        # ----------------------------------------------------------------------
-
         if field_name in frame_fields:
             setattr(result, field_name, copy.deepcopy(value0))
-            continue
-
-        # ----------------------------------------------------------------------
-        # Handle missing values
-        # ----------------------------------------------------------------------
-
-        if value0 is None or value1 is None:
+        elif value0 is None or value1 is None:
             setattr(result, field_name, None)
-            continue
-
-        # ----------------------------------------------------------------------
-        # Interpolate numerical fields
-        # ----------------------------------------------------------------------
-
-        value = value0 + alpha * (value1 - value0)
-
-        setattr(result, field_name, value)
+        else:
+            setattr(result, field_name, value0 + alpha * (value1 - value0))
 
     return result
 
