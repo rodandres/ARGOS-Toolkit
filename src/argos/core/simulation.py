@@ -243,12 +243,12 @@ class Simulation:
         if self.verbose:
             print("Initializing simulation...")
         
-        self._set_dt_master()
+        self._set_dt_master()        
 
         # Record initial states of all spacecrafts in the simulation history
-        for spacecraft in self.simulation_data.spacecrafts:            
+        for spacecraft in self.simulation_data.spacecrafts:        
             spacecraft.init_sensors_parameters(self.simulation_data)
-            self.simulation_data.simulation_history.record_spacecraft(spacecraft.name, spacecraft.spacecraft_data)
+            #self.simulation_data.simulation_history.record_spacecraft(spacecraft.name, spacecraft.spacecraft_data)
 
         if self.verbose:
             print("Simulation initialized.")
@@ -333,6 +333,9 @@ class Simulation:
 
     #     return metadata
 
+
+    # ------ VERSION ANTERIOR, ESTABA CORRIENDO BIEN "EN TEORIA" ------------
+    '''    
     def simulate(self, profile: bool = True):
         """
         Execute the spacecraft simulation.
@@ -403,24 +406,44 @@ class Simulation:
         self.simulation_data.t = np.nan
         self.simulation_data.tick = np.nan
 
+        propagated_translational = True
+        propagated_rotational = True        
+
         while t < self.simulation_data.max_sim_time:
 
-            iteration_start = time.perf_counter()
+            iteration_start = time.perf_counter()                            
 
             for spacecraft in self.simulation_data.spacecrafts:
 
                 if spacecraft.spacecraft_data.t >= self.simulation_data.max_sim_time:
-                    continue
+                    continue                
 
                 # -------------------------------------------------
                 # Mission Manager
-                # -------------------------------------------------
+                # -------------------------------------------------                 
 
                 timed_call(
                     "mission_manager",
                     spacecraft.update_mission_manager,
                     self.simulation_data
                 )
+
+                # -------------------------------------------------
+                # Impulsive Maneuvers
+                # -------------------------------------------------
+
+                maneuvers = (
+                    spacecraft.mission_manager.get_due_impulsive_maneuvers(
+                        spacecraft.spacecraft_data.t
+                    )
+                )
+
+                for maneuver in maneuvers:
+                    timed_call(
+                        "impulsive_maneuver",
+                        spacecraft.apply_impulsive_maneuver,
+                        maneuver
+                    )
 
                 # -------------------------------------------------
                 # Sensors
@@ -472,10 +495,21 @@ class Simulation:
                 )
 
                 # -------------------------------------------------
+                # History
+                # -------------------------------------------------
+                if propagated_translational or propagated_rotational:
+                    timed_call(
+                        "history_recording",
+                        self.simulation_data.simulation_history.record_spacecraft,
+                        spacecraft.name,
+                        spacecraft.spacecraft_data
+                    )
+
+                # -------------------------------------------------
                 # Translational dynamics
                 # -------------------------------------------------
 
-                timed_call(
+                propagated_translational = timed_call(
                     "translation_propagation",
                     spacecraft.propagate_translational,
                     self.simulation_data,
@@ -486,13 +520,13 @@ class Simulation:
                 # Rotational dynamics
                 # -------------------------------------------------
 
-                timed_call(
+                propagated_rotational = timed_call(
                     "rotation_propagation",
                     spacecraft.propagate_rotational,
                     self.simulation_data,
                     self.environment
                 )
-
+                
                 # -------------------------------------------------
                 # Advance spacecraft clock
                 # -------------------------------------------------
@@ -501,22 +535,11 @@ class Simulation:
 
                 spacecraft.spacecraft_data.t += (
                     spacecraft.spacecraft_data.current_master_dt
-                )
+                )   
 
                 spacecraft.spacecraft_data.tick += 1
 
-                current_ts.append(t_spacecraft)
-
-                # -------------------------------------------------
-                # History
-                # -------------------------------------------------
-
-                timed_call(
-                    "history_recording",
-                    self.simulation_data.simulation_history.record_spacecraft,
-                    spacecraft.name,
-                    spacecraft.spacecraft_data
-                )
+                current_ts.append(t_spacecraft)                
 
             # -----------------------------------------------------
             # Update global simulation time
@@ -660,3 +683,259 @@ class Simulation:
                     sc.mission_manager.current_phase.rotational_model.print_profile()
 
         return metadata    
+    '''
+
+
+    
+    def simulate(self, profile: bool = True):
+        """
+        Execute the spacecraft simulation.
+
+        Parameters
+        ----------
+        profile : bool, optional
+            If True, measure execution time for each simulation module.
+
+        Returns
+        -------
+        dict
+            Metadata generated when the simulation history is finalized.
+        """
+
+        if not self.simulation_data.spacecrafts:
+            raise ValueError(
+                "No spacecrafts have been added to the simulation. "
+                "Please add at least one spacecraft before running the simulation."
+            )
+
+        self._init_simulation()
+
+        if self.verbose:
+            print("Starting simulation...")
+
+        # ---------------------------------------------------------
+        # Profiling setup
+        # ---------------------------------------------------------
+
+        profile_data = defaultdict(lambda: {
+            "total_time": 0.0,
+            "calls": 0,
+        })
+
+        total_start = time.perf_counter()
+
+        # ---------------------------------------------------------
+        # Helper for timing individual modules
+        # ---------------------------------------------------------
+
+        def timed_call(name, function, *args):
+            """
+            Execute a function and record its execution time.
+            """
+
+            if profile:
+                start = time.perf_counter()
+
+                result = function(*args)
+
+                elapsed = time.perf_counter() - start
+
+                profile_data[name]["total_time"] += elapsed
+                profile_data[name]["calls"] += 1
+
+                return result
+
+            return function(*args)
+
+        # ---------------------------------------------------------
+        # Simulation
+        # ---------------------------------------------------------
+
+        sc_list = self.simulation_data.spacecrafts
+        propagated = {sc.name: True for sc in sc_list}
+        EPS = 1e-9
+        max_t = self.simulation_data.max_sim_time
+
+        while True:
+            iteration_start = time.perf_counter()
+            active = [sc for sc in sc_list if sc.spacecraft_data.t < max_t]
+            if not active:
+                break
+
+            t_now = min(sc.spacecraft_data.t for sc in active)
+            # solo avanzan las naves que están en el instante global
+            stepping = [sc for sc in active if sc.spacecraft_data.t <= t_now + EPS]
+
+            # 1. Mission manager (puede modificar dts de otras naves)
+            for sc in stepping:
+                timed_call("mission_manager", sc.update_mission_manager, self.simulation_data)
+
+            # 2. Maniobras impulsivas
+            for sc in stepping:
+                for m in sc.mission_manager.get_due_impulsive_maneuvers(sc.spacecraft_data.t):
+                    timed_call("impulsive_maneuver", sc.apply_impulsive_maneuver, m)
+
+            # 3. Historial: snapshot coherente ANTES de propagar
+            for sc in stepping:
+                if propagated[sc.name]:
+                    timed_call("history_recording",
+                            self.simulation_data.simulation_history.record_spacecraft,
+                            sc.name, sc.spacecraft_data)
+
+            # 4. Sensores -> navegación -> guidance -> control -> actuación
+            for sc in stepping:
+                timed_call("sensors", sc.update_sensors)
+            for sc in stepping:
+                timed_call("navigation", sc.update_navigation, self.simulation_data)
+            for sc in stepping:
+                timed_call("guidance", sc.update_guidance, self.simulation_data)
+            for sc in stepping:
+                timed_call("control", sc.update_control, self.simulation_data)
+            for sc in stepping:
+                timed_call("actuation", sc.compute_actuation, self.simulation_data)
+
+            # 5. Propagación
+            for sc in stepping:
+                tr = timed_call("translation_propagation", sc.propagate_translational,
+                                self.simulation_data, self.environment)
+                ro = timed_call("rotation_propagation", sc.propagate_rotational,
+                                self.simulation_data, self.environment)
+                propagated[sc.name] = bool(tr or ro)
+
+            # 6. Avance de reloj (al final, para todas)
+            for sc in stepping:
+                sc.spacecraft_data.t += sc.spacecraft_data.current_master_dt
+                sc.spacecraft_data.tick += 1        
+
+            # -----------------------------------------------------
+            # Loop overhead
+            # -----------------------------------------------------
+
+            if profile:
+                iteration_elapsed = time.perf_counter() - iteration_start
+
+                profile_data["simulation_iteration"]["total_time"] += (
+                    iteration_elapsed
+                )
+
+                profile_data["simulation_iteration"]["calls"] += 1
+
+        # ---------------------------------------------------------
+        # Finalization
+        # ---------------------------------------------------------
+
+        simulation_time = time.perf_counter() - total_start
+
+        if self.verbose:
+            print("Simulation completed.")
+
+        metadata = self.simulation_data.simulation_history.finalize()
+
+        # ---------------------------------------------------------
+        # Profiling report
+        # ---------------------------------------------------------
+
+        if profile:
+            print("\n" + "=" * 70)
+            print("SIMULATION PERFORMANCE PROFILE")
+            print("=" * 70)
+
+            print(f"\nWall-clock simulation time: {simulation_time:.6f} s")
+            print(
+                f"Simulated time: "
+                f"{self.simulation_data.max_sim_time:.6f} s"
+            )
+
+            speed_ratio = (
+                self.simulation_data.max_sim_time /
+                simulation_time
+            )
+
+            print(
+                f"Simulation speed: "
+                f"{speed_ratio:.3f}x real-time"
+            )
+
+            print("\nModule timing:")
+            print("-" * 70)
+
+            print(
+                f"{'Module':<30}"
+                f"{'Calls':>12}"
+                f"{'Total [s]':>15}"
+                f"{'Avg [ms]':>15}"
+                f"{'% total':>12}"
+            )
+
+            print("-" * 70)
+
+            # Do not use simulation_iteration for the module table
+            module_items = [
+                (name, data)
+                for name, data in profile_data.items()
+                if name != "simulation_iteration"
+            ]
+
+            # Sort by total execution time
+            module_items.sort(
+                key=lambda item: item[1]["total_time"],
+                reverse=True
+            )
+
+            for name, data in module_items:
+
+                total_time = data["total_time"]
+                calls = data["calls"]
+
+                avg_time = (
+                    total_time / calls
+                    if calls > 0
+                    else 0.0
+                )
+
+                percentage = (
+                    100.0 * total_time / simulation_time
+                    if simulation_time > 0
+                    else 0.0
+                )
+
+                print(
+                    f"{name:<30}"
+                    f"{calls:>12,}"
+                    f"{total_time:>15.6f}"
+                    f"{avg_time * 1000:>15.6f}"
+                    f"{percentage:>11.2f}%"
+                )
+
+            print("-" * 70)
+
+            # -----------------------------------------------------
+            # Profiling consistency check
+            # -----------------------------------------------------
+
+            measured_module_time = sum(
+                data["total_time"]
+                for name, data in module_items
+            )
+
+            print(
+                f"\nMeasured module time: "
+                f"{measured_module_time:.6f} s"
+            )
+
+            print(
+                f"Unaccounted time: "
+                f"{simulation_time - measured_module_time:.6f} s"
+            )
+
+            print("=" * 70)
+
+
+            for sc in self.simulation_data.spacecrafts:
+                if sc.mission_manager.current_phase.translational_model is not None:
+                    sc.mission_manager.current_phase.translational_model.print_profile()
+                if sc.mission_manager.current_phase.rotational_model is not None:
+                    sc.mission_manager.current_phase.rotational_model.print_profile()
+
+        return metadata
+    
