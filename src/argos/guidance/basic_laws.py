@@ -151,7 +151,7 @@ class CustomGuidanceLaw(GuidanceBase):
         if not callable(self.custom_reference_function):
             raise ValueError("custom_reference_function must be callable.")
 
-    def compute_reference(self, navigation_data: NavigationOutput):
+    def compute_reference(self, navigation_data: NavigationOutput, simulation_data: SimulationData) -> GuidanceOutput:
         """
         Compute the guidance reference using the user-defined function.
 
@@ -173,7 +173,7 @@ class CustomGuidanceLaw(GuidanceBase):
             If the custom reference function does not return a
             ``GuidanceOutput`` instance.
         """
-        reference = self.custom_reference_function(navigation_data)
+        reference = self.custom_reference_function(navigation_data, simulation_data)
 
         if not isinstance(reference, GuidanceOutput):
             raise TypeError("The custom_reference_function must return a GuidanceOutput object.")
