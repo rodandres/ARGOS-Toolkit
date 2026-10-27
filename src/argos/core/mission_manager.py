@@ -1,8 +1,10 @@
+import numpy as np
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from typing import TYPE_CHECKING
 from argos.general.dataclasses import MissionPhase
+from argos.maneuvers.impulsive_maneuver import ImpulsiveManeuver
 
 if TYPE_CHECKING:
     from argos.core.simulation import SimulationData
@@ -25,6 +27,8 @@ class MissionManager:
         self.verbose = verbose
 
         self.transitions = {}  # Dictionary to hold transitions between phases
+
+        self.impulsive_maneuvers = []  # List of ImpulsiveManeuver instances
 
     def _check_phase(self, phase: MissionPhase):
         if not isinstance(phase, MissionPhase):
@@ -74,7 +78,6 @@ class MissionManager:
                 "or rotational_model is specified."
             )
         
-
     def add_phases(self, phase: MissionPhase | list[MissionPhase]):
         """
         Add one or more mission phases to the mission manager.
@@ -155,6 +158,60 @@ class MissionManager:
             "condition": condition,
         }
 
+    def add_impulsive_maneuver(self, maneuver):
+        """
+        Add an impulsive maneuver to the mission manager.
+
+        Parameters
+        ----------
+        maneuver : ImpulsiveManeuver
+            Impulsive maneuver to be added.
+
+        Raises
+        ------
+        TypeError
+            If `maneuver` is not an instance of ImpulsiveManeuver.
+        """        
+
+        if not isinstance(maneuver, ImpulsiveManeuver):
+            raise TypeError("maneuver must be an instance of ImpulsiveManeuver.")
+
+        self.impulsive_maneuvers.append(maneuver)
+
+    def get_due_impulsive_maneuvers(
+        self,
+        current_time: float,
+        atol: float = 1e-3,
+    ) -> list[ImpulsiveManeuver]:
+        """Return maneuvers scheduled for the current simulation time."""
+
+        due_maneuvers = []
+
+        for maneuver in self.impulsive_maneuvers:
+            if maneuver.executed:
+                continue
+
+            if np.isclose(
+                current_time,
+                maneuver.time,
+                rtol=0.0,
+                atol=atol,
+            ):
+                due_maneuvers.append(maneuver)
+
+            elif current_time > maneuver.time + atol:
+                raise RuntimeError(
+                    f"Maneuver scheduled at t={maneuver.time} was missed. "
+                    f"Current simulation time is t={current_time}. "
+                    "Ensure maneuver times align with simulation time steps."
+                )
+
+            else:
+                # Maneuvers are sorted chronologically.
+                break
+
+        return due_maneuvers
+
     def update(self, simulation_data: SimulationData) -> tuple[bool, dict | None]:
         """
         Evaluate mission phase transitions and update the current phase.
@@ -181,7 +238,9 @@ class MissionManager:
 
             if transition["condition"](simulation_data):
 
+                print("Ptopagation time 1:", self.current_phase.dt_propagation)
                 self.current_phase = transition["target_phase"]
+                print("Ptopagation time 2:", self.current_phase.dt_propagation)
 
                 info = {
                     "from_phase": current_phase,
@@ -194,6 +253,7 @@ class MissionManager:
                         f"Transitioned from '{current_phase}' "
                         f"to '{self.current_phase.name}' "
                         f"via '{transition_name}'."
+                        f"Propagation time 3 {self.current_phase.dt_propagation} seconds."
                     )
 
                 return True, info

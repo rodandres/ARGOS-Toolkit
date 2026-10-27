@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:    
     from argos.general.dataclasses import MissionPhase
     from argos.core.simulation import Simulation
+    from argos.maneuvers.impulsive_maneuver import ImpulsiveManeuver
 
 class Spacecraft():
     """
@@ -87,7 +88,7 @@ class Spacecraft():
         self.current_navigation_dt = np.nan
         self.current_guidance_dt = np.nan
         self.current_control_dt = np.nan
-        
+
         self.has_sensors = False
         self.has_actuators = False
         self.has_mission_manager = False
@@ -180,9 +181,9 @@ class Spacecraft():
             self.rotational_model = phase.rotational_model
 
         self._update_true_state_frames()
-        self._update_propagator_transforms()
+        self._update_propagator_transforms()        
 
-        self.spacecraft_data.current_propagation_dt = phase.dt_propagation
+        self.spacecraft_data.current_propagation_dt = phase.dt_propagation        
         
         self.spacecraft_data.current_master_dt = self.get_min_dt()
 
@@ -394,14 +395,38 @@ class Spacecraft():
         return self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt
 
     def get_min_dt(self):
+        
         dts = [dt for dt in [self.current_navigation_dt, self.current_guidance_dt, self.current_control_dt, self.spacecraft_data.current_propagation_dt] if dt is not None and not np.isnan(dt)]
 
         if self.has_sensors:    
             for sensor in self.sensors:            
                 if sensor.sample_rate_sec is not None:
+                    print(f"  Sensor {sensor.name} sample rate: {sensor.sample_rate_sec}")
                     dts.append(sensor.sample_rate_sec)
 
+        print(f"Current dt values for spacecraft '{self.name}': {dts}")
+        print(f"Minimum dt for spacecraft '{self.name}': {min(dts) if dts else None}")
+
         return min(dts) if dts else None
+
+    def apply_impulsive_maneuver(self, maneuver: ImpulsiveManeuver) -> None:
+        """Apply an impulsive velocity change to the spacecraft."""
+
+        if maneuver.executed:
+            raise ValueError("This maneuver has already been executed.")
+
+        true_state = self.spacecraft_data.true_state        
+
+
+        if self.verbose:
+            print(f"Impulsive maneuver '{maneuver.name}' applied at time {self.spacecraft_data.t:.2f}s.")
+            print(f"Delta-v: {maneuver.delta_v}")
+            print(f"Previous velocity: {true_state.velocity}")
+        true_state.velocity += maneuver.delta_v
+        if self.verbose:
+            print(f"New velocity: {true_state.velocity}")            
+
+        maneuver.executed = True
 
     def _should_compute(self, simulation_data, dt_component):
         tick = self.spacecraft_data.tick
@@ -434,14 +459,14 @@ class Spacecraft():
         if self.has_sensors is False:
             return
     
-        for sensor in self.sensors:
+        for sensor in self.sensors:            
             sensor.update()
     
     def update_navigation(self, simulation_data):
         if self.has_navigation_law is False:
             return
 
-        if self._should_compute(simulation_data, self.current_navigation_dt):
+        if self._should_compute(simulation_data, self.current_navigation_dt):            
             estimation = self.current_navigation_law.estimate(self.sensors)
 
             self.spacecraft_data.navigation_data = estimation
@@ -450,20 +475,21 @@ class Spacecraft():
         if self.has_guidance_law is False:
             return
 
-        if self._should_compute(simulation_data, self.current_guidance_dt):            
+        if self._should_compute(simulation_data, self.current_guidance_dt):   
             self.spacecraft_data.guidance_data = self.current_guidance_law.compute_reference(
-                self.spacecraft_data.navigation_data
+                self.spacecraft_data.navigation_data,
+                simulation_data
             )
 
     def update_control(self, simulation_data):
         if self.has_control_law is False:
             return
 
-        if self._should_compute(simulation_data, self.current_control_dt):
+        if self._should_compute(simulation_data, self.current_control_dt):            
             self.spacecraft_data.control_data = self.current_control_law.compute_control(
                 self.spacecraft_data.navigation_data,
                 self.spacecraft_data.guidance_data
-            )
+            )            
 
             self.current_allocator.allocate(self.spacecraft_data.control_data)
 
@@ -492,19 +518,25 @@ class Spacecraft():
         self.spacecraft_data.exerted_data.torque = torque
 
     def propagate_translational(self, simulation_data, environment):
+        has_propagated = False
         if self.has_translational_model is False:
-            return
+            return has_propagated
 
         if self._should_compute(simulation_data, self.spacecraft_data.current_propagation_dt):
-            self.translational_model.propagate(self, simulation_data, environment)
+            self.translational_model.propagate(self, simulation_data, environment)            
+            has_propagated = True
+            return has_propagated
 
     def propagate_rotational(self, simulation_data, environment):
+        has_propagated = False
         if self.has_rotational_model is False:
-            return
-
+            return has_propagated
+        
         if self._should_compute(simulation_data, self.spacecraft_data.current_propagation_dt):
             self.rotational_model.propagate(self, simulation_data, environment)
             self.transforms_manager.invalidate_dynamic()
+            has_propagated = True
+            return has_propagated
 
     def change_target(self, new_target_name: str):
         self.spacecraft_data.target_name = new_target_name
