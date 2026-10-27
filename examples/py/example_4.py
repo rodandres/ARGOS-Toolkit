@@ -128,7 +128,7 @@ from argos.navigation.basic_laws import IdealNavigation
 nav_law = IdealNavigation()
 
 from argos.propagators.native_propagator import NativeTranslationalPropagator
-translational_propagator = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
+translational_propagator = NativeTranslationalPropagator(orbital_model="REL2BP", integration_method="NATIVE_RK45")
 
 from argos.general.dataclasses import MissionPhase
 
@@ -146,7 +146,7 @@ initial_phase = MissionPhase(
 # As mentioned previously, note that we have two absolute sensors. As we want to use the second absolute sensor in this phase, we can pass that to the ideal navigation law.
 
 # %%
-translational_propagator_phase_2 = NativeTranslationalPropagator(dynamics="REL2BP", integration_method="NATIVE_RK45")
+translational_propagator_phase_2 = NativeTranslationalPropagator(orbital_model="REL2BP", integration_method="NATIVE_RK45")
 
 from argos.propagators.native_propagator import NativeRotationalPropagator
 rotational_propagator_phase_2 =  NativeRotationalPropagator(integration_method="NATIVE_RK45")
@@ -296,5 +296,3 @@ plot_trajectory_xz(["SC1"], metada, show=True, body="Earth",)
 plot_trajectory_yz(["SC1"], metada, show=True, body="Earth",)
 plot_trajectory_3d(["SC1"], metada, show=True, body="Earth",)
 plot_trajectory(["SC1"], metada, show=True, body="Earth",)
-
-
